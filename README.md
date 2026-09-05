@@ -126,3 +126,14 @@ Wait in Queue
 Doctor Consultation
       ↓
 End of OPD Visit
+```
+
+---
+
+## 🔒 Git & Branching Strategy Rules
+
+To maintain code quality and stability:
+
+- **Direct Push Restricted:** Direct push to `main` and `stagingv2` is blocked for general team members.
+- **Pull Request Required:** All changes targeting `main` or `stagingv2` must be submitted via Pull Request (PR).
+- **Code Owner Approval:** Every PR targeting `main` or `stagingv2` requires mandatory review and confirmation/approval from **`chaninduisuranga`** before merging.
