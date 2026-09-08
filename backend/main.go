@@ -5,6 +5,7 @@ import (
 
 	"mediq-backend/internal/config"
 	"mediq-backend/internal/database"
+	"mediq-backend/internal/handlers"
 	"mediq-backend/routes"
 )
 
@@ -14,6 +15,11 @@ func main() {
 
 	// Initialize Database Connection
 	database.InitDB(cfg.DatabaseURL)
+
+	// Cleanup expired appointments (appointment_date < today) on startup
+	if database.DB != nil {
+		handlers.CleanupExpiredAppointments()
+	}
 
 	// Setup Router
 	router := routes.SetupRouter(cfg)
