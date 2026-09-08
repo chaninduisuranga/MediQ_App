@@ -6,6 +6,17 @@ import (
 	"gorm.io/gorm"
 )
 
+// OPD Room types
+type OPDRoom string
+
+const (
+	RoomDressing   OPDRoom = "DRESSING_ROOM"
+	RoomInjection  OPDRoom = "INJECTION_ROOM"
+	RoomBleeding   OPDRoom = "BLEEDING_ROOM"
+	RoomAnimalBite OPDRoom = "ANIMAL_BITE_ROOM"
+	RoomOPDClinic  OPDRoom = "OPD_CLINIC_ROOM"
+)
+
 type AppointmentStatus string
 
 const (
@@ -15,18 +26,19 @@ const (
 	AppointmentCancelled AppointmentStatus = "CANCELLED"
 )
 
-type Appointment struct {
+type OPDAppointment struct {
 	ID              uint              `gorm:"primaryKey" json:"id"`
-	PatientID       uint              `gorm:"not null" json:"patient_id"`
+	PatientID       uint              `gorm:"not null;index" json:"patient_id"`
 	Patient         User              `gorm:"foreignKey:PatientID" json:"patient,omitempty"`
-	DoctorID        uint              `gorm:"not null" json:"doctor_id"`
-	Doctor          Doctor            `gorm:"foreignKey:DoctorID" json:"doctor,omitempty"`
-	ClinicName      string            `gorm:"not null" json:"clinic_name"`
-	AppointmentDate time.Time         `gorm:"not null" json:"appointment_date"`
+	Room            OPDRoom           `gorm:"type:varchar(50);not null;index" json:"room"`
 	QueueNumber     int               `gorm:"not null" json:"queue_number"`
-	Status          AppointmentStatus `gorm:"type:varchar(20);default:'PENDING'" json:"status"`
-	QRCodeData      string            `json:"qr_code_data"`
+	AppointmentDate string            `gorm:"type:varchar(10);not null;index" json:"appointment_date"` // YYYY-MM-DD
+	PatientName     string            `gorm:"not null" json:"patient_name"`
+	PatientNIC      string            `gorm:"not null" json:"patient_nic"`
+	PatientPhone    string            `json:"patient_phone"`
 	Notes           string            `json:"notes"`
+	Status          AppointmentStatus `gorm:"type:varchar(20);default:'PENDING'" json:"status"`
+	QRCodeData      string            `gorm:"type:text" json:"qr_code_data"`
 	CreatedAt       time.Time         `json:"created_at"`
 	UpdatedAt       time.Time         `json:"updated_at"`
 	DeletedAt       gorm.DeletedAt    `gorm:"index" json:"-"`

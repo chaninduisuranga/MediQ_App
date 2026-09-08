@@ -8,9 +8,12 @@ import (
 )
 
 type Config struct {
-	Port        string
-	DatabaseURL string
-	JWTSecret   string
+	Port               string
+	DatabaseURL        string
+	JWTSecret          string
+	CloudinaryCloud    string
+	CloudinaryAPIKey   string
+	CloudinaryAPISecret string
 }
 
 func LoadConfig() *Config {
@@ -35,8 +38,11 @@ func LoadConfig() *Config {
 	}
 
 	return &Config{
-		Port:        port,
-		DatabaseURL: dbURL,
-		JWTSecret:   jwtSecret,
+		Port:               port,
+		DatabaseURL:        dbURL,
+		JWTSecret:          jwtSecret,
+		CloudinaryCloud:    os.Getenv("CLOUDINARY_CLOUD_NAME"),
+		CloudinaryAPIKey:   os.Getenv("CLOUDINARY_API_KEY"),
+		CloudinaryAPISecret: os.Getenv("CLOUDINARY_API_SECRET"),
 	}
 }

@@ -11,6 +11,7 @@ type UserRole string
 const (
 	RolePatient UserRole = "PATIENT"
 	RoleDoctor  UserRole = "DOCTOR"
+	RoleStaff   UserRole = "STAFF"
 	RoleAdmin   UserRole = "ADMIN"
 )
 
