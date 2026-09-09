@@ -68,7 +68,13 @@ class _LoginScreenState extends State<LoginScreen> {
           backgroundColor: AppTheme.primaryTeal,
         ),
       );
-      Navigator.pushReplacementNamed(context, '/home');
+      
+      final role = AuthService.currentUser?['role'];
+      if (role == 'ADMIN' || role == 'STAFF' || role == 'SUPER_ADMIN') {
+        Navigator.pushReplacementNamed(context, '/admin-dashboard');
+      } else {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
     } else {
       setState(() {
         _errorMessage = result['message'];

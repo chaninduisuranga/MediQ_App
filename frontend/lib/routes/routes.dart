@@ -7,6 +7,8 @@ import '../screens/home_screen.dart';
 import '../screens/book_appointment_screen.dart';
 import '../screens/medical_records_screen.dart';
 
+import '../screens/admin_dashboard_screen.dart';
+
 class AppRoutes {
   static const String splash = '/splash';
   static const String login = '/login';
@@ -15,6 +17,7 @@ class AppRoutes {
   static const String home = '/home';
   static const String bookAppointment = '/book-appointment';
   static const String medicalRecords = '/medical-records';
+  static const String adminDashboard = '/admin-dashboard';
 
   static Map<String, WidgetBuilder> get routes => {
         splash: (context) => const SplashScreen(),
@@ -24,5 +27,6 @@ class AppRoutes {
         home: (context) => const HomeScreen(),
         bookAppointment: (context) => const BookAppointmentScreen(),
         medicalRecords: (context) => const MedicalRecordsScreen(),
+        adminDashboard: (context) => const AdminDashboardScreen(),
       };
 }
