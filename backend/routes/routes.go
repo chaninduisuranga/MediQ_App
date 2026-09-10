@@ -63,6 +63,13 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 				apptAuth.PUT("/:id/cancel", appointmentHandler.CancelAppointment)
 			}
 		}
+		// Admin routes
+		admin := v1.Group("/admin")
+		admin.Use(middleware.AuthMiddleware(cfg))
+		{
+			adminHandler := handlers.NewAdminHandler()
+			admin.GET("/dashboard", adminHandler.GetDashboardStats)
+		}
 	}
 
 	return r
