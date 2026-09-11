@@ -419,6 +419,342 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _showEmergencyHelplineDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppTheme.errorRed.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.phone_in_talk_rounded, color: AppTheme.errorRed, size: 24),
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'OPD Emergency & Helplines',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildHelplineItem(
+              icon: Icons.emergency_rounded,
+              title: '1990 Suwa Seriya Ambulance',
+              subtitle: 'Free 24/7 National Emergency Hotline',
+              phone: '1990',
+              color: const Color(0xFFEF4444),
+            ),
+            const Divider(height: 16),
+            _buildHelplineItem(
+              icon: Icons.local_hospital_rounded,
+              title: 'National Hospital OPD Triage',
+              subtitle: 'OPD Reception & Emergency Gate',
+              phone: '011-2691111',
+              color: AppTheme.primaryTeal,
+            ),
+            const Divider(height: 16),
+            _buildHelplineItem(
+              icon: Icons.medication_rounded,
+              title: 'OPD Pharmacy Desk',
+              subtitle: 'Prescription & Drug Inquiries',
+              phone: '011-2691111 (Ext 402)',
+              color: const Color(0xFF8B5CF6),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Close', style: TextStyle(color: AppTheme.mutedText, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHelplineItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required String phone,
+    required Color color,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkText)),
+              Text(subtitle, style: const TextStyle(fontSize: 11, color: AppTheme.mutedText)),
+              const SizedBox(height: 2),
+              Text(phone, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: color)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showHospitalGuideSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Row(
+              children: [
+                Icon(Icons.map_outlined, color: AppTheme.primaryTeal, size: 24),
+                SizedBox(width: 10),
+                Text('OPD Hospital Counter Guide', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.darkText)),
+              ],
+            ),
+            const SizedBox(height: 4),
+            const Text('Floor plan and key counter locations for OPD visitors', style: TextStyle(fontSize: 12, color: AppTheme.mutedText)),
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView(
+                children: [
+                  _buildGuideStep('Counter 1 (Main Lobby)', 'Token generation, patient registration & NIC verification.', Icons.confirmation_number_outlined, AppTheme.primaryBlue),
+                  _buildGuideStep('Room 4 (General OPD)', 'Doctor consultation for fever, cold, body pain & general ailments.', Icons.healing_outlined, const Color(0xFF0077B6)),
+                  _buildGuideStep('Room 7 (Dressing Room)', 'Wound cleaning, dressing change, and minor surgical care.', Icons.medical_services_outlined, const Color(0xFFF59E0B)),
+                  _buildGuideStep('Room 2 (Injection Room)', 'Administration of doctor-prescribed IM & IV injection doses.', Icons.vaccines_outlined, const Color(0xFF8B5CF6)),
+                  _buildGuideStep('Bleeding Room (Lab)', 'Blood sample collection & diagnostic blood draws.', Icons.water_drop_outlined, const Color(0xFFEC4899)),
+                  _buildGuideStep('Pharmacy Counter 1-4', 'Free OPD medicine collection with prescription chit.', Icons.medication_outlined, const Color(0xFF059669)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGuideStep(String title, String desc, IconData icon, Color color) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.12), shape: BoxShape.circle),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: color)),
+                const SizedBox(height: 2),
+                Text(desc, style: const TextStyle(fontSize: 11, color: AppTheme.darkText, height: 1.3)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFamilyProfilesDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.family_restroom_rounded, color: Color(0xFF8B5CF6)),
+            SizedBox(width: 10),
+            Text('Family OPD Cards', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const CircleAvatar(
+                backgroundColor: AppTheme.primaryTeal,
+                child: Icon(Icons.person, color: Colors.white),
+              ),
+              title: Text(AuthService.currentUser?['full_name'] ?? 'Primary Patient', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              subtitle: const Text('Primary Account (Self)', style: TextStyle(fontSize: 11, color: AppTheme.accentGreen)),
+              trailing: const Icon(Icons.check_circle_rounded, color: AppTheme.accentGreen),
+            ),
+            const Divider(),
+            const Text('Manage OPD tokens for your family members from a single account.', style: TextStyle(fontSize: 11, color: AppTheme.mutedText), textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppTheme.primaryTeal),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              icon: const Icon(Icons.add_rounded, color: AppTheme.primaryTeal),
+              label: const Text('Add Family Member', style: TextStyle(color: AppTheme.primaryTeal, fontWeight: FontWeight.bold)),
+              onPressed: () {
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Family profile feature linked to Primary NIC.')),
+                );
+              },
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
+  void _showAppSettingsDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.settings_outlined, color: AppTheme.darkText),
+            SizedBox(width: 10),
+            Text('App Settings', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.language_rounded, color: AppTheme.primaryTeal),
+              title: const Text('Language', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('English / සිංහල'),
+              trailing: const Text('English', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryTeal)),
+            ),
+            const Divider(),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              secondary: const Icon(Icons.notifications_active_outlined, color: AppTheme.primaryTeal),
+              title: const Text('Appointment Alerts', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('Receive token SMS & push notifications'),
+              value: true,
+              activeThumbColor: AppTheme.primaryTeal,
+              onChanged: (val) {},
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Save & Close')),
+        ],
+      ),
+    );
+  }
+
+  void _showHelpFaqSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.65,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(topLeft: Radius.circular(24), topRight: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+            ),
+            const SizedBox(height: 16),
+            const Row(
+              children: [
+                Icon(Icons.help_outline_rounded, color: Color(0xFF059669), size: 24),
+                SizedBox(width: 10),
+                Text('OPD Help & FAQ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.darkText)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: ListView(
+                children: const [
+                  ExpansionTile(
+                    title: Text('How do I receive an OPD token?', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Text('You can book an OPD token directly on MediQ portal or scan your appointment QR code at OPD Counter 1 upon hospital arrival.', style: TextStyle(fontSize: 12, color: AppTheme.mutedText)),
+                      ),
+                    ],
+                  ),
+                  ExpansionTile(
+                    title: Text('What are the hospital OPD hours?', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Text('OPD counter opens from 7:30 AM to 4:00 PM daily. Emergency triage runs 24/7.', style: TextStyle(fontSize: 12, color: AppTheme.mutedText)),
+                      ),
+                    ],
+                  ),
+                  ExpansionTile(
+                    title: Text('Is medicine free at OPD pharmacy?', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        child: Text('Yes, all doctor-prescribed medications issued at the government OPD pharmacy are completely free of charge.', style: TextStyle(fontSize: 12, color: AppTheme.mutedText)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = AuthService.currentUser ?? {};
@@ -529,65 +865,119 @@ class _HomeScreenState extends State<HomeScreen> {
               accountEmail: Text('NIC: $nic | Phone: $phone'),
             ),
 
-            ListTile(
-              leading: const Icon(Icons.person_outline_rounded, color: AppTheme.primaryTeal),
-              title: const Text('My Profile', style: TextStyle(fontWeight: FontWeight.w600)),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.pushNamed(context, '/profile');
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.confirmation_number_outlined, color: AppTheme.primaryTeal),
-              title: const Text('OPD Live Queue', style: TextStyle(fontWeight: FontWeight.w600)),
-              onTap: () {
-                Navigator.pop(context);
-                _openBookAppointment();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.event_note_outlined, color: AppTheme.primaryTeal),
-              title: const Text('Book Appointment', style: TextStyle(fontWeight: FontWeight.w600)),
-              onTap: () {
-                Navigator.pop(context);
-                _openBookAppointment();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.medical_services_outlined, color: AppTheme.primaryTeal),
-              title: const Text('Medical Records & History', style: TextStyle(fontWeight: FontWeight.w600)),
-              onTap: () {
-                Navigator.pop(context);
-                _openMedicalRecords();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.phone_in_talk_outlined, color: Color(0xFFEF4444)),
-              title: const Text('Emergency SOS (1990)', style: TextStyle(fontWeight: FontWeight.w600, color: Color(0xFFEF4444))),
-              onTap: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Calling Suwa Seriya 1990 Emergency Hotline...')),
-                );
-              },
-            ),
-            const Divider(),
-            ListTile(
-              leading: const Icon(Icons.info_outline_rounded, color: AppTheme.mutedText),
-              title: const Text('App Information', style: TextStyle(fontWeight: FontWeight.w500)),
-              onTap: () {
-                Navigator.pop(context);
-                showAboutDialog(
-                  context: context,
-                  applicationName: 'MediQ OPD Portal',
-                  applicationVersion: '1.0.0',
-                  applicationLegalese: 'Government OPD - Closer to You',
-                );
-              },
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.person_outline_rounded, color: AppTheme.primaryTeal),
+                    title: const Text('My Profile', style: TextStyle(fontWeight: FontWeight.w600)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.pushNamed(context, '/profile');
+                    },
+                  ),
+                  ListTile(
+                    leading: Stack(
+                      children: [
+                        const Icon(Icons.notifications_none_rounded, color: AppTheme.primaryTeal),
+                        if (_unreadNotificationCount > 0)
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(color: AppTheme.errorRed, shape: BoxShape.circle),
+                            ),
+                          ),
+                      ],
+                    ),
+                    title: const Text('Notifications & Alerts', style: TextStyle(fontWeight: FontWeight.w600)),
+                    trailing: _unreadNotificationCount > 0
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(color: AppTheme.errorRed, borderRadius: BorderRadius.circular(10)),
+                            child: Text('$_unreadNotificationCount', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                          )
+                        : null,
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showNotificationsSheet();
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.family_restroom_rounded, color: Color(0xFF8B5CF6)),
+                    title: const Text('Family OPD Cards', style: TextStyle(fontWeight: FontWeight.w600)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showFamilyProfilesDialog();
+                    },
+                  ),
+
+                  const Divider(),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16, top: 4, bottom: 4),
+                    child: Text('OPD ASSISTANCE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.mutedText, letterSpacing: 0.5)),
+                  ),
+
+                  ListTile(
+                    leading: const Icon(Icons.phone_in_talk_rounded, color: Color(0xFFEF4444)),
+                    title: const Text('Emergency Helpline (1990)', style: TextStyle(fontWeight: FontWeight.w600)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showEmergencyHelplineDialog();
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.map_outlined, color: Color(0xFF0077B6)),
+                    title: const Text('Hospital Counter Guide', style: TextStyle(fontWeight: FontWeight.w600)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showHospitalGuideSheet();
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.help_outline_rounded, color: Color(0xFF059669)),
+                    title: const Text('Help & OPD FAQ', style: TextStyle(fontWeight: FontWeight.w600)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showHelpFaqSheet();
+                    },
+                  ),
+
+                  const Divider(),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 16, top: 4, bottom: 4),
+                    child: Text('PREFERENCES', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.mutedText, letterSpacing: 0.5)),
+                  ),
+
+                  ListTile(
+                    leading: const Icon(Icons.settings_outlined, color: AppTheme.darkText),
+                    title: const Text('App Settings', style: TextStyle(fontWeight: FontWeight.w600)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showAppSettingsDialog();
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.info_outline_rounded, color: AppTheme.mutedText),
+                    title: const Text('App Information', style: TextStyle(fontWeight: FontWeight.w500)),
+                    onTap: () {
+                      Navigator.pop(context);
+                      showAboutDialog(
+                        context: context,
+                        applicationName: 'MediQ OPD Portal',
+                        applicationVersion: '1.0.0',
+                        applicationLegalese: 'Government OPD - Closer to You',
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
 
-            const Spacer(),
-            const Divider(),
+            const Divider(height: 1),
 
             ListTile(
               leading: const Icon(Icons.logout_rounded, color: AppTheme.errorRed),
@@ -601,7 +991,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Navigator.pushReplacementNamed(context, '/login');
               },
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
           ],
         ),
       ),
@@ -673,14 +1063,30 @@ class _HomeScreenState extends State<HomeScreen> {
                     onTap: _openMedicalRecords,
                   ),
                   _build3DGlassCard(
-                    icon: Icons.contact_support_outlined,
-                    title: 'Emergency 1990',
-                    subtitle: 'Suwa Seriya Ambulance',
-                    gradientColors: [const Color(0xFFE11D48), const Color(0xFFF43F5E)],
+                    icon: Icons.medication_rounded,
+                    title: 'Pill & Dose Tracker',
+                    subtitle: 'Daily Prescriptions',
+                    gradientColors: [const Color(0xFF7C3AED), const Color(0xFFA855F7)],
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Emergency Hotline: Dial 1990')),
-                      );
+                      Navigator.pushNamed(context, '/pill-tracker');
+                    },
+                  ),
+                  _build3DGlassCard(
+                    icon: Icons.psychology_outlined,
+                    title: 'Symptom Checker',
+                    subtitle: 'Find OPD Clinic Room',
+                    gradientColors: [const Color(0xFFD97706), const Color(0xFFF59E0B)],
+                    onTap: () {
+                      Navigator.pushNamed(context, '/symptom-checker');
+                    },
+                  ),
+                  _build3DGlassCard(
+                    icon: Icons.monitor_weight_outlined,
+                    title: 'Health Vitals & BMI',
+                    subtitle: 'Track Weight & Sugar',
+                    gradientColors: [const Color(0xFFDB2777), const Color(0xFFEC4899)],
+                    onTap: () {
+                      Navigator.pushNamed(context, '/health-vitals');
                     },
                   ),
                 ],
