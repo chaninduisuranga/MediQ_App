@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
   // Use 10.0.2.2 for Android Emulator, localhost for Windows/Web
@@ -14,10 +15,35 @@ class AuthService {
 
   static String? _token;
   static Map<String, dynamic>? _currentUser;
+  static final ValueNotifier<String?> profilePhotoNotifier = ValueNotifier<String?>(null);
 
   static String? get token => _token;
   static Map<String, dynamic>? get currentUser => _currentUser;
   static bool get isLoggedIn => _token != null;
+
+  static Future<void> loadSavedProfilePhoto() async {
+    final nic = _currentUser?['nic'];
+    if (nic != null) {
+      final prefs = await SharedPreferences.getInstance();
+      final savedPath = prefs.getString('profile_photo_$nic');
+      profilePhotoNotifier.value = savedPath;
+      if (_currentUser != null && savedPath != null) {
+        _currentUser!['profile_image'] = savedPath;
+      }
+    }
+  }
+
+  static Future<void> updateProfilePhoto(String imagePath) async {
+    final nic = _currentUser?['nic'];
+    if (nic != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('profile_photo_$nic', imagePath);
+    }
+    if (_currentUser != null) {
+      _currentUser!['profile_image'] = imagePath;
+    }
+    profilePhotoNotifier.value = imagePath;
+  }
 
   static Future<Map<String, dynamic>> login({
     required String nic,
@@ -38,6 +64,7 @@ class AuthService {
       if (response.statusCode == 200 && data['success'] == true) {
         _token = data['data']['token'];
         _currentUser = data['data']['user'];
+        await loadSavedProfilePhoto();
         return {'success': true, 'message': data['message'] ?? 'Login successful', 'data': data['data']};
       } else {
         return {
@@ -96,6 +123,7 @@ class AuthService {
       if (response.statusCode == 201 && data['success'] == true) {
         _token = data['data']['token'];
         _currentUser = data['data']['user'];
+        await loadSavedProfilePhoto();
         return {'success': true, 'message': data['message'] ?? 'Registration successful', 'data': data['data']};
       } else {
         return {
