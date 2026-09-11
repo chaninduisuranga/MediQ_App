@@ -8,6 +8,7 @@ import '../screens/book_appointment_screen.dart';
 import '../screens/medical_records_screen.dart';
 
 import '../screens/admin_dashboard_screen.dart';
+import '../screens/admin_user_management_screen.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -18,6 +19,7 @@ class AppRoutes {
   static const String bookAppointment = '/book-appointment';
   static const String medicalRecords = '/medical-records';
   static const String adminDashboard = '/admin-dashboard';
+  static const String adminUserManagement = '/admin/users';
 
   static Map<String, WidgetBuilder> get routes => {
         splash: (context) => const SplashScreen(),
@@ -28,5 +30,6 @@ class AppRoutes {
         bookAppointment: (context) => const BookAppointmentScreen(),
         medicalRecords: (context) => const MedicalRecordsScreen(),
         adminDashboard: (context) => const AdminDashboardScreen(),
+        adminUserManagement: (context) => const AdminUserManagementScreen(),
       };
 }
