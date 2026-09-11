@@ -13,6 +13,7 @@ dependencies:
   http: ^1.2.2
   image_picker: ^1.1.2
   qr_flutter: ^4.1.0
+  supabase_flutter: ^2.8.0
 
 dev_dependencies:
   flutter_test:
