@@ -1,5 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../core/services/auth_service.dart';
+import '../core/services/language_service.dart';
 import '../core/theme/theme.dart';
 
 class PatientProfileScreen extends StatefulWidget {
@@ -11,6 +14,42 @@ class PatientProfileScreen extends StatefulWidget {
 
 class _PatientProfileScreenState extends State<PatientProfileScreen> {
   bool _isLoading = false;
+
+  Future<void> _pickProfileImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 800,
+        maxHeight: 800,
+      );
+
+      if (image != null) {
+        await AuthService.updateProfilePhoto(image.path);
+        if (mounted) {
+          setState(() {});
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Profile photo updated successfully!'),
+              backgroundColor: AppTheme.primaryTeal,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Could not open gallery: $e'),
+            backgroundColor: AppTheme.errorRed,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
 
   void _showEditProfileSheet() {
     final user = AuthService.currentUser ?? {};
@@ -333,11 +372,11 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Patient Profile'),
+        title: Text(LanguageService.tr('patient_profile')),
         actions: [
           IconButton(
             icon: const Icon(Icons.edit_outlined),
-            tooltip: 'Edit Profile',
+            tooltip: LanguageService.tr('edit_profile'),
             onPressed: _showEditProfileSheet,
           ),
         ],
@@ -365,13 +404,74 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                     ),
                     child: Column(
                       children: [
-                        CircleAvatar(
-                          radius: 36,
-                          backgroundColor: Colors.white,
-                          child: Text(
-                            fullName.isNotEmpty ? fullName[0].toUpperCase() : 'P',
-                            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppTheme.primaryTeal),
-                          ),
+                        ValueListenableBuilder<String?>(
+                          valueListenable: AuthService.profilePhotoNotifier,
+                          builder: (context, photoPath, _) {
+                            final hasPhoto = photoPath != null && photoPath.isNotEmpty && File(photoPath).existsSync();
+                            return Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 2.5),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(alpha: 0.15),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: CircleAvatar(
+                                    radius: 44,
+                                    backgroundColor: Colors.white,
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(44),
+                                      child: hasPhoto
+                                          ? Image.file(
+                                              File(photoPath),
+                                              width: 88,
+                                              height: 88,
+                                              fit: BoxFit.cover,
+                                            )
+                                          : Text(
+                                              fullName.isNotEmpty ? fullName[0].toUpperCase() : 'P',
+                                              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppTheme.primaryTeal),
+                                            ),
+                                    ),
+                                  ),
+                                ),
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: GestureDetector(
+                                    onTap: _pickProfileImage,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(7),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.25),
+                                            blurRadius: 6,
+                                            offset: const Offset(0, 2),
+                                          ),
+                                        ],
+                                      ),
+                                      child: const Icon(
+                                        Icons.camera_alt_rounded,
+                                        color: AppTheme.primaryTeal,
+                                        size: 18,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                         const SizedBox(height: 12),
                         Text(
@@ -386,7 +486,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            'NIC: $nic',
+                            '${LanguageService.tr('nic')}: $nic',
                             style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
                           ),
                         ),
@@ -397,33 +497,33 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
 
                   // Section 1: Personal Details
                   _buildSectionCard(
-                    title: 'Personal Information',
+                    title: LanguageService.tr('personal_info'),
                     icon: Icons.person_outline_rounded,
                     items: [
-                      _buildInfoRow('Full Name', fullName),
-                      _buildInfoRow('NIC Number', nic),
-                      _buildInfoRow('Date of Birth', dob),
-                      _buildInfoRow('Gender', gender),
-                      _buildInfoRow('Civil Status', civilStatus),
+                      _buildInfoRow(LanguageService.tr('full_name'), fullName),
+                      _buildInfoRow(LanguageService.tr('nic'), nic),
+                      _buildInfoRow(LanguageService.tr('dob'), dob),
+                      _buildInfoRow(LanguageService.tr('gender'), gender),
+                      _buildInfoRow(LanguageService.tr('civil_status'), civilStatus),
                     ],
                   ),
                   const SizedBox(height: 16),
 
                   // Section 2: Contact Details
                   _buildSectionCard(
-                    title: 'Contact & Location',
+                    title: LanguageService.tr('contact_location'),
                     icon: Icons.contact_mail_outlined,
                     items: [
-                      _buildInfoRow('Phone Number', phone),
-                      _buildInfoRow('Address', address),
-                      _buildInfoRow('District', district),
+                      _buildInfoRow(LanguageService.tr('phone'), phone),
+                      _buildInfoRow(LanguageService.tr('address'), address),
+                      _buildInfoRow(LanguageService.tr('district'), district),
                     ],
                   ),
                   const SizedBox(height: 16),
 
                   // Section 3: Emergency Contact
                   _buildSectionCard(
-                    title: 'Emergency Contact',
+                    title: LanguageService.tr('emergency_contact'),
                     icon: Icons.phone_in_talk_outlined,
                     items: [
                       _buildInfoRow('Contact Person', emergencyName),
@@ -434,12 +534,12 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
 
                   // Section 4: Medical Background
                   _buildSectionCard(
-                    title: 'Medical Background',
+                    title: LanguageService.tr('medical_background'),
                     icon: Icons.medical_information_outlined,
                     items: [
-                      _buildInfoRow('Blood Group', bloodGroup),
-                      _buildInfoRow('Allergies', allergies),
-                      _buildInfoRow('Pre-existing Conditions', medicalConditions),
+                      _buildInfoRow(LanguageService.tr('blood_group'), bloodGroup),
+                      _buildInfoRow(LanguageService.tr('allergies'), allergies),
+                      _buildInfoRow(LanguageService.tr('medical_conditions'), medicalConditions),
                     ],
                   ),
                   const SizedBox(height: 28),
@@ -451,7 +551,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                         child: ElevatedButton.icon(
                           onPressed: _showEditProfileSheet,
                           icon: const Icon(Icons.edit_rounded, size: 18),
-                          label: const Text('Edit Profile'),
+                          label: Text(LanguageService.tr('edit_profile')),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -463,7 +563,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                           ),
                           onPressed: _showDeleteAccountDialog,
                           icon: const Icon(Icons.delete_forever_rounded, color: AppTheme.errorRed, size: 18),
-                          label: const Text('Delete Profile', style: TextStyle(color: AppTheme.errorRed)),
+                          label: Text(LanguageService.tr('delete_profile'), style: const TextStyle(color: AppTheme.errorRed)),
                         ),
                       ),
                     ],

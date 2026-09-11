@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../core/services/appointment_service.dart';
 import '../core/services/auth_service.dart';
+import '../core/services/language_service.dart';
 import '../core/theme/theme.dart';
 
 class AppNotification {
@@ -45,6 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    AuthService.loadSavedProfilePhoto();
     _fetchNextAppointment();
     // Ticking timer every second to update countdown
     _timer = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -648,16 +651,68 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showLanguageSelectorDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.language_rounded, color: AppTheme.primaryTeal),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                LanguageService.tr('select_language'),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildLanguageOption(ctx, code: 'en', title: 'English'),
+            const Divider(height: 1),
+            _buildLanguageOption(ctx, code: 'si', title: 'සිංහල (Sinhala)'),
+            const Divider(height: 1),
+            _buildLanguageOption(ctx, code: 'ta', title: 'தமிழ் (Tamil)'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLanguageOption(BuildContext ctx, {required String code, required String title}) {
+    final isSelected = LanguageService.currentLanguage == code;
+    return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          color: isSelected ? AppTheme.primaryTeal : AppTheme.darkText,
+        ),
+      ),
+      trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: AppTheme.primaryTeal) : null,
+      onTap: () async {
+        await LanguageService.setLanguage(code);
+        if (ctx.mounted) {
+          Navigator.pop(ctx);
+        }
+      },
+    );
+  }
+
   void _showAppSettingsDialog() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
+        title: Row(
           children: [
-            Icon(Icons.settings_outlined, color: AppTheme.darkText),
-            SizedBox(width: 10),
-            Text('App Settings', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Icon(Icons.settings_outlined, color: AppTheme.darkText),
+            const SizedBox(width: 10),
+            Text(LanguageService.tr('app_settings'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
         content: Column(
@@ -666,9 +721,20 @@ class _HomeScreenState extends State<HomeScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.language_rounded, color: AppTheme.primaryTeal),
-              title: const Text('Language', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              subtitle: const Text('English / සිංහල'),
-              trailing: const Text('English', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryTeal)),
+              title: Text(LanguageService.tr('menu_language'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              subtitle: const Text('English / සිංහල / தமிழ்'),
+              trailing: Text(
+                LanguageService.currentLanguage == 'si'
+                    ? 'සිංහල'
+                    : LanguageService.currentLanguage == 'ta'
+                        ? 'தமிழ்'
+                        : 'English',
+                style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryTeal),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showLanguageSelectorDialog();
+              },
             ),
             const Divider(),
             SwitchListTile(
@@ -683,7 +749,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Save & Close')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(LanguageService.tr('close'))),
         ],
       ),
     );
@@ -764,12 +830,15 @@ class _HomeScreenState extends State<HomeScreen> {
     final bloodGroup = user['blood_group'] ?? 'N/A';
     final district = user['district'] ?? 'N/A';
 
-    return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        leading: Builder(
-          builder: (context) {
-            return IconButton(
+    return ValueListenableBuilder<String>(
+      valueListenable: LanguageService.currentLanguageNotifier,
+      builder: (context, lang, child) {
+        return Scaffold(
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            leading: Builder(
+              builder: (context) {
+                return IconButton(
               icon: const Icon(Icons.menu_rounded, size: 28),
               tooltip: 'Open Menu',
               onPressed: () {
@@ -787,9 +856,9 @@ class _HomeScreenState extends State<HomeScreen> {
               errorBuilder: (_, __, ___) => const Icon(Icons.local_hospital, color: AppTheme.primaryTeal),
             ),
             const SizedBox(width: 10),
-            const Text(
-              'MediQ OPD Portal',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+            Text(
+              LanguageService.tr('app_title'),
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
             ),
           ],
         ),
@@ -847,16 +916,32 @@ class _HomeScreenState extends State<HomeScreen> {
                   end: Alignment.bottomRight,
                 ),
               ),
-              currentAccountPicture: CircleAvatar(
-                backgroundColor: Colors.white,
-                child: Text(
-                  fullName.isNotEmpty ? fullName[0].toUpperCase() : 'P',
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primaryTeal,
-                  ),
-                ),
+              currentAccountPicture: ValueListenableBuilder<String?>(
+                valueListenable: AuthService.profilePhotoNotifier,
+                builder: (context, photoPath, _) {
+                  final hasPhoto = photoPath != null && photoPath.isNotEmpty && File(photoPath).existsSync();
+                  return CircleAvatar(
+                    backgroundColor: Colors.white,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(36),
+                      child: hasPhoto
+                          ? Image.file(
+                              File(photoPath),
+                              width: 72,
+                              height: 72,
+                              fit: BoxFit.cover,
+                            )
+                          : Text(
+                              fullName.isNotEmpty ? fullName[0].toUpperCase() : 'P',
+                              style: const TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.primaryTeal,
+                              ),
+                            ),
+                    ),
+                  );
+                },
               ),
               accountName: Text(
                 fullName,
@@ -871,7 +956,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   ListTile(
                     leading: const Icon(Icons.person_outline_rounded, color: AppTheme.primaryTeal),
-                    title: const Text('My Profile', style: TextStyle(fontWeight: FontWeight.w600)),
+                    title: Text(LanguageService.tr('menu_my_profile'), style: const TextStyle(fontWeight: FontWeight.w600)),
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.pushNamed(context, '/profile');
@@ -893,7 +978,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                       ],
                     ),
-                    title: const Text('Notifications & Alerts', style: TextStyle(fontWeight: FontWeight.w600)),
+                    title: Text(LanguageService.tr('menu_notifications'), style: const TextStyle(fontWeight: FontWeight.w600)),
                     trailing: _unreadNotificationCount > 0
                         ? Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -908,7 +993,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   ListTile(
                     leading: const Icon(Icons.family_restroom_rounded, color: Color(0xFF8B5CF6)),
-                    title: const Text('Family OPD Cards', style: TextStyle(fontWeight: FontWeight.w600)),
+                    title: Text(LanguageService.tr('menu_family_cards'), style: const TextStyle(fontWeight: FontWeight.w600)),
                     onTap: () {
                       Navigator.pop(context);
                       _showFamilyProfilesDialog();
@@ -916,14 +1001,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
 
                   const Divider(),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 16, top: 4, bottom: 4),
-                    child: Text('OPD ASSISTANCE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.mutedText, letterSpacing: 0.5)),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16, top: 4, bottom: 4),
+                    child: Text(LanguageService.tr('menu_opd_assistance'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.mutedText, letterSpacing: 0.5)),
                   ),
 
                   ListTile(
                     leading: const Icon(Icons.phone_in_talk_rounded, color: Color(0xFFEF4444)),
-                    title: const Text('Emergency Helpline (1990)', style: TextStyle(fontWeight: FontWeight.w600)),
+                    title: Text(LanguageService.tr('menu_emergency'), style: const TextStyle(fontWeight: FontWeight.w600)),
                     onTap: () {
                       Navigator.pop(context);
                       _showEmergencyHelplineDialog();
@@ -931,7 +1016,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   ListTile(
                     leading: const Icon(Icons.map_outlined, color: Color(0xFF0077B6)),
-                    title: const Text('Hospital Counter Guide', style: TextStyle(fontWeight: FontWeight.w600)),
+                    title: Text(LanguageService.tr('menu_counter_guide'), style: const TextStyle(fontWeight: FontWeight.w600)),
                     onTap: () {
                       Navigator.pop(context);
                       _showHospitalGuideSheet();
@@ -939,7 +1024,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   ListTile(
                     leading: const Icon(Icons.help_outline_rounded, color: Color(0xFF059669)),
-                    title: const Text('Help & OPD FAQ', style: TextStyle(fontWeight: FontWeight.w600)),
+                    title: Text(LanguageService.tr('menu_help_faq'), style: const TextStyle(fontWeight: FontWeight.w600)),
                     onTap: () {
                       Navigator.pop(context);
                       _showHelpFaqSheet();
@@ -947,14 +1032,37 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
 
                   const Divider(),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 16, top: 4, bottom: 4),
-                    child: Text('PREFERENCES', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.mutedText, letterSpacing: 0.5)),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 16, top: 4, bottom: 4),
+                    child: Text(LanguageService.tr('menu_preferences'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.mutedText, letterSpacing: 0.5)),
                   ),
 
                   ListTile(
+                    leading: const Icon(Icons.language_rounded, color: AppTheme.primaryTeal),
+                    title: Text(LanguageService.tr('menu_language'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryTeal.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        LanguageService.currentLanguage == 'si'
+                            ? '🇱🇰 සිංහල'
+                            : LanguageService.currentLanguage == 'ta'
+                                ? '🇮🇳 தமிழ்'
+                                : '🇬🇧 English',
+                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryTeal),
+                      ),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showLanguageSelectorDialog();
+                    },
+                  ),
+                  ListTile(
                     leading: const Icon(Icons.settings_outlined, color: AppTheme.darkText),
-                    title: const Text('App Settings', style: TextStyle(fontWeight: FontWeight.w600)),
+                    title: Text(LanguageService.tr('menu_settings'), style: const TextStyle(fontWeight: FontWeight.w600)),
                     onTap: () {
                       Navigator.pop(context);
                       _showAppSettingsDialog();
@@ -962,12 +1070,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   ListTile(
                     leading: const Icon(Icons.info_outline_rounded, color: AppTheme.mutedText),
-                    title: const Text('App Information', style: TextStyle(fontWeight: FontWeight.w500)),
+                    title: Text(LanguageService.tr('menu_app_info'), style: const TextStyle(fontWeight: FontWeight.w500)),
                     onTap: () {
                       Navigator.pop(context);
                       showAboutDialog(
                         context: context,
-                        applicationName: 'MediQ OPD Portal',
+                        applicationName: LanguageService.tr('app_title'),
                         applicationVersion: '1.0.0',
                         applicationLegalese: 'Government OPD - Closer to You',
                       );
@@ -981,9 +1089,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
             ListTile(
               leading: const Icon(Icons.logout_rounded, color: AppTheme.errorRed),
-              title: const Text(
-                'Logout Account',
-                style: TextStyle(color: AppTheme.errorRed, fontWeight: FontWeight.bold),
+              title: Text(
+                LanguageService.tr('menu_logout'),
+                style: const TextStyle(color: AppTheme.errorRed, fontWeight: FontWeight.bold),
               ),
               onTap: () {
                 Navigator.pop(context);
@@ -1022,9 +1130,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 24),
 
-              const Text(
-                'OPD Services',
-                style: TextStyle(
+              Text(
+                LanguageService.tr('opd_services'),
+                style: const TextStyle(
                   fontSize: 19,
                   fontWeight: FontWeight.bold,
                   color: AppTheme.darkText,
@@ -1036,6 +1144,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // 3D Glassmorphism Grid Cards
               GridView.count(
                 crossAxisCount: 2,
+                childAspectRatio: 0.88,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 crossAxisSpacing: 14,
@@ -1043,29 +1152,29 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   _build3DGlassCard(
                     icon: Icons.confirmation_number_outlined,
-                    title: 'OPD Live Queue',
-                    subtitle: 'Check live token status',
+                    title: LanguageService.tr('opd_live_queue'),
+                    subtitle: LanguageService.tr('opd_live_queue_sub'),
                     gradientColors: [const Color(0xFF0077B6), const Color(0xFF0096C7)],
                     onTap: _openBookAppointment,
                   ),
                   _build3DGlassCard(
                     icon: Icons.event_note_outlined,
-                    title: 'Book Appointment',
-                    subtitle: 'Schedule OPD Visit',
+                    title: LanguageService.tr('book_appointment'),
+                    subtitle: LanguageService.tr('book_appointment_sub'),
                     gradientColors: [const Color(0xFF00A896), const Color(0xFF02C39A)],
                     onTap: _openBookAppointment,
                   ),
                   _build3DGlassCard(
                     icon: Icons.medical_services_outlined,
-                    title: 'Medical Records',
-                    subtitle: 'Prescriptions & History',
+                    title: LanguageService.tr('medical_records'),
+                    subtitle: LanguageService.tr('medical_records_sub'),
                     gradientColors: [const Color(0xFF0284C7), const Color(0xFF38BDF8)],
                     onTap: _openMedicalRecords,
                   ),
                   _build3DGlassCard(
                     icon: Icons.medication_rounded,
-                    title: 'Pill & Dose Tracker',
-                    subtitle: 'Daily Prescriptions',
+                    title: LanguageService.tr('pill_tracker'),
+                    subtitle: LanguageService.tr('pill_tracker_sub'),
                     gradientColors: [const Color(0xFF7C3AED), const Color(0xFFA855F7)],
                     onTap: () {
                       Navigator.pushNamed(context, '/pill-tracker');
@@ -1073,8 +1182,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   _build3DGlassCard(
                     icon: Icons.psychology_outlined,
-                    title: 'Symptom Checker',
-                    subtitle: 'Find OPD Clinic Room',
+                    title: LanguageService.tr('symptom_checker'),
+                    subtitle: LanguageService.tr('symptom_checker_sub'),
                     gradientColors: [const Color(0xFFD97706), const Color(0xFFF59E0B)],
                     onTap: () {
                       Navigator.pushNamed(context, '/symptom-checker');
@@ -1082,8 +1191,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   _build3DGlassCard(
                     icon: Icons.monitor_weight_outlined,
-                    title: 'Health Vitals & BMI',
-                    subtitle: 'Track Weight & Sugar',
+                    title: LanguageService.tr('health_vitals'),
+                    subtitle: LanguageService.tr('health_vitals_sub'),
                     gradientColors: [const Color(0xFFDB2777), const Color(0xFFEC4899)],
                     onTap: () {
                       Navigator.pushNamed(context, '/health-vitals');
@@ -1096,7 +1205,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
-  }
+  },
+);
+}
 
   // ─── Compact Live Countdown & Ticket Card Widget ─────────────────────────
   Widget _buildCountdownSection() {
@@ -1432,17 +1543,33 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ],
                   ),
-                  child: CircleAvatar(
-                    radius: 28,
-                    backgroundColor: Colors.white,
-                    child: Text(
-                      fullName.isNotEmpty ? fullName[0].toUpperCase() : 'P',
-                      style: const TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.primaryTeal,
-                      ),
-                    ),
+                  child: ValueListenableBuilder<String?>(
+                    valueListenable: AuthService.profilePhotoNotifier,
+                    builder: (context, photoPath, _) {
+                      final hasPhoto = photoPath != null && photoPath.isNotEmpty && File(photoPath).existsSync();
+                      return CircleAvatar(
+                        radius: 28,
+                        backgroundColor: Colors.white,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(28),
+                          child: hasPhoto
+                              ? Image.file(
+                                  File(photoPath),
+                                  width: 56,
+                                  height: 56,
+                                  fit: BoxFit.cover,
+                                )
+                              : Text(
+                                  fullName.isNotEmpty ? fullName[0].toUpperCase() : 'P',
+                                  style: const TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.primaryTeal,
+                                  ),
+                                ),
+                        ),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -1541,9 +1668,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           color: Colors.white,
           boxShadow: [
             BoxShadow(
@@ -1568,39 +1695,45 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: gradientColors,
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
                     color: gradientColors.first.withValues(alpha: 0.3),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
-              child: Icon(icon, color: Colors.white, size: 26),
+              child: Icon(icon, color: Colors.white, size: 22),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             Text(
               title,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 15,
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: AppTheme.darkText,
+                height: 1.15,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 3),
             Text(
               subtitle,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 color: AppTheme.mutedText,
+                height: 1.15,
               ),
             ),
           ],
