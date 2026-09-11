@@ -98,6 +98,7 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 		Phone:                 phone,
 		Password:              hashedPassword,
 		Role:                  models.RolePatient,
+		Status:                models.StatusActive,
 		Gender:                req.Gender,
 		DateOfBirth:           req.DateOfBirth,
 		CivilStatus:           req.CivilStatus,

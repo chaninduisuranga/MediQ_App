@@ -15,6 +15,14 @@ const (
 	RoleAdmin   UserRole = "ADMIN"
 )
 
+type UserStatus string
+
+const (
+	StatusActive    UserStatus = "ACTIVE"
+	StatusInactive  UserStatus = "INACTIVE"
+	StatusSuspended UserStatus = "SUSPENDED"
+)
+
 type User struct {
 	ID                    uint           `gorm:"primaryKey" json:"id"`
 	FullName              string         `gorm:"not null" json:"full_name"`
@@ -22,6 +30,7 @@ type User struct {
 	Phone                 string         `gorm:"not null" json:"phone"`
 	Password              string         `gorm:"not null" json:"-"`
 	Role                  UserRole       `gorm:"type:varchar(20);default:'PATIENT'" json:"role"`
+	Status                UserStatus     `gorm:"type:varchar(20);default:'ACTIVE'" json:"status"`
 	Gender                string         `json:"gender"`
 	DateOfBirth           string         `json:"date_of_birth"`
 	CivilStatus           string         `json:"civil_status"`

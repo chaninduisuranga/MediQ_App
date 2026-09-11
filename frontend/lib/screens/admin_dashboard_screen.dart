@@ -51,6 +51,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     await Navigator.pushNamed(context, '/book-appointment');
   }
 
+  Future<void> _openUserManagement() async {
+    await Navigator.pushNamed(context, '/admin/users');
+  }
+
   Future<void> _openMedicalRecords() async {
     await Navigator.pushNamed(context, '/medical-records');
   }
@@ -84,7 +88,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               'assets/images/logo.png',
               width: 34,
               height: 34,
-              errorBuilder: (_, __, ___) => const Icon(Icons.local_hospital, color: AppTheme.primaryTeal),
+              errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.local_hospital, color: AppTheme.primaryTeal),
             ),
             const SizedBox(width: 10),
             const Text(
@@ -120,22 +125,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               accountName: Text(
                 fullName,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               accountEmail: Text('NIC: $nic | Phone: $phone'),
             ),
-
             ListTile(
-              leading: const Icon(Icons.person_outline_rounded, color: AppTheme.primaryTeal),
-              title: const Text('My Profile', style: TextStyle(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.person_outline_rounded,
+                  color: AppTheme.primaryTeal),
+              title: const Text('My Profile',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.pushNamed(context, '/profile');
               },
             ),
             ListTile(
-              leading: const Icon(Icons.dashboard_outlined, color: AppTheme.primaryTeal),
-              title: const Text('Dashboard', style: TextStyle(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.dashboard_outlined,
+                  color: AppTheme.primaryTeal),
+              title: const Text('Dashboard',
+                  style: TextStyle(fontWeight: FontWeight.w600)),
               onTap: () {
                 Navigator.pop(context);
               },
@@ -143,10 +152,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             const Spacer(),
             const Divider(),
             ListTile(
-              leading: const Icon(Icons.logout_rounded, color: AppTheme.errorRed),
+              leading:
+                  const Icon(Icons.logout_rounded, color: AppTheme.errorRed),
               title: const Text(
                 'Logout Account',
-                style: TextStyle(color: AppTheme.errorRed, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    color: AppTheme.errorRed, fontWeight: FontWeight.bold),
               ),
               onTap: () {
                 Navigator.pop(context);
@@ -220,33 +231,46 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 children: [
                   _build3DGlassCard(
                     icon: Icons.confirmation_number_outlined,
-                    title: 'OPD Live Queue',
-                    subtitle: 'Check live token status',
-                    gradientColors: [const Color(0xFF0077B6), const Color(0xFF0096C7)],
-                    onTap: _openBookAppointment,
+                    title: 'User Management',
+                    subtitle: 'Manage patient and user accounts',
+                    gradientColors: [
+                      const Color(0xFF0077B6),
+                      const Color(0xFF0096C7)
+                    ],
+                    onTap: _openUserManagement,
                   ),
                   _build3DGlassCard(
                     icon: Icons.event_note_outlined,
-                    title: 'Book Appointment',
-                    subtitle: 'Schedule OPD Visit',
-                    gradientColors: [const Color(0xFF00A896), const Color(0xFF02C39A)],
+                    title: 'Doctor & Staff Management',
+                    subtitle: 'Manage doctor and staff information',
+                    gradientColors: [
+                      const Color(0xFF00A896),
+                      const Color(0xFF02C39A)
+                    ],
                     onTap: _openBookAppointment,
                   ),
                   _build3DGlassCard(
                     icon: Icons.medical_services_outlined,
-                    title: 'Medical Records',
-                    subtitle: 'Prescriptions & History',
-                    gradientColors: [const Color(0xFF0284C7), const Color(0xFF38BDF8)],
+                    title: 'Queue Management',
+                    subtitle: 'Monitor and manage patient queues',
+                    gradientColors: [
+                      const Color(0xFF0284C7),
+                      const Color(0xFF38BDF8)
+                    ],
                     onTap: _openMedicalRecords,
                   ),
                   _build3DGlassCard(
                     icon: Icons.contact_support_outlined,
-                    title: 'Emergency 1990',
-                    subtitle: 'Suwa Seriya Ambulance',
-                    gradientColors: [const Color(0xFFE11D48), const Color(0xFFF43F5E)],
+                    title: 'Appointment Management',
+                    subtitle: 'Manage patient appointments',
+                    gradientColors: [
+                      const Color(0xFFE11D48),
+                      const Color(0xFFF43F5E)
+                    ],
                     onTap: () {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Emergency Hotline: Dial 1990')),
+                        const SnackBar(
+                            content: Text('Emergency Hotline: Dial 1990')),
                       );
                     },
                   ),
@@ -265,17 +289,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         // Top Stats Grid
         Row(
           children: [
-            Expanded(child: _buildStatCard('Today\'s Patients', data['today_patients'].toString(), Colors.blue)),
+            Expanded(
+                child: _buildStatCard('Today\'s Patients',
+                    data['today_patients'].toString(), Colors.blue)),
             const SizedBox(width: 10),
-            Expanded(child: _buildStatCard('Appointments', data['appointments_today'].toString(), Colors.purple)),
+            Expanded(
+                child: _buildStatCard('Appointments',
+                    data['appointments_today'].toString(), Colors.purple)),
           ],
         ),
         const SizedBox(height: 10),
         Row(
           children: [
-            Expanded(child: _buildStatCard('Waiting Patients', data['waiting_patients'].toString(), Colors.orange)),
+            Expanded(
+                child: _buildStatCard('Waiting Patients',
+                    data['waiting_patients'].toString(), Colors.orange)),
             const SizedBox(width: 10),
-            Expanded(child: _buildStatCard('Completed', data['completed_patients'].toString(), Colors.green)),
+            Expanded(
+                child: _buildStatCard('Completed',
+                    data['completed_patients'].toString(), Colors.green)),
           ],
         ),
         const SizedBox(height: 20),
@@ -287,13 +319,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+              BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4)),
             ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('CURRENT QUEUES', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Text('CURRENT QUEUES',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const Divider(),
               ...((data['queues'] as Map<String, dynamic>).entries.map((entry) {
                 return Padding(
@@ -302,7 +338,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(entry.key, style: const TextStyle(fontSize: 15)),
-                      Text('${entry.value} waiting', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      Text('${entry.value} waiting',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 15)),
                     ],
                   ),
                 );
@@ -327,7 +365,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 children: [
                   Icon(Icons.warning_amber_rounded, color: Colors.red),
                   SizedBox(width: 8),
-                  Text('High Waiting Time', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.red)),
+                  Text('High Waiting Time',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: Colors.red)),
                 ],
               ),
               const Divider(color: Colors.red),
@@ -337,8 +379,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(entry['room'], style: const TextStyle(fontSize: 15, color: Colors.red)),
-                      Text(entry['time'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.red)),
+                      Text(entry['room'],
+                          style:
+                              const TextStyle(fontSize: 15, color: Colors.red)),
+                      Text(entry['time'],
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: Colors.red)),
                     ],
                   ),
                 );
@@ -360,9 +408,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
       child: Column(
         children: [
-          Text(title, style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+          Text(title,
+              style: TextStyle(
+                  fontSize: 13, color: color, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center),
           const SizedBox(height: 8),
-          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+          Text(value,
+              style: TextStyle(
+                  fontSize: 24, fontWeight: FontWeight.bold, color: color)),
         ],
       ),
     );
@@ -414,7 +467,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   backgroundColor: Colors.white,
                   child: Text(
                     fullName.isNotEmpty ? fullName[0].toUpperCase() : 'A',
-                    style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF374151)),
+                    style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF374151)),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -422,9 +478,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(fullName, style: const TextStyle(fontSize: 21, fontWeight: FontWeight.bold, color: Colors.white)),
+                      Text(fullName,
+                          style: const TextStyle(
+                              fontSize: 21,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white)),
                       const SizedBox(height: 4),
-                      Text('NIC: $nic | Phone: $phone', style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.9))),
+                      Text('NIC: $nic | Phone: $phone',
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: Colors.white.withValues(alpha: 0.9))),
                     ],
                   ),
                 ),
@@ -450,9 +513,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.8), fontWeight: FontWeight.w500)),
+        Text(label,
+            style: TextStyle(
+                fontSize: 11,
+                color: Colors.white.withValues(alpha: 0.8),
+                fontWeight: FontWeight.w500)),
         const SizedBox(height: 2),
-        Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white)),
+        Text(value,
+            style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.white)),
       ],
     );
   }
@@ -506,9 +577,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               child: Icon(icon, color: Colors.white, size: 26),
             ),
             const SizedBox(height: 14),
-            Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkText)),
+            Text(title,
+                style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.darkText)),
             const SizedBox(height: 4),
-            Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.mutedText)),
+            Text(subtitle,
+                style:
+                    const TextStyle(fontSize: 12, color: AppTheme.mutedText)),
           ],
         ),
       ),

@@ -63,6 +63,7 @@ func seedDefaultUsers(db *gorm.DB) {
 				Phone:    d.Phone,
 				Password: hashed,
 				Role:     d.Role,
+				Status:   models.StatusActive,
 			}
 			if err := db.Create(&user).Error; err == nil {
 				log.Printf("[Seeder] Created default account: %s (%s) | Role: %s\n", d.Name, d.NIC, d.Role)

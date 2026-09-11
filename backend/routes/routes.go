@@ -66,9 +66,14 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		// Admin routes
 		admin := v1.Group("/admin")
 		admin.Use(middleware.AuthMiddleware(cfg))
+		admin.Use(middleware.AdminAuthorizationMiddleware())
 		{
 			adminHandler := handlers.NewAdminHandler()
 			admin.GET("/dashboard", adminHandler.GetDashboardStats)
+
+			adminUserHandler := handlers.NewAdminUserHandler()
+			admin.GET("/users", adminUserHandler.ListUsers)
+			admin.PATCH("/users/:id", adminUserHandler.UpdateUser)
 		}
 	}
 
