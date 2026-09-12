@@ -26,9 +26,11 @@ const (
 type User struct {
 	ID                    uint           `gorm:"primaryKey" json:"id"`
 	FullName              string         `gorm:"not null" json:"full_name"`
-	NIC                   string         `gorm:"unique;not null" json:"nic"`
-	Phone                 string         `gorm:"not null" json:"phone"`
-	Password              string         `gorm:"not null" json:"-"`
+	NIC                   string         `gorm:"index" json:"nic"`
+	Email                 string         `gorm:"index" json:"email"`
+	GoogleID              string         `gorm:"index" json:"google_id"`
+	Phone                 string         `json:"phone"`
+	Password              string         `json:"-"`
 	Role                  UserRole       `gorm:"type:varchar(20);default:'PATIENT'" json:"role"`
 	Status                UserStatus     `gorm:"type:varchar(20);default:'ACTIVE'" json:"status"`
 	Gender                string         `json:"gender"`

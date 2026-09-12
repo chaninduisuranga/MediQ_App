@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import '../core/services/appointment_service.dart';
 import '../core/services/auth_service.dart';
 import '../core/services/language_service.dart';
 import '../core/theme/theme.dart';
+import '../widgets/app_bottom_nav_bar.dart';
 
 class AppNotification {
   final String id;
@@ -35,9 +35,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  Timer? _timer;
   Map<String, dynamic>? _nextAppointment;
-  bool _isLoadingAppointment = true;
+
+  // Search controller
+  final TextEditingController _searchController = TextEditingController();
 
   // Notifications State
   List<AppNotification> _notifications = [];
@@ -49,17 +50,11 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     AuthService.loadSavedProfilePhoto();
     _fetchNextAppointment();
-    // Ticking timer every second to update countdown
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && _nextAppointment != null) {
-        setState(() {});
-      }
-    });
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -70,9 +65,8 @@ class _HomeScreenState extends State<HomeScreen> {
       final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
       setState(() {
-        _isLoadingAppointment = false;
         if (res['success'] == true) {
-          // Filter out CANCELLED appointments and past dates (auto-remove after appointment date)
+          // Filter out CANCELLED appointments and past dates
           final activeList = (res['data'] as List<dynamic>? ?? [])
               .where((a) {
                 final status = a['status'] as String? ?? '';
@@ -106,26 +100,18 @@ class _HomeScreenState extends State<HomeScreen> {
       final roomName = AppointmentService.getRoomDisplayName(roomKey);
       final queueNum = appt['queue_number'] ?? 0;
 
-      // Calculate days left
+      final apptDate = DateTime.tryParse(dateStr);
+      final todayDate = DateTime.tryParse(todayStr);
       int daysLeft = 0;
-      try {
-        final parts = dateStr.split('-');
-        if (parts.length == 3) {
-          final year = int.parse(parts[0]);
-          final month = int.parse(parts[1]);
-          final day = int.parse(parts[2]);
-          final apptDate = DateTime(year, month, day);
-          final todayDate = DateTime(now.year, now.month, now.day);
-          daysLeft = apptDate.difference(todayDate).inDays;
-        }
-      } catch (_) {}
+      if (apptDate != null && todayDate != null) {
+        daysLeft = apptDate.difference(todayDate).inDays;
+      }
 
-      // 1. Reminder notification based on remaining days
       if (daysLeft == 0) {
         list.add(AppNotification(
           id: '${id}_today',
-          title: '🚨 Appointment Reminder (TODAY!)',
-          message: 'Your appointment for $roomName (Token #$queueNum) is TODAY! Please present your QR ticket at the OPD counter.',
+          title: '🚨 OPD Appointment Today!',
+          message: 'Your $roomName appointment is scheduled for today ($dateStr). Queue Token #$queueNum.',
           type: 'TODAY',
           dateStr: dateStr,
           timestamp: now,
@@ -150,7 +136,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ));
       }
 
-      // 2. Booking confirmation notification
       list.add(AppNotification(
         id: '${id}_booked',
         title: '✅ OPD Booking Confirmed',
@@ -162,26 +147,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     _notifications = list;
-  }
-
-  Duration _getTimeRemaining(String appointmentDateStr) {
-    try {
-      final parts = appointmentDateStr.split('-');
-      if (parts.length == 3) {
-        final year = int.parse(parts[0]);
-        final month = int.parse(parts[1]);
-        final day = int.parse(parts[2]);
-
-        // Target: 08:00 AM on appointment date
-        final targetDate = DateTime(year, month, day, 8, 0, 0);
-        final now = DateTime.now();
-
-        if (targetDate.isAfter(now)) {
-          return targetDate.difference(now);
-        }
-      }
-    } catch (_) {}
-    return Duration.zero;
   }
 
   void _showNotificationsSheet() {
@@ -209,7 +174,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             child: Column(
               children: [
-                // Top handle
                 Container(
                   margin: const EdgeInsets.only(top: 12, bottom: 8),
                   width: 40,
@@ -219,8 +183,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-
-                // Sheet Header
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   child: Row(
@@ -261,8 +223,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const Divider(height: 1),
-
-                // Notification List
                 Expanded(
                   child: _notifications.isEmpty
                       ? _buildEmptyNotifications()
@@ -517,6 +477,133 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _showChooseOPDRoomSheet() {
+    final todayStr = '${DateTime.now().year}-${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().day.toString().padLeft(2, '0')}';
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.78,
+        decoration: const BoxDecoration(
+          color: Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.only(topLeft: Radius.circular(28), topRight: Radius.circular(28)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 20,
+              offset: Offset(0, -5),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2563EB).withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.meeting_room_rounded, color: Color(0xFF2563EB), size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Choose OPD Room',
+                        style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+                      ),
+                      Text(
+                        'Available rooms & live queue counts for $todayStr',
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            Expanded(
+              child: GridView.count(
+                crossAxisCount: 2,
+                childAspectRatio: 1.1,
+                crossAxisSpacing: 14,
+                mainAxisSpacing: 14,
+                physics: const BouncingScrollPhysics(),
+                children: [
+                  _buildServiceCardItem(
+                    icon: Icons.healing_rounded,
+                    title: 'Dressing Room',
+                    subtitle: 'Wound Care',
+                    badgeText: '0 in queue',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _openBookAppointment();
+                    },
+                  ),
+                  _buildServiceCardItem(
+                    icon: Icons.vaccines_rounded,
+                    title: 'Injection Room',
+                    subtitle: 'IV & IM Care',
+                    badgeText: '0 in queue',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _openBookAppointment();
+                    },
+                  ),
+                  _buildServiceCardItem(
+                    icon: Icons.bloodtype_rounded,
+                    title: 'Bleeding Room',
+                    subtitle: 'Lab Draws',
+                    badgeText: '0 in queue',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _openBookAppointment();
+                    },
+                  ),
+                  _buildServiceCardItem(
+                    icon: Icons.pets_rounded,
+                    title: 'Animal Bite Room',
+                    subtitle: 'ARV Vaccines',
+                    badgeText: '0 in queue',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _openBookAppointment();
+                    },
+                  ),
+                  _buildServiceCardItem(
+                    icon: Icons.medical_services_rounded,
+                    title: 'OPD Clinic Room',
+                    subtitle: 'Consultation',
+                    badgeText: '0 in queue',
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _openBookAppointment();
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showHospitalGuideSheet() {
     showModalBottomSheet(
       context: context,
@@ -542,22 +629,22 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 16),
             const Row(
               children: [
-                Icon(Icons.map_outlined, color: AppTheme.primaryTeal, size: 24),
+                Icon(Icons.map_outlined, color: Color(0xFF2563EB), size: 24),
                 SizedBox(width: 10),
-                Text('OPD Hospital Counter Guide', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.darkText)),
+                Text('OPD Hospital Counter Guide', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
               ],
             ),
             const SizedBox(height: 4),
-            const Text('Floor plan and key counter locations for OPD visitors', style: TextStyle(fontSize: 12, color: AppTheme.mutedText)),
+            const Text('Floor plan and key counter locations for OPD visitors', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
             const SizedBox(height: 16),
             Expanded(
               child: ListView(
                 children: [
-                  _buildGuideStep('Counter 1 (Main Lobby)', 'Token generation, patient registration & NIC verification.', Icons.confirmation_number_outlined, AppTheme.primaryBlue),
-                  _buildGuideStep('Room 4 (General OPD)', 'Doctor consultation for fever, cold, body pain & general ailments.', Icons.healing_outlined, const Color(0xFF0077B6)),
-                  _buildGuideStep('Room 7 (Dressing Room)', 'Wound cleaning, dressing change, and minor surgical care.', Icons.medical_services_outlined, const Color(0xFFF59E0B)),
-                  _buildGuideStep('Room 2 (Injection Room)', 'Administration of doctor-prescribed IM & IV injection doses.', Icons.vaccines_outlined, const Color(0xFF8B5CF6)),
-                  _buildGuideStep('Bleeding Room (Lab)', 'Blood sample collection & diagnostic blood draws.', Icons.water_drop_outlined, const Color(0xFFEC4899)),
+                  _buildGuideStep('Counter 1 (Main Lobby)', 'Token generation, patient registration & NIC verification.', Icons.confirmation_number_outlined, const Color(0xFF2563EB)),
+                  _buildGuideStep('Room 4 (General OPD)', 'Doctor consultation for fever, cold, body pain & general ailments.', Icons.healing_outlined, const Color(0xFF0284C7)),
+                  _buildGuideStep('Room 7 (Dressing Room)', 'Wound cleaning, dressing change, and minor surgical care.', Icons.medical_services_outlined, const Color(0xFFD97706)),
+                  _buildGuideStep('Room 2 (Injection Room)', 'Administration of doctor-prescribed IM & IV injection doses.', Icons.vaccines_outlined, const Color(0xFF7C3AED)),
+                  _buildGuideStep('Bleeding Room (Lab)', 'Blood sample collection & diagnostic blood draws.', Icons.water_drop_outlined, const Color(0xFFE11D48)),
                   _buildGuideStep('Pharmacy Counter 1-4', 'Free OPD medicine collection with prescription chit.', Icons.medication_outlined, const Color(0xFF059669)),
                 ],
               ),
@@ -591,7 +678,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(title, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: color)),
                 const SizedBox(height: 2),
-                Text(desc, style: const TextStyle(fontSize: 11, color: AppTheme.darkText, height: 1.3)),
+                Text(desc, style: const TextStyle(fontSize: 11, color: Color(0xFF0F172A), height: 1.3)),
               ],
             ),
           ),
@@ -618,23 +705,23 @@ class _HomeScreenState extends State<HomeScreen> {
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const CircleAvatar(
-                backgroundColor: AppTheme.primaryTeal,
+                backgroundColor: Color(0xFF2563EB),
                 child: Icon(Icons.person, color: Colors.white),
               ),
               title: Text(AuthService.currentUser?['full_name'] ?? 'Primary Patient', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-              subtitle: const Text('Primary Account (Self)', style: TextStyle(fontSize: 11, color: AppTheme.accentGreen)),
-              trailing: const Icon(Icons.check_circle_rounded, color: AppTheme.accentGreen),
+              subtitle: const Text('Primary Account (Self)', style: TextStyle(fontSize: 11, color: Color(0xFF059669))),
+              trailing: const Icon(Icons.check_circle_rounded, color: Color(0xFF059669)),
             ),
             const Divider(),
-            const Text('Manage OPD tokens for your family members from a single account.', style: TextStyle(fontSize: 11, color: AppTheme.mutedText), textAlign: TextAlign.center),
+            const Text('Manage OPD tokens for your family members from a single account.', style: TextStyle(fontSize: 11, color: Color(0xFF64748B)), textAlign: TextAlign.center),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AppTheme.primaryTeal),
+                side: const BorderSide(color: Color(0xFF2563EB)),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
-              icon: const Icon(Icons.add_rounded, color: AppTheme.primaryTeal),
-              label: const Text('Add Family Member', style: TextStyle(color: AppTheme.primaryTeal, fontWeight: FontWeight.bold)),
+              icon: const Icon(Icons.add_rounded, color: Color(0xFF2563EB)),
+              label: const Text('Add Family Member', style: TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
               onPressed: () {
                 Navigator.pop(ctx);
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -658,7 +745,7 @@ class _HomeScreenState extends State<HomeScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.language_rounded, color: AppTheme.primaryTeal),
+            const Icon(Icons.language_rounded, color: Color(0xFF2563EB)),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
@@ -690,10 +777,10 @@ class _HomeScreenState extends State<HomeScreen> {
         title,
         style: TextStyle(
           fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-          color: isSelected ? AppTheme.primaryTeal : AppTheme.darkText,
+          color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF0F172A),
         ),
       ),
-      trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: AppTheme.primaryTeal) : null,
+      trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: Color(0xFF2563EB)) : null,
       onTap: () async {
         await LanguageService.setLanguage(code);
         if (ctx.mounted) {
@@ -710,7 +797,7 @@ class _HomeScreenState extends State<HomeScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.settings_outlined, color: AppTheme.darkText),
+            const Icon(Icons.settings_outlined, color: Color(0xFF0F172A)),
             const SizedBox(width: 10),
             Text(LanguageService.tr('app_settings'), style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           ],
@@ -720,7 +807,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.language_rounded, color: AppTheme.primaryTeal),
+              leading: const Icon(Icons.language_rounded, color: Color(0xFF2563EB)),
               title: Text(LanguageService.tr('menu_language'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               subtitle: const Text('English / සිංහල / தமிழ்'),
               trailing: Text(
@@ -729,7 +816,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     : LanguageService.currentLanguage == 'ta'
                         ? 'தமிழ்'
                         : 'English',
-                style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryTeal),
+                style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
               ),
               onTap: () {
                 Navigator.pop(ctx);
@@ -739,11 +826,11 @@ class _HomeScreenState extends State<HomeScreen> {
             const Divider(),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              secondary: const Icon(Icons.notifications_active_outlined, color: AppTheme.primaryTeal),
+              secondary: const Icon(Icons.notifications_active_outlined, color: Color(0xFF2563EB)),
               title: const Text('Appointment Alerts', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               subtitle: const Text('Receive token SMS & push notifications'),
               value: true,
-              activeThumbColor: AppTheme.primaryTeal,
+              activeThumbColor: const Color(0xFF2563EB),
               onChanged: (val) {},
             ),
           ],
@@ -778,7 +865,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Icon(Icons.help_outline_rounded, color: Color(0xFF059669), size: 24),
                 SizedBox(width: 10),
-                Text('OPD Help & FAQ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.darkText)),
+                Text('OPD Help & FAQ', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
               ],
             ),
             const SizedBox(height: 16),
@@ -790,7 +877,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Text('You can book an OPD token directly on MediQ portal or scan your appointment QR code at OPD Counter 1 upon hospital arrival.', style: TextStyle(fontSize: 12, color: AppTheme.mutedText)),
+                        child: Text('You can book an OPD token directly on MediQ portal or scan your appointment QR code at OPD Counter 1 upon hospital arrival.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                       ),
                     ],
                   ),
@@ -799,7 +886,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Text('OPD counter opens from 7:30 AM to 4:00 PM daily. Emergency triage runs 24/7.', style: TextStyle(fontSize: 12, color: AppTheme.mutedText)),
+                        child: Text('OPD counter opens from 7:30 AM to 4:00 PM daily. Emergency triage runs 24/7.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                       ),
                     ],
                   ),
@@ -808,7 +895,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Text('Yes, all doctor-prescribed medications issued at the government OPD pharmacy are completely free of charge.', style: TextStyle(fontSize: 12, color: AppTheme.mutedText)),
+                        child: Text('Yes, all doctor-prescribed medications issued at the government OPD pharmacy are completely free of charge.', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                       ),
                     ],
                   ),
@@ -827,804 +914,806 @@ class _HomeScreenState extends State<HomeScreen> {
     final fullName = user['full_name'] ?? 'Patient';
     final nic = user['nic'] ?? 'N/A';
     final phone = user['phone'] ?? 'N/A';
-    final bloodGroup = user['blood_group'] ?? 'N/A';
-    final district = user['district'] ?? 'N/A';
 
     return ValueListenableBuilder<String>(
       valueListenable: LanguageService.currentLanguageNotifier,
       builder: (context, lang, child) {
         return Scaffold(
-          appBar: AppBar(
-            automaticallyImplyLeading: false,
-            leading: Builder(
-              builder: (context) {
-                return IconButton(
-              icon: const Icon(Icons.menu_rounded, size: 28),
-              tooltip: 'Open Menu',
-              onPressed: () {
-                Scaffold.of(context).openDrawer();
-              },
-            );
-          },
-        ),
-        title: Row(
-          children: [
-            Image.asset(
-              'assets/images/logo.png',
-              width: 34,
-              height: 34,
-              errorBuilder: (_, __, ___) => const Icon(Icons.local_hospital, color: AppTheme.primaryTeal),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              LanguageService.tr('app_title'),
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-            ),
-          ],
-        ),
-        actions: [
-          // Red Bell Notification Icon with Unread Count Badge
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_active_rounded, color: AppTheme.errorRed, size: 26),
-                tooltip: 'Appointment Notifications',
-                onPressed: _showNotificationsSheet,
-              ),
-              if (_unreadNotificationCount > 0)
-                Positioned(
-                  right: 6,
-                  top: 6,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: AppTheme.errorRed,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1.5),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.errorRed.withValues(alpha: 0.5),
-                          blurRadius: 6,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-                    child: Text(
-                      '${_unreadNotificationCount > 9 ? '9+' : _unreadNotificationCount}',
-                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-
-      // Navigation Drawer
-      drawer: Drawer(
-        child: Column(
-          children: [
-            UserAccountsDrawerHeader(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppTheme.primaryBlue, AppTheme.primaryTeal],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              currentAccountPicture: ValueListenableBuilder<String?>(
-                valueListenable: AuthService.profilePhotoNotifier,
-                builder: (context, photoPath, _) {
-                  final hasPhoto = photoPath != null && photoPath.isNotEmpty && File(photoPath).existsSync();
-                  return CircleAvatar(
-                    backgroundColor: Colors.white,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(36),
-                      child: hasPhoto
-                          ? Image.file(
-                              File(photoPath),
-                              width: 72,
-                              height: 72,
-                              fit: BoxFit.cover,
-                            )
-                          : Text(
-                              fullName.isNotEmpty ? fullName[0].toUpperCase() : 'P',
-                              style: const TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryTeal,
-                              ),
-                            ),
-                    ),
-                  );
-                },
-              ),
-              accountName: Text(
-                fullName,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              accountEmail: Text('NIC: $nic | Phone: $phone'),
-            ),
-
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.person_outline_rounded, color: AppTheme.primaryTeal),
-                    title: Text(LanguageService.tr('menu_my_profile'), style: const TextStyle(fontWeight: FontWeight.w600)),
-                    onTap: () {
-                      Navigator.pop(context);
-                      Navigator.pushNamed(context, '/profile');
-                    },
-                  ),
-                  ListTile(
-                    leading: Stack(
-                      children: [
-                        const Icon(Icons.notifications_none_rounded, color: AppTheme.primaryTeal),
-                        if (_unreadNotificationCount > 0)
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Container(
-                              width: 8,
-                              height: 8,
-                              decoration: const BoxDecoration(color: AppTheme.errorRed, shape: BoxShape.circle),
-                            ),
-                          ),
-                      ],
-                    ),
-                    title: Text(LanguageService.tr('menu_notifications'), style: const TextStyle(fontWeight: FontWeight.w600)),
-                    trailing: _unreadNotificationCount > 0
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(color: AppTheme.errorRed, borderRadius: BorderRadius.circular(10)),
-                            child: Text('$_unreadNotificationCount', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                          )
-                        : null,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showNotificationsSheet();
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.family_restroom_rounded, color: Color(0xFF8B5CF6)),
-                    title: Text(LanguageService.tr('menu_family_cards'), style: const TextStyle(fontWeight: FontWeight.w600)),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showFamilyProfilesDialog();
-                    },
-                  ),
-
-                  const Divider(),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16, top: 4, bottom: 4),
-                    child: Text(LanguageService.tr('menu_opd_assistance'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.mutedText, letterSpacing: 0.5)),
-                  ),
-
-                  ListTile(
-                    leading: const Icon(Icons.phone_in_talk_rounded, color: Color(0xFFEF4444)),
-                    title: Text(LanguageService.tr('menu_emergency'), style: const TextStyle(fontWeight: FontWeight.w600)),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showEmergencyHelplineDialog();
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.map_outlined, color: Color(0xFF0077B6)),
-                    title: Text(LanguageService.tr('menu_counter_guide'), style: const TextStyle(fontWeight: FontWeight.w600)),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showHospitalGuideSheet();
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.help_outline_rounded, color: Color(0xFF059669)),
-                    title: Text(LanguageService.tr('menu_help_faq'), style: const TextStyle(fontWeight: FontWeight.w600)),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showHelpFaqSheet();
-                    },
-                  ),
-
-                  const Divider(),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 16, top: 4, bottom: 4),
-                    child: Text(LanguageService.tr('menu_preferences'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.mutedText, letterSpacing: 0.5)),
-                  ),
-
-                  ListTile(
-                    leading: const Icon(Icons.language_rounded, color: AppTheme.primaryTeal),
-                    title: Text(LanguageService.tr('menu_language'), style: const TextStyle(fontWeight: FontWeight.w600)),
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryTeal.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        LanguageService.currentLanguage == 'si'
-                            ? '🇱🇰 සිංහල'
-                            : LanguageService.currentLanguage == 'ta'
-                                ? '🇮🇳 தமிழ்'
-                                : '🇬🇧 English',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryTeal),
-                      ),
-                    ),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showLanguageSelectorDialog();
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.settings_outlined, color: AppTheme.darkText),
-                    title: Text(LanguageService.tr('menu_settings'), style: const TextStyle(fontWeight: FontWeight.w600)),
-                    onTap: () {
-                      Navigator.pop(context);
-                      _showAppSettingsDialog();
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.info_outline_rounded, color: AppTheme.mutedText),
-                    title: Text(LanguageService.tr('menu_app_info'), style: const TextStyle(fontWeight: FontWeight.w500)),
-                    onTap: () {
-                      Navigator.pop(context);
-                      showAboutDialog(
-                        context: context,
-                        applicationName: LanguageService.tr('app_title'),
-                        applicationVersion: '1.0.0',
-                        applicationLegalese: 'Government OPD - Closer to You',
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-
-            const Divider(height: 1),
-
-            ListTile(
-              leading: const Icon(Icons.logout_rounded, color: AppTheme.errorRed),
-              title: Text(
-                LanguageService.tr('menu_logout'),
-                style: const TextStyle(color: AppTheme.errorRed, fontWeight: FontWeight.bold),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                AuthService.logout();
-                Navigator.pushReplacementNamed(context, '/login');
-              },
-            ),
-            const SizedBox(height: 12),
-          ],
-        ),
-      ),
-
-      body: RefreshIndicator(
-        onRefresh: _fetchNextAppointment,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 3D Glassmorphism Welcome Card
-              _build3DGlassmorphicWelcomeCard(
-                fullName: fullName,
-                nic: nic,
-                phone: phone,
-                bloodGroup: bloodGroup,
-                district: district,
-                onTapProfile: () => Navigator.pushNamed(context, '/profile'),
-              ),
-
-              // Sleek, Reduced-Height Live Countdown / Ticket Card (Only shown if active appointment exists)
-              if (_nextAppointment != null) ...[
-                const SizedBox(height: 16),
-                _buildCountdownSection(),
-              ],
-
-              const SizedBox(height: 24),
-
-              Text(
-                LanguageService.tr('opd_services'),
-                style: const TextStyle(
-                  fontSize: 19,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.darkText,
-                  letterSpacing: 0.3,
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              // 3D Glassmorphism Grid Cards
-              GridView.count(
-                crossAxisCount: 2,
-                childAspectRatio: 0.88,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisSpacing: 14,
-                mainAxisSpacing: 14,
-                children: [
-                  _build3DGlassCard(
-                    icon: Icons.confirmation_number_outlined,
-                    title: LanguageService.tr('opd_live_queue'),
-                    subtitle: LanguageService.tr('opd_live_queue_sub'),
-                    gradientColors: [const Color(0xFF0077B6), const Color(0xFF0096C7)],
-                    onTap: _openBookAppointment,
-                  ),
-                  _build3DGlassCard(
-                    icon: Icons.event_note_outlined,
-                    title: LanguageService.tr('book_appointment'),
-                    subtitle: LanguageService.tr('book_appointment_sub'),
-                    gradientColors: [const Color(0xFF00A896), const Color(0xFF02C39A)],
-                    onTap: _openBookAppointment,
-                  ),
-                  _build3DGlassCard(
-                    icon: Icons.medical_services_outlined,
-                    title: LanguageService.tr('medical_records'),
-                    subtitle: LanguageService.tr('medical_records_sub'),
-                    gradientColors: [const Color(0xFF0284C7), const Color(0xFF38BDF8)],
-                    onTap: _openMedicalRecords,
-                  ),
-                  _build3DGlassCard(
-                    icon: Icons.medication_rounded,
-                    title: LanguageService.tr('pill_tracker'),
-                    subtitle: LanguageService.tr('pill_tracker_sub'),
-                    gradientColors: [const Color(0xFF7C3AED), const Color(0xFFA855F7)],
-                    onTap: () {
-                      Navigator.pushNamed(context, '/pill-tracker');
-                    },
-                  ),
-                  _build3DGlassCard(
-                    icon: Icons.psychology_outlined,
-                    title: LanguageService.tr('symptom_checker'),
-                    subtitle: LanguageService.tr('symptom_checker_sub'),
-                    gradientColors: [const Color(0xFFD97706), const Color(0xFFF59E0B)],
-                    onTap: () {
-                      Navigator.pushNamed(context, '/symptom-checker');
-                    },
-                  ),
-                  _build3DGlassCard(
-                    icon: Icons.monitor_weight_outlined,
-                    title: LanguageService.tr('health_vitals'),
-                    subtitle: LanguageService.tr('health_vitals_sub'),
-                    gradientColors: [const Color(0xFFDB2777), const Color(0xFFEC4899)],
-                    onTap: () {
-                      Navigator.pushNamed(context, '/health-vitals');
-                    },
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  },
-);
-}
-
-  // ─── Compact Live Countdown & Ticket Card Widget ─────────────────────────
-  Widget _buildCountdownSection() {
-    if (_isLoadingAppointment) {
-      return Container(
-        height: 100,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: const Center(child: CircularProgressIndicator(color: AppTheme.primaryTeal, strokeWidth: 2.5)),
-      );
-    }
-
-    // No active appointment (or expired appointment date)
-    if (_nextAppointment == null) {
-      return const SizedBox.shrink();
-    }
-
-    final appt = _nextAppointment!;
-    final dateStr = appt['appointment_date'] ?? '';
-    final roomKey = appt['room'] ?? '';
-    final roomName = AppointmentService.getRoomDisplayName(roomKey);
-    final roomColor = Color(AppointmentService.getRoomColor(roomKey));
-    final queueNum = appt['queue_number'] ?? 0;
-    final qrData = appt['qr_code_data'] ?? '';
-
-    final remaining = _getTimeRemaining(dateStr);
-    final isCountdownFinished = remaining == Duration.zero;
-
-    final days = remaining.inDays;
-    final hours = remaining.inHours % 24;
-    final minutes = remaining.inMinutes % 60;
-    final seconds = remaining.inSeconds % 60;
-
-    return GestureDetector(
-      onTap: _openBookAppointment,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            colors: [
-              roomColor,
-              AppTheme.primaryBlue,
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: roomColor.withValues(alpha: 0.3),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
-            ),
-          ],
-          border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Compact Header Row
-            Row(
+          backgroundColor: const Color(0xFFF8FAFC),
+          
+          // Drawer menu
+          drawer: Drawer(
+            child: Column(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: isCountdownFinished
-                        ? AppTheme.accentGreen.withValues(alpha: 0.3)
-                        : Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isCountdownFinished ? AppTheme.accentGreen : Colors.white.withValues(alpha: 0.4),
+                UserAccountsDrawerHeader(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Color(0xFF1D4ED8), Color(0xFF3B82F6)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isCountdownFinished ? Icons.check_circle_rounded : Icons.timer_rounded,
-                        color: Colors.white,
-                        size: 12,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        isCountdownFinished ? 'SLOT ACTIVE TODAY' : 'COUNTDOWN',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  '📅 $dateStr',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 11, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-
-            // Content Area - Switch between Countdown and Ticket display (Same compact height!)
-            if (!isCountdownFinished) ...[
-              // ── STATE A: Live Countdown Active ─────────────────────────────
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          roomName,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text(
-                          'Queue #$queueNum',
-                          style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-
-                  // Compact Live Ticking Digit Boxes
-                  Row(
-                    children: [
-                      _buildTimerDigitBox(days.toString().padLeft(2, '0'), 'd'),
-                      _buildTimerSep(),
-                      _buildTimerDigitBox(hours.toString().padLeft(2, '0'), 'h'),
-                      _buildTimerSep(),
-                      _buildTimerDigitBox(minutes.toString().padLeft(2, '0'), 'm'),
-                      _buildTimerSep(),
-                      _buildTimerDigitBox(seconds.toString().padLeft(2, '0'), 's'),
-                    ],
-                  ),
-                ],
-              ),
-            ] else ...[
-              // ── STATE B: Countdown Finished (Today's Ticket Display) ───────
-              Row(
-                children: [
-                  // Big Queue Number
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 8,
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Text('TOKEN', style: TextStyle(fontSize: 9, color: roomColor, fontWeight: FontWeight.bold)),
-                        Text(
-                          '#$queueNum',
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w900,
-                            color: roomColor,
-                            height: 1.0,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          roomName,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        const Text(
-                          'Present QR at counter',
-                          style: TextStyle(color: Colors.white70, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
-                  // QR Mini Code / Ticket Action
-                  if (qrData.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: QrImageView(
-                        data: qrData,
-                        version: QrVersions.auto,
-                        size: 42,
-                        eyeStyle: QrEyeStyle(eyeShape: QrEyeShape.square, color: roomColor),
-                        dataModuleStyle: const QrDataModuleStyle(
-                          dataModuleShape: QrDataModuleShape.square,
-                          color: AppTheme.darkText,
-                        ),
-                      ),
-                    )
-                  else
-                    const Icon(Icons.qr_code_2_rounded, color: Colors.white, size: 36),
-                ],
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Stylish Compact Timer Digit Box matching MediQ color palette
-  Widget _buildTimerDigitBox(String value, String unit) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.baseline,
-        textBaseline: TextBaseline.alphabetic,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-              fontFamily: 'monospace',
-            ),
-          ),
-          const SizedBox(width: 2),
-          Text(
-            unit,
-            style: const TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.accentGreen,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTimerSep() {
-    return const Padding(
-      padding: EdgeInsets.symmetric(horizontal: 2),
-      child: Text(
-        ':',
-        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white70),
-      ),
-    );
-  }
-
-  // 3D Glassmorphism Welcome Card Widget
-  Widget _build3DGlassmorphicWelcomeCard({
-    required String fullName,
-    required String nic,
-    required String phone,
-    required String bloodGroup,
-    required String district,
-    required VoidCallback onTapProfile,
-  }) {
-    return GestureDetector(
-      onTap: onTapProfile,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(22),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          gradient: const LinearGradient(
-            colors: [
-              Color(0xFF0077B6),
-              Color(0xFF00A896),
-              Color(0xFF02C39A),
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF00A896).withValues(alpha: 0.35),
-              blurRadius: 20,
-              spreadRadius: 2,
-              offset: const Offset(0, 10),
-            ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.35),
-            width: 1.5,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(3),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.6), width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ValueListenableBuilder<String?>(
+                  currentAccountPicture: ValueListenableBuilder<String?>(
                     valueListenable: AuthService.profilePhotoNotifier,
                     builder: (context, photoPath, _) {
                       final hasPhoto = photoPath != null && photoPath.isNotEmpty && File(photoPath).existsSync();
                       return CircleAvatar(
-                        radius: 28,
                         backgroundColor: Colors.white,
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(28),
+                          borderRadius: BorderRadius.circular(36),
                           child: hasPhoto
                               ? Image.file(
                                   File(photoPath),
-                                  width: 56,
-                                  height: 56,
+                                  width: 72,
+                                  height: 72,
                                   fit: BoxFit.cover,
                                 )
                               : Text(
                                   fullName.isNotEmpty ? fullName[0].toUpperCase() : 'P',
                                   style: const TextStyle(
-                                    fontSize: 26,
+                                    fontSize: 28,
                                     fontWeight: FontWeight.bold,
-                                    color: AppTheme.primaryTeal,
+                                    color: Color(0xFF2563EB),
                                   ),
                                 ),
                         ),
                       );
                     },
                   ),
+                  accountName: Text(
+                    fullName,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  accountEmail: Text('NIC: $nic | Phone: $phone'),
                 ),
-                const SizedBox(width: 16),
+
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: ListView(
+                    padding: EdgeInsets.zero,
                     children: [
-                      Text(
-                        fullName,
-                        style: const TextStyle(
-                          fontSize: 21,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          letterSpacing: 0.3,
+                      ListTile(
+                        leading: const Icon(Icons.smart_toy_outlined, color: Color(0xFF2563EB)),
+                        title: const Text('MediQ AI Assistant', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
+                        trailing: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(8)),
+                          child: const Text('AI', style: TextStyle(color: Color(0xFF2563EB), fontSize: 10, fontWeight: FontWeight.bold)),
                         ),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.pushNamed(context, '/ai-chat');
+                        },
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'NIC: $nic | Phone: $phone',
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white.withValues(alpha: 0.9),
+                      ListTile(
+                        leading: const Icon(Icons.person_outline_rounded, color: Color(0xFF2563EB)),
+                        title: Text(LanguageService.tr('menu_my_profile'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.pushNamed(context, '/profile');
+                        },
+                      ),
+                      ListTile(
+                        leading: Stack(
+                          children: [
+                            const Icon(Icons.notifications_none_rounded, color: Color(0xFF2563EB)),
+                            if (_unreadNotificationCount > 0)
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: const BoxDecoration(color: AppTheme.errorRed, shape: BoxShape.circle),
+                                ),
+                              ),
+                          ],
                         ),
+                        title: Text(LanguageService.tr('menu_notifications'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                        trailing: _unreadNotificationCount > 0
+                            ? Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(color: AppTheme.errorRed, borderRadius: BorderRadius.circular(10)),
+                                child: Text('$_unreadNotificationCount', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                              )
+                            : null,
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showNotificationsSheet();
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.family_restroom_rounded, color: Color(0xFF8B5CF6)),
+                        title: Text(LanguageService.tr('menu_family_cards'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showFamilyProfilesDialog();
+                        },
+                      ),
+
+                      const Divider(),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16, top: 4, bottom: 4),
+                        child: Text(LanguageService.tr('menu_opd_assistance'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B), letterSpacing: 0.5)),
+                      ),
+
+                      ListTile(
+                        leading: const Icon(Icons.phone_in_talk_rounded, color: Color(0xFFEF4444)),
+                        title: Text(LanguageService.tr('menu_emergency'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showEmergencyHelplineDialog();
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.map_outlined, color: Color(0xFF0077B6)),
+                        title: Text(LanguageService.tr('menu_counter_guide'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showHospitalGuideSheet();
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.help_outline_rounded, color: Color(0xFF059669)),
+                        title: Text(LanguageService.tr('menu_help_faq'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showHelpFaqSheet();
+                        },
+                      ),
+
+                      const Divider(),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16, top: 4, bottom: 4),
+                        child: Text(LanguageService.tr('menu_preferences'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B), letterSpacing: 0.5)),
+                      ),
+
+                      ListTile(
+                        leading: const Icon(Icons.language_rounded, color: Color(0xFF2563EB)),
+                        title: Text(LanguageService.tr('menu_language'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                        trailing: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            LanguageService.currentLanguage == 'si'
+                                ? '🇱🇰 සිංහල'
+                                : LanguageService.currentLanguage == 'ta'
+                                    ? '🇮🇳 தமிழ்'
+                                    : '🇬🇧 English',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
+                          ),
+                        ),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showLanguageSelectorDialog();
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.settings_outlined, color: Color(0xFF0F172A)),
+                        title: Text(LanguageService.tr('menu_settings'), style: const TextStyle(fontWeight: FontWeight.w600)),
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showAppSettingsDialog();
+                        },
+                      ),
+                      ListTile(
+                        leading: const Icon(Icons.info_outline_rounded, color: Color(0xFF64748B)),
+                        title: Text(LanguageService.tr('menu_app_info'), style: const TextStyle(fontWeight: FontWeight.w500)),
+                        onTap: () {
+                          Navigator.pop(context);
+                          showAboutDialog(
+                            context: context,
+                            applicationName: LanguageService.tr('app_title'),
+                            applicationVersion: '1.0.0',
+                            applicationLegalese: 'Government OPD - Closer to You',
+                          );
+                        },
                       ),
                     ],
                   ),
                 ),
-                const Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  color: Colors.white70,
-                  size: 18,
+
+                const Divider(height: 1),
+
+                ListTile(
+                  leading: const Icon(Icons.logout_rounded, color: AppTheme.errorRed),
+                  title: Text(
+                    LanguageService.tr('menu_logout'),
+                    style: const TextStyle(color: AppTheme.errorRed, fontWeight: FontWeight.bold),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    AuthService.logout();
+                    Navigator.pushReplacementNamed(context, '/login');
+                  },
                 ),
+                const SizedBox(height: 12),
               ],
             ),
-            const SizedBox(height: 18),
-            Container(
-              height: 1,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.white.withValues(alpha: 0.1),
-                    Colors.white.withValues(alpha: 0.5),
-                    Colors.white.withValues(alpha: 0.1),
+          ),
+
+          // Main Body matching the Reference UI
+          body: SafeArea(
+            child: RefreshIndicator(
+              onRefresh: _fetchNextAppointment,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // TOP ROW: Drawer Icon (left) + Doctor Illustration Avatar (right)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        // Menu Button
+                        Builder(
+                          builder: (context) {
+                            return InkWell(
+                              onTap: () => Scaffold.of(context).openDrawer(),
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                child: const Icon(
+                                  Icons.menu_rounded,
+                                  size: 26,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        // Right: Notification Bell & Doctor Avatar Accent
+                        Row(
+                          children: [
+                            Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.notifications_none_rounded, color: Color(0xFFEF4444), size: 26),
+                                  onPressed: _showNotificationsSheet,
+                                ),
+                                if (_unreadNotificationCount > 0)
+                                  Positioned(
+                                    right: 8,
+                                    top: 8,
+                                    child: Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFFEF4444),
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(width: 8),
+                            // Doctor Avatar with soft blue background shape
+                            GestureDetector(
+                              onTap: () => Navigator.pushNamed(context, '/profile'),
+                              child: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFDBEAFE),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(22),
+                                  child: ValueListenableBuilder<String?>(
+                                    valueListenable: AuthService.profilePhotoNotifier,
+                                    builder: (context, photoPath, _) {
+                                      final hasPhoto = photoPath != null && photoPath.isNotEmpty && File(photoPath).existsSync();
+                                      if (hasPhoto) {
+                                        return Image.file(
+                                          File(photoPath),
+                                          fit: BoxFit.cover,
+                                        );
+                                      }
+                                      return Container(
+                                        color: const Color(0xFFDBEAFE),
+                                        child: const Icon(
+                                          Icons.person_rounded,
+                                          color: Color(0xFF2563EB),
+                                          size: 26,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // GREETING TEXT
+                    RichText(
+                      text: const TextSpan(
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF0F172A),
+                          height: 1.25,
+                        ),
+                        children: [
+                          TextSpan(
+                            text: "Good Morning,\n",
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF64748B),
+                            ),
+                          ),
+                          TextSpan(text: "Take care of\nyour "),
+                          TextSpan(
+                            text: "health.",
+                            style: TextStyle(color: Color(0xFF2563EB)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // SEARCH BAR WITH FILTER BUTTON
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 52,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(26),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.search_rounded, color: Color(0xFF94A3B8), size: 22),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _searchController,
+                                    decoration: const InputDecoration(
+                                      hintText: "Search doctors, specialties...",
+                                      hintStyle: TextStyle(
+                                        fontSize: 13,
+                                        color: Color(0xFF94A3B8),
+                                      ),
+                                      border: InputBorder.none,
+                                      isDense: true,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // Filter button
+                        Container(
+                          width: 52,
+                          height: 52,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
+                          child: IconButton(
+                            icon: const Icon(Icons.tune_rounded, color: Color(0xFF2563EB), size: 22),
+                            onPressed: _showChooseOPDRoomSheet,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 22),
+
+                    // HERO HERO BANNER CARD ("Book Appointment")
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF1D4ED8), Color(0xFF3B82F6)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF2563EB).withValues(alpha: 0.35),
+                            blurRadius: 16,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  "Book Appointment",
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                const Text(
+                                  "Consult with trusted\ndoctors anytime.",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Color(0xFFDBEAFE),
+                                    height: 1.3,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: _openBookAppointment,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    foregroundColor: const Color(0xFF1D4ED8),
+                                    elevation: 0,
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                  ),
+                                  child: const Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        "Book Now",
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      SizedBox(width: 6),
+                                      Icon(Icons.arrow_forward_rounded, size: 14),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          // Right 3D Banner graphic illustration
+                          Container(
+                            width: 90,
+                            height: 90,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Image.asset(
+                                'assets/images/book_appointment.png',
+                                width: 75,
+                                height: 75,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.calendar_month_rounded,
+                                  size: 50,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // OUR SERVICES SECTION (All 6 OPD Modules)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Our Services",
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: _showChooseOPDRoomSheet,
+                          child: const Row(
+                            children: [
+                              Text(
+                                "View all",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF2563EB),
+                                ),
+                              ),
+                              SizedBox(width: 2),
+                              Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFF2563EB)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // 6 Services Grid matching Reference UI
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildServiceCardItem(
+                            icon: Icons.confirmation_number_outlined,
+                            title: "OPD Live Queue",
+                            subtitle: "Live token queue",
+                            onTap: _showChooseOPDRoomSheet,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _buildServiceCardItem(
+                            icon: Icons.event_note_outlined,
+                            title: "Book Appointment",
+                            subtitle: "Book doctor slot",
+                            onTap: _openBookAppointment,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildServiceCardItem(
+                            icon: Icons.medical_services_outlined,
+                            title: "Medical Records",
+                            subtitle: "Lab & OPD records",
+                            onTap: _openMedicalRecords,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _buildServiceCardItem(
+                            icon: Icons.medication_outlined,
+                            title: "Pill Tracker",
+                            subtitle: "Get your meds",
+                            onTap: () => Navigator.pushNamed(context, '/pill-tracker'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _buildServiceCardItem(
+                            icon: Icons.psychology_outlined,
+                            title: "Symptom Checker",
+                            subtitle: "AI health triage",
+                            onTap: () => Navigator.pushNamed(context, '/symptom-checker'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _buildServiceCardItem(
+                            icon: Icons.monitor_weight_outlined,
+                            title: "Health Vitals",
+                            subtitle: "Full body checkup",
+                            onTap: () => Navigator.pushNamed(context, '/health-vitals'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // UPCOMING APPOINTMENT SECTION
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Upcoming Appointment",
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        if (_nextAppointment != null)
+                          GestureDetector(
+                            onTap: _openBookAppointment,
+                            child: const Text(
+                              "Manage",
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF2563EB),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Upcoming Appointment Card
+                    _buildUpcomingAppointmentCard(),
+                    const SizedBox(height: 24),
+
+                    // HEALTH INSIGHTS SECTION
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          "Health Insights",
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => Navigator.pushNamed(context, '/symptom-checker'),
+                          child: const Row(
+                            children: [
+                              Text(
+                                "View all",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF2563EB),
+                                ),
+                              ),
+                              SizedBox(width: 2),
+                              Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFF2563EB)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Health Insight Card matching Reference UI
+                    _buildHealthInsightCard(),
+                    const SizedBox(height: 20),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 14),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildHeaderTag('Blood Group', bloodGroup),
-                _buildHeaderTag('District', district),
-                _buildHeaderTag('Role', 'PATIENT'),
+          ),
+
+          // Floating AI Chatbot Icon Button (Icon Only)
+          floatingActionButton: Container(
+            width: 58,
+            height: 58,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1D4ED8), Color(0xFF3B82F6)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              border: Border.all(color: Colors.white, width: 2.5),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF2563EB).withValues(alpha: 0.45),
+                  blurRadius: 14,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 5),
+                ),
               ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => Navigator.pushNamed(context, '/ai-chat'),
+                customBorder: const CircleBorder(),
+                child: Center(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(25),
+                    child: Image.asset(
+                      'assets/images/chat_bot_icon.png',
+                      width: 44,
+                      height: 44,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.smart_toy_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // Bottom Navigation Bar
+          bottomNavigationBar: const AppBottomNavBar(currentIndex: 0),
+        );
+      },
+    );
+  }
+
+  // SERVICE CARD ITEM (Soft White Card, Sky Blue Icon Circle, Dark Title)
+  Widget _buildServiceCardItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    String? badgeText,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            // Icon container with light sky blue background shape
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(icon, color: const Color(0xFF2563EB), size: 24),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF0F172A),
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                fontSize: 10,
+                color: Color(0xFF64748B),
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -1632,108 +1721,181 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeaderTag(String label, String value) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            color: Colors.white.withValues(alpha: 0.8),
-            fontWeight: FontWeight.w500,
+  // UPCOMING APPOINTMENT CARD WIDGET
+  Widget _buildUpcomingAppointmentCard() {
+    final appt = _nextAppointment;
+    final doctorName = appt != null
+        ? (appt['doctor_name'] ?? AppointmentService.getRoomDisplayName(appt['room'] ?? ''))
+        : "Dr. James Carter";
+    final specialty = appt != null
+        ? AppointmentService.getRoomDisplayName(appt['room'] ?? '')
+        : "Cardiologist";
+    final dateStr = appt != null ? (appt['appointment_date'] ?? 'May 24, 2025') : "May 24, 2025";
+    final timeStr = appt != null ? "10:30 AM" : "10:30 AM";
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              // Doctor Avatar
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFDBEAFE),
+                  shape: BoxShape.circle,
+                ),
+                child: const ClipRRect(
+                  borderRadius: BorderRadius.all(Radius.circular(24)),
+                  child: Icon(Icons.person_rounded, color: Color(0xFF2563EB), size: 28),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      doctorName,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      specialty,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Status Pill Tag
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2563EB),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Text(
+                  "Confirmed",
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
+          const SizedBox(height: 14),
+          Container(height: 1, color: const Color(0xFFF1F5F9)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              const Icon(Icons.calendar_month_rounded, size: 16, color: Color(0xFF94A3B8)),
+              const SizedBox(width: 6),
+              Text(
+                dateStr,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+              ),
+              const SizedBox(width: 20),
+              const Icon(Icons.access_time_rounded, size: 16, color: Color(0xFF94A3B8)),
+              const SizedBox(width: 6),
+              Text(
+                timeStr,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
-  // 3D Glassmorphism OPD Grid Card Widget
-  Widget _build3DGlassCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required List<Color> gradientColors,
-    required VoidCallback onTap,
-  }) {
+  // HEALTH INSIGHT CARD WIDGET
+  Widget _buildHealthInsightCard() {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () => Navigator.pushNamed(context, '/symptom-checker'),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
           color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: const Color(0xFFF1F5F9)),
           boxShadow: [
             BoxShadow(
-              color: gradientColors.first.withValues(alpha: 0.2),
-              blurRadius: 16,
-              spreadRadius: 1,
-              offset: const Offset(0, 8),
-            ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 6,
-              offset: const Offset(0, 2),
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
           ],
-          border: Border.all(
-            color: gradientColors.first.withValues(alpha: 0.15),
-            width: 1.5,
-          ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: gradientColors,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: gradientColors.first.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    "How to maintain a\nhealthy heart",
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A),
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    "5 min read",
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF94A3B8),
+                    ),
                   ),
                 ],
               ),
-              child: Icon(icon, color: Colors.white, size: 22),
             ),
-            const SizedBox(height: 10),
-            Text(
-              title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.darkText,
-                height: 1.15,
+            const SizedBox(width: 12),
+            // Heart Illustration Image / Graphic
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(16),
               ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              subtitle,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 11,
-                color: AppTheme.mutedText,
-                height: 1.15,
+              child: Center(
+                child: Image.asset(
+                  'assets/images/health_vitals.png',
+                  width: 55,
+                  height: 55,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.favorite_rounded,
+                    size: 40,
+                    color: Color(0xFFEF4444),
+                  ),
+                ),
               ),
             ),
           ],

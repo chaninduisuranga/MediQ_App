@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  // Brand Colors matching MediQ Logo
-  static const Color primaryBlue = Color(0xFF0077B6);
-  static const Color primaryTeal = Color(0xFF00A896);
-  static const Color accentGreen = Color(0xFF02C39A);
-  static const Color darkText = Color(0xFF1E293B);
+  // Brand Colors: Vibrant Sky Blue & Pure White
+  static const Color primarySkyBlue = Color(0xFF0284C7); // Sky Blue
+  static const Color lightSkyBlue = Color(0xFF38BDF8);   // Soft Sky Blue
+  static const Color primaryBlue = Color(0xFF0284C7);    // Sky Blue
+  static const Color primaryTeal = Color(0xFF0284C7);    // Sky Blue (for backwards compatibility across screens)
+  static const Color accentGreen = Color(0xFF38BDF8);
+  static const Color darkText = Color(0xFF0F172A);
   static const Color mutedText = Color(0xFF64748B);
-  static const Color lightBg = Color(0xFFF8FAFC);
-  static const Color cardBg = Colors.white;
+  static const Color lightBg = Color(0xFFF0F9FF);        // Soft Sky Tint White
+  static const Color cardBg = Colors.white;             // Pure White
   static const Color errorRed = Color(0xFFEF4444);
 
   static LinearGradient primaryGradient = const LinearGradient(
-    colors: [primaryBlue, primaryTeal],
+    colors: [primarySkyBlue, lightSkyBlue],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -21,13 +23,13 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       fontFamily: 'Roboto',
-      primaryColor: primaryTeal,
+      primaryColor: primarySkyBlue,
       scaffoldBackgroundColor: lightBg,
       colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryTeal,
-        primary: primaryTeal,
-        secondary: primaryBlue,
-        tertiary: accentGreen,
+        seedColor: primarySkyBlue,
+        primary: primarySkyBlue,
+        secondary: lightSkyBlue,
+        tertiary: lightSkyBlue,
         surface: cardBg,
         error: errorRed,
       ),
@@ -41,7 +43,7 @@ class AppTheme {
       cardTheme: CardThemeData(
         color: cardBg,
         elevation: 2,
-        shadowColor: Colors.black.withValues(alpha: 0.06),
+        shadowColor: primarySkyBlue.withValues(alpha: 0.1),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
@@ -54,15 +56,15 @@ class AppTheme {
         labelStyle: const TextStyle(color: darkText, fontSize: 14, fontWeight: FontWeight.w500),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: const BorderSide(color: Color(0xFFBAE6FD)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.grey.shade300),
+          borderSide: const BorderSide(color: Color(0xFFBAE6FD)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: primaryTeal, width: 2),
+          borderSide: const BorderSide(color: primarySkyBlue, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -76,7 +78,7 @@ class AppTheme {
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: 2,
-          backgroundColor: primaryTeal,
+          backgroundColor: primarySkyBlue,
           foregroundColor: Colors.white,
           minimumSize: const Size(0, 52),
           shape: RoundedRectangleBorder(
@@ -92,14 +94,14 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           minimumSize: const Size(0, 52),
-          side: const BorderSide(color: primaryTeal, width: 1.5),
+          side: const BorderSide(color: primarySkyBlue, width: 1.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
           textStyle: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            color: primaryTeal,
+            color: primarySkyBlue,
           ),
         ),
       ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../core/services/medical_record_service.dart';
 import '../core/theme/theme.dart';
+import '../widgets/app_bottom_nav_bar.dart';
 
 class MedicalRecordsScreen extends StatefulWidget {
   const MedicalRecordsScreen({super.key});
@@ -345,6 +346,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> with Single
               label: const Text('Upload Photo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             )
           : null,
+      bottomNavigationBar: const AppBottomNavBar(currentIndex: 2),
     );
   }
 

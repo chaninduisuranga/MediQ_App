@@ -189,10 +189,17 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF0F9FF),
       appBar: AppBar(
-        title: const Text('Patient Registration'),
+        title: const Text(
+          'Patient Registration',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppTheme.darkText),
           onPressed: () {
             if (_currentStep > 0) {
               _prevStep();
@@ -205,40 +212,94 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Progress Indicator Header
+            // Interactive 4-Step Progress Stepper Header
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              color: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primarySkyBlue.withValues(alpha: 0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
               child: Column(
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Step ${_currentStep + 1} of 4: ${_getStepTitle(_currentStep)}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.primaryTeal,
+                    children: List.generate(4, (index) {
+                      final isCompleted = index < _currentStep;
+                      final isCurrent = index == _currentStep;
+                      return Expanded(
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 300),
+                                    width: 32,
+                                    height: 32,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isCompleted
+                                          ? AppTheme.primarySkyBlue
+                                          : (isCurrent
+                                              ? AppTheme.lightSkyBlue
+                                              : const Color(0xFFE2E8F0)),
+                                      border: isCurrent
+                                          ? Border.all(color: AppTheme.primarySkyBlue, width: 2)
+                                          : null,
+                                      boxShadow: isCurrent
+                                          ? [
+                                              BoxShadow(
+                                                color: AppTheme.primarySkyBlue.withValues(alpha: 0.3),
+                                                blurRadius: 8,
+                                                spreadRadius: 1,
+                                              )
+                                            ]
+                                          : null,
+                                    ),
+                                    child: Center(
+                                      child: isCompleted
+                                          ? const Icon(Icons.check_rounded, color: Colors.white, size: 18)
+                                          : Text(
+                                              '${index + 1}',
+                                              style: TextStyle(
+                                                color: (isCurrent || isCompleted) ? Colors.white : AppTheme.mutedText,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 13,
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _getShortStepTitle(index),
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
+                                      color: isCurrent ? AppTheme.primarySkyBlue : AppTheme.mutedText,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            if (index < 3)
+                              Expanded(
+                                child: Container(
+                                  height: 3,
+                                  margin: const EdgeInsets.only(bottom: 14),
+                                  color: isCompleted ? AppTheme.primarySkyBlue : const Color(0xFFE2E8F0),
+                                ),
+                              ),
+                          ],
                         ),
-                      ),
-                      Text(
-                        '${((_currentStep + 1) / 4 * 100).toInt()}%',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.mutedText,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value: (_currentStep + 1) / 4,
-                    backgroundColor: Colors.grey.shade200,
-                    valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryTeal),
-                    minHeight: 6,
-                    borderRadius: BorderRadius.circular(10),
+                      );
+                    }),
                   ),
                 ],
               ),
@@ -246,11 +307,11 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
 
             if (_errorMessage != null)
               Container(
-                margin: const EdgeInsets.all(16),
-                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 decoration: BoxDecoration(
-                  color: AppTheme.errorRed.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(10),
+                  color: AppTheme.errorRed.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: AppTheme.errorRed.withValues(alpha: 0.3)),
                 ),
                 child: Row(
@@ -270,15 +331,37 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
             // Form Body
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: IndexedStack(
-                  index: _currentStep,
-                  children: [
-                    _buildStep1Personal(),
-                    _buildStep2Contact(),
-                    _buildStep3Medical(),
-                    _buildStep4Security(),
-                  ],
+                padding: const EdgeInsets.all(18),
+                child: Card(
+                  elevation: 2,
+                  shadowColor: AppTheme.primarySkyBlue.withValues(alpha: 0.08),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _getStepTitle(_currentStep),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppTheme.primarySkyBlue,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        IndexedStack(
+                          index: _currentStep,
+                          children: [
+                            _buildStep1Personal(),
+                            _buildStep2Contact(),
+                            _buildStep3Medical(),
+                            _buildStep4Security(),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -302,22 +385,49 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
                     Expanded(
                       child: OutlinedButton(
                         onPressed: _prevStep,
-                        child: const Text('Back'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(0, 50),
+                          side: const BorderSide(color: Color(0xFFCBD5E1)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Back', style: TextStyle(color: AppTheme.darkText, fontWeight: FontWeight.w600)),
                       ),
                     ),
                   if (_currentStep > 0) const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: _isLoading
-                          ? null
-                          : (_currentStep == 3 ? _handleSignup : _nextStep),
-                      child: _isLoading
-                          ? const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                            )
-                          : Text(_currentStep == 3 ? 'Complete Registration' : 'Next Step'),
+                    child: Container(
+                      height: 50,
+                      decoration: BoxDecoration(
+                        gradient: AppTheme.primaryGradient,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.primarySkyBlue.withValues(alpha: 0.25),
+                            blurRadius: 8,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                      ),
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: _isLoading
+                            ? null
+                            : (_currentStep == 3 ? _handleSignup : _nextStep),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                              )
+                            : Text(
+                                _currentStep == 3 ? 'Complete Registration' : 'Next Step',
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                              ),
+                      ),
                     ),
                   ),
                 ],
@@ -329,6 +439,21 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
     );
   }
 
+  String _getShortStepTitle(int step) {
+    switch (step) {
+      case 0:
+        return 'Personal';
+      case 1:
+        return 'Contact';
+      case 2:
+        return 'Medical';
+      case 3:
+        return 'Security';
+      default:
+        return '';
+    }
+  }
+
   String _getStepTitle(int step) {
     switch (step) {
       case 0:
@@ -336,7 +461,7 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
       case 1:
         return 'Contact Details (සම්බන්ධතා)';
       case 2:
-        return 'Medical History (සෞඛ්‍ය)';
+        return 'Medical History (සෞඛ්‍ය විස්තර)';
       case 3:
         return 'Account Security (ආරක්ෂාව)';
       default:
@@ -358,7 +483,7 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
             validator: (v) => v == null || v.trim().isEmpty ? 'Full name is required' : null,
             decoration: const InputDecoration(
               hintText: 'e.g. K.A. Sunimal Perera',
-              prefixIcon: Icon(Icons.person_outline_rounded, color: AppTheme.primaryTeal),
+              prefixIcon: Icon(Icons.person_outline_rounded, color: AppTheme.primarySkyBlue),
             ),
           ),
           const SizedBox(height: 16),
@@ -371,7 +496,7 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
             validator: _validateNIC,
             decoration: const InputDecoration(
               hintText: 'e.g. 199512345V or 199512345678',
-              prefixIcon: Icon(Icons.badge_outlined, color: AppTheme.primaryTeal),
+              prefixIcon: Icon(Icons.badge_outlined, color: AppTheme.primarySkyBlue),
             ),
           ),
           const SizedBox(height: 16),
@@ -391,7 +516,7 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
                       validator: (v) => v == null || v.isEmpty ? 'Select DOB' : null,
                       decoration: const InputDecoration(
                         hintText: 'YYYY-MM-DD',
-                        prefixIcon: Icon(Icons.calendar_today_outlined, color: AppTheme.primaryTeal),
+                        prefixIcon: Icon(Icons.calendar_today_outlined, color: AppTheme.primarySkyBlue),
                       ),
                     ),
                   ],
@@ -414,7 +539,7 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
                       items: ['Male', 'Female', 'Other'].map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
                       onChanged: (v) => setState(() => _selectedGender = v!),
                       decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.people_outline_rounded, color: AppTheme.primaryTeal),
+                        prefixIcon: Icon(Icons.people_outline_rounded, color: AppTheme.primarySkyBlue),
                       ),
                     ),
                   ],
@@ -432,7 +557,7 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
                       items: ['Single', 'Married', 'Other'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                       onChanged: (v) => setState(() => _selectedCivilStatus = v!),
                       decoration: const InputDecoration(
-                        prefixIcon: Icon(Icons.favorite_outline_rounded, color: AppTheme.primaryTeal),
+                        prefixIcon: Icon(Icons.favorite_outline_rounded, color: AppTheme.primarySkyBlue),
                       ),
                     ),
                   ],
@@ -460,7 +585,7 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
             validator: (v) => v == null || v.trim().length < 9 ? 'Enter valid phone number (e.g. 0771234567)' : null,
             decoration: const InputDecoration(
               hintText: 'e.g. 0771234567',
-              prefixIcon: Icon(Icons.phone_outlined, color: AppTheme.primaryTeal),
+              prefixIcon: Icon(Icons.phone_outlined, color: AppTheme.primarySkyBlue),
             ),
           ),
           const SizedBox(height: 16),
@@ -473,7 +598,7 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
             validator: (v) => v == null || v.trim().isEmpty ? 'Address is required' : null,
             decoration: const InputDecoration(
               hintText: 'House No, Street Name, Town',
-              prefixIcon: Icon(Icons.home_outlined, color: AppTheme.primaryTeal),
+              prefixIcon: Icon(Icons.home_outlined, color: AppTheme.primarySkyBlue),
             ),
           ),
           const SizedBox(height: 16),
@@ -485,40 +610,57 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
             items: _districts.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
             onChanged: (v) => setState(() => _selectedDistrict = v!),
             decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.location_on_outlined, color: AppTheme.primaryTeal),
+              prefixIcon: Icon(Icons.location_on_outlined, color: AppTheme.primarySkyBlue),
             ),
           ),
           const SizedBox(height: 20),
 
-          const Divider(),
-          const SizedBox(height: 10),
-          const Text(
-            'Emergency Contact Person (හදිසි අවස්ථාවකදී ඇමතිය යුතු අයගේ විස්තර)',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.primaryBlue),
-          ),
-          const SizedBox(height: 12),
-
-          const Text('Contact Name (නම)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-          const SizedBox(height: 6),
-          TextFormField(
-            controller: _emergencyNameController,
-            validator: (v) => v == null || v.trim().isEmpty ? 'Emergency contact name required' : null,
-            decoration: const InputDecoration(
-              hintText: 'e.g. N. Perera (Spouse/Parent)',
-              prefixIcon: Icon(Icons.contact_phone_outlined, color: AppTheme.primaryTeal),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF0F9FF),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFBAE6FD)),
             ),
-          ),
-          const SizedBox(height: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.contact_emergency_rounded, color: AppTheme.primarySkyBlue, size: 18),
+                    SizedBox(width: 8),
+                    Text(
+                      'Emergency Contact Person',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.darkText),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
 
-          const Text('Emergency Phone (දුරකථන අංකය)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-          const SizedBox(height: 6),
-          TextFormField(
-            controller: _emergencyPhoneController,
-            keyboardType: TextInputType.phone,
-            validator: (v) => v == null || v.trim().length < 9 ? 'Emergency contact phone required' : null,
-            decoration: const InputDecoration(
-              hintText: 'e.g. 0719876543',
-              prefixIcon: Icon(Icons.phone_in_talk_outlined, color: AppTheme.primaryTeal),
+                const Text('Contact Name (නම)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _emergencyNameController,
+                  validator: (v) => v == null || v.trim().isEmpty ? 'Emergency contact name required' : null,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. N. Perera (Spouse/Parent)',
+                    prefixIcon: Icon(Icons.contact_phone_outlined, color: AppTheme.primarySkyBlue),
+                  ),
+                ),
+                const SizedBox(height: 14),
+
+                const Text('Emergency Phone (දුරකථන අංකය)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                const SizedBox(height: 6),
+                TextFormField(
+                  controller: _emergencyPhoneController,
+                  keyboardType: TextInputType.phone,
+                  validator: (v) => v == null || v.trim().length < 9 ? 'Emergency contact phone required' : null,
+                  decoration: const InputDecoration(
+                    hintText: 'e.g. 0719876543',
+                    prefixIcon: Icon(Icons.phone_in_talk_outlined, color: AppTheme.primarySkyBlue),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -534,16 +676,63 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Blood Group (ලේ වර්ගය)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
-          const SizedBox(height: 6),
-          DropdownButtonFormField<String>(
-            initialValue: _selectedBloodGroup,
-            items: _bloodGroups.map((bg) => DropdownMenuItem(value: bg, child: Text(bg))).toList(),
-            onChanged: (v) => setState(() => _selectedBloodGroup = v!),
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.water_drop_outlined, color: AppTheme.primaryTeal),
-            ),
+          const SizedBox(height: 10),
+          
+          // Blood Group Grid Selector
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _bloodGroups.map((bg) {
+              final isSelected = _selectedBloodGroup == bg;
+              return InkWell(
+                onTap: () => setState(() => _selectedBloodGroup = bg),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  width: 60,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppTheme.primarySkyBlue : Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isSelected ? AppTheme.primarySkyBlue : const Color(0xFFCBD5E1),
+                      width: isSelected ? 2 : 1,
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: AppTheme.primarySkyBlue.withValues(alpha: 0.25),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            )
+                          ]
+                        : null,
+                  ),
+                  child: Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.water_drop_rounded,
+                          size: 14,
+                          color: isSelected ? Colors.white : AppTheme.errorRed,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          bg,
+                          style: TextStyle(
+                            color: isSelected ? Colors.white : AppTheme.darkText,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
 
           const Text('Known Drug / Food Allergies (අසාත්මිකතා)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
           const SizedBox(height: 6),
@@ -551,25 +740,33 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
             controller: _allergiesController,
             decoration: const InputDecoration(
               hintText: 'e.g. Penicillin, Aspirin, Seafood, None',
-              prefixIcon: Icon(Icons.warning_amber_rounded, color: AppTheme.primaryTeal),
+              prefixIcon: Icon(Icons.warning_amber_rounded, color: AppTheme.primarySkyBlue),
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
 
           const Text('Pre-existing Medical Conditions / Chronic Diseases (පවතින රෝගී තත්ත්වයන්)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
+            runSpacing: 8,
             children: _commonConditions.map((cond) {
               final isSelected = _selectedConditions.contains(cond);
               return FilterChip(
                 label: Text(cond),
                 selected: isSelected,
-                selectedColor: AppTheme.primaryTeal.withValues(alpha: 0.2),
-                checkmarkColor: AppTheme.primaryTeal,
+                selectedColor: AppTheme.primarySkyBlue.withValues(alpha: 0.15),
+                checkmarkColor: AppTheme.primarySkyBlue,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  side: BorderSide(
+                    color: isSelected ? AppTheme.primarySkyBlue : const Color(0xFFCBD5E1),
+                  ),
+                ),
                 labelStyle: TextStyle(
-                  color: isSelected ? AppTheme.primaryTeal : AppTheme.darkText,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? AppTheme.primarySkyBlue : AppTheme.darkText,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  fontSize: 13,
                 ),
                 onSelected: (selected) {
                   setState(() {
@@ -589,7 +786,7 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
 
           const Text('Other Medical Conditions / Notes (වෙනත් සෞඛ්‍ය විස්තර)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
           const SizedBox(height: 6),
@@ -598,7 +795,7 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
             maxLines: 2,
             decoration: const InputDecoration(
               hintText: 'Any other surgeries, long term medications, or notes',
-              prefixIcon: Icon(Icons.medical_information_outlined, color: AppTheme.primaryTeal),
+              prefixIcon: Icon(Icons.medical_information_outlined, color: AppTheme.primarySkyBlue),
             ),
           ),
         ],
@@ -615,14 +812,14 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
         children: [
           const Text(
             'Set Your OPD Account Password',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.darkText),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           const Text(
-            'Your password will be used along with your NIC to log in.',
-            style: TextStyle(fontSize: 13, color: AppTheme.mutedText),
+            'Your password will be used along with your NIC to log into the MediQ Portal.',
+            style: TextStyle(fontSize: 13, color: AppTheme.mutedText, height: 1.3),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
           const Text('Password (මුරපදය)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
           const SizedBox(height: 6),
@@ -632,14 +829,14 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
             validator: (v) => v == null || v.length < 6 ? 'Password must be at least 6 characters' : null,
             decoration: InputDecoration(
               hintText: 'At least 6 characters',
-              prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppTheme.primaryTeal),
+              prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppTheme.primarySkyBlue),
               suffixIcon: IconButton(
-                icon: Icon(_isPasswordVisible ? Icons.visibility_off : Icons.visibility),
+                icon: Icon(_isPasswordVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: AppTheme.mutedText),
                 onPressed: () => setState(() => _isPasswordVisible = !_isPasswordVisible),
               ),
             ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
 
           const Text('Confirm Password (මුරපදය තහවුරු කරන්න)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
           const SizedBox(height: 6),
@@ -653,9 +850,9 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
             },
             decoration: InputDecoration(
               hintText: 'Re-enter your password',
-              prefixIcon: const Icon(Icons.lock_reset_rounded, color: AppTheme.primaryTeal),
+              prefixIcon: const Icon(Icons.lock_reset_rounded, color: AppTheme.primarySkyBlue),
               suffixIcon: IconButton(
-                icon: Icon(_isConfirmPasswordVisible ? Icons.visibility_off : Icons.visibility),
+                icon: Icon(_isConfirmPasswordVisible ? Icons.visibility_off_rounded : Icons.visibility_rounded, color: AppTheme.mutedText),
                 onPressed: () => setState(() => _isConfirmPasswordVisible = !_isConfirmPasswordVisible),
               ),
             ),
@@ -665,3 +862,4 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
     );
   }
 }
+

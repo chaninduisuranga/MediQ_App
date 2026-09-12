@@ -9,6 +9,7 @@ import '../screens/medical_records_screen.dart';
 import '../screens/pill_tracker_screen.dart';
 import '../screens/symptom_checker_screen.dart';
 import '../screens/health_vitals_screen.dart';
+import '../screens/ai_chat_screen.dart';
 
 import '../screens/admin_dashboard_screen.dart';
 import '../screens/admin_user_management_screen.dart';
@@ -24,6 +25,7 @@ class AppRoutes {
   static const String pillTracker = '/pill-tracker';
   static const String symptomChecker = '/symptom-checker';
   static const String healthVitals = '/health-vitals';
+  static const String aiChat = '/ai-chat';
   static const String adminDashboard = '/admin-dashboard';
   static const String adminUserManagement = '/admin/users';
 
@@ -38,6 +40,7 @@ class AppRoutes {
         pillTracker: (context) => const PillTrackerScreen(),
         symptomChecker: (context) => const SymptomCheckerScreen(),
         healthVitals: (context) => const HealthVitalsScreen(),
+        aiChat: (context) => const AiChatScreen(),
         adminDashboard: (context) => const AdminDashboardScreen(),
         adminUserManagement: (context) => const AdminUserManagementScreen(),
       };

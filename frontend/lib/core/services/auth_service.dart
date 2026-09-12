@@ -80,6 +80,49 @@ class AuthService {
     }
   }
 
+  static Future<Map<String, dynamic>> loginWithGoogle({
+    required String email,
+    required String fullName,
+    required String googleId,
+    String? photoUrl,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/google-login'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'full_name': fullName,
+          'google_id': googleId,
+          'photo_url': photoUrl ?? '',
+        }),
+      );
+
+      final data = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && data['success'] == true) {
+        _token = data['data']['token'];
+        _currentUser = data['data']['user'];
+        if (photoUrl != null && photoUrl.isNotEmpty) {
+          await updateProfilePhoto(photoUrl);
+        } else {
+          await loadSavedProfilePhoto();
+        }
+        return {'success': true, 'message': data['message'] ?? 'Google login successful', 'data': data['data']};
+      } else {
+        return {
+          'success': false,
+          'message': data['error'] ?? data['message'] ?? 'Failed to login with Google.',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Cannot connect to MediQ backend server. Please check your connection.',
+      };
+    }
+  }
+
   static Future<Map<String, dynamic>> signupPatient({
     required String fullName,
     required String nic,
