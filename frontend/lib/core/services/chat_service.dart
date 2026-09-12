@@ -62,7 +62,11 @@ class ChatService {
         final body = jsonDecode(res.body);
         if (body['data'] != null) {
           final List list = body['data'];
-          return list.map((item) => ChatMessageModel.fromJson(item)).toList();
+          final parsed = list
+              .map((item) => ChatMessageModel.fromJson(item))
+              .where((m) => m.text.trim().isNotEmpty)
+              .toList();
+          if (parsed.isNotEmpty) return parsed;
         }
       }
     } catch (_) {}
@@ -74,7 +78,10 @@ class ChatService {
     if (jsonStr != null && jsonStr.isNotEmpty) {
       try {
         final List decoded = jsonDecode(jsonStr);
-        return decoded.map((item) => ChatMessageModel.fromJson(item)).toList();
+        return decoded
+            .map((item) => ChatMessageModel.fromJson(item))
+            .where((m) => m.text.trim().isNotEmpty)
+            .toList();
       } catch (_) {}
     }
     return [];
