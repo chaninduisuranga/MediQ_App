@@ -1328,102 +1328,218 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 22),
 
-                    // HERO HERO BANNER CARD ("Book Appointment")
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF1D4ED8), Color(0xFF3B82F6)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                    // HERO BANNER CARD ("Book Appointment") - Creative 3D Glassmorphic Design
+                    GestureDetector(
+                      onTap: _openBookAppointment,
+                      child: Container(
+                        width: double.infinity,
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(28),
+                          gradient: const LinearGradient(
+                            colors: [
+                              Color(0xFF0F172A),
+                              Color(0xFF1E3A8A),
+                              Color(0xFF0284C7),
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF0284C7).withValues(alpha: 0.35),
+                              blurRadius: 22,
+                              spreadRadius: 2,
+                              offset: const Offset(0, 10),
+                            ),
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            width: 1.5,
+                          ),
                         ),
-                        borderRadius: BorderRadius.circular(24),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF2563EB).withValues(alpha: 0.35),
-                            blurRadius: 16,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  "Book Appointment",
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                const Text(
-                                  "Consult with trusted\ndoctors anytime.",
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFFDBEAFE),
-                                    height: 1.3,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                ElevatedButton(
-                                  onPressed: _openBookAppointment,
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.white,
-                                    foregroundColor: const Color(0xFF1D4ED8),
-                                    elevation: 0,
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                  ),
-                                  child: const Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        "Book Now",
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      SizedBox(width: 6),
-                                      Icon(Icons.arrow_forward_rounded, size: 14),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          // Right 3D Banner graphic illustration
-                          Container(
-                            width: 90,
-                            height: 90,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              shape: BoxShape.circle,
-                            ),
-                            child: Center(
-                              child: Image.asset(
-                                'assets/images/book_appointment.png',
-                                width: 75,
-                                height: 75,
-                                fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => const Icon(
-                                  Icons.calendar_month_rounded,
-                                  size: 50,
-                                  color: Colors.white,
+                        child: Stack(
+                          children: [
+                            // Background Ambient Decorative Glows
+                            Positioned(
+                              top: -30,
+                              right: -20,
+                              child: Container(
+                                width: 140,
+                                height: 140,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: const Color(0xFF38BDF8).withValues(alpha: 0.25),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                            Positioned(
+                              bottom: -40,
+                              left: -30,
+                              child: Container(
+                                width: 130,
+                                height: 130,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: const Color(0xFF0D9488).withValues(alpha: 0.3),
+                                ),
+                              ),
+                            ),
+
+                            // Foreground Banner Content
+                            Padding(
+                              padding: const EdgeInsets.all(22),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        // Badge Tag
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(20),
+                                            border: Border.all(
+                                              color: Colors.white.withValues(alpha: 0.3),
+                                            ),
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                Icons.stars_rounded,
+                                                color: Color(0xFF38BDF8),
+                                                size: 13,
+                                              ),
+                                              SizedBox(width: 5),
+                                              Text(
+                                                "INSTANT OPD TOKEN",
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 9.5,
+                                                  fontWeight: FontWeight.w900,
+                                                  letterSpacing: 0.6,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+
+                                        const Text(
+                                          "Book Appointment",
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.w900,
+                                            color: Colors.white,
+                                            letterSpacing: 0.2,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          "Consult with trusted OPD doctors without waiting in long queues.",
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.white.withValues(alpha: 0.85),
+                                            height: 1.35,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+
+                                        // Action Button
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(24),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(alpha: 0.12),
+                                                blurRadius: 10,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
+                                          ),
+                                          child: const Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                "Book Now",
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w900,
+                                                  color: Color(0xFF1E3A8A),
+                                                ),
+                                              ),
+                                              SizedBox(width: 8),
+                                              Icon(
+                                                Icons.arrow_forward_rounded,
+                                                size: 16,
+                                                color: Color(0xFF1E3A8A),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 14),
+
+                                  // Right 3D Medical Graphic with Glowing Glass Sphere
+                                  Container(
+                                    width: 100,
+                                    height: 100,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.white.withValues(alpha: 0.25),
+                                          Colors.white.withValues(alpha: 0.05),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(alpha: 0.4),
+                                        width: 1.5,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
+                                          blurRadius: 20,
+                                          spreadRadius: 3,
+                                        ),
+                                      ],
+                                    ),
+                                    child: Center(
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(45),
+                                        child: Image.asset(
+                                          'assets/images/book_appointment.png',
+                                          width: 85,
+                                          height: 85,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => const Icon(
+                                            Icons.calendar_month_rounded,
+                                            size: 48,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
