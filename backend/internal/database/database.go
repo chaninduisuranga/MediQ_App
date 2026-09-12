@@ -46,7 +46,7 @@ func seedDefaultUsers(db *gorm.DB) {
 	defaults := []DefaultUser{
 		{Name: "Dr. Suneth Perera", NIC: "198500100200", Phone: "0771112223", Password: "Doctor@123", Role: models.RoleDoctor},
 		{Name: "Staff Member (OPD)", NIC: "199000100200", Phone: "0772223334", Password: "Staff@123", Role: models.RoleStaff},
-		{Name: "System Admin", NIC: "198000100200", Phone: "0773334445", Password: "Admin@123", Role: models.RoleAdmin},
+		{Name: "System Admin", NIC: "200305000933", Phone: "0773334445", Password: "Admin@123", Role: models.RoleAdmin},
 	}
 
 	for _, d := range defaults {
@@ -63,6 +63,7 @@ func seedDefaultUsers(db *gorm.DB) {
 				Phone:    d.Phone,
 				Password: hashed,
 				Role:     d.Role,
+				Status:   models.StatusActive,
 			}
 			if err := db.Create(&user).Error; err == nil {
 				log.Printf("[Seeder] Created default account: %s (%s) | Role: %s\n", d.Name, d.NIC, d.Role)
