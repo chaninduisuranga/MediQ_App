@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import '../core/services/auth_service.dart';
 import '../core/services/language_service.dart';
 import '../core/theme/theme.dart';
+import '../widgets/app_bottom_nav_bar.dart';
 
 class PatientProfileScreen extends StatefulWidget {
   const PatientProfileScreen({super.key});
@@ -572,6 +573,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                 ],
               ),
             ),
+      bottomNavigationBar: const AppBottomNavBar(currentIndex: 3),
     );
   }
 

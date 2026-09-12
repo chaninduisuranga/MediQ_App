@@ -63,6 +63,16 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 				apptAuth.PUT("/:id/cancel", appointmentHandler.CancelAppointment)
 			}
 		}
+
+		// AI Chatbot routes
+		chatHandler := handlers.NewChatHandler()
+		chat := v1.Group("/chat")
+		chat.Use(middleware.AuthMiddleware(cfg))
+		{
+			chat.GET("/history", chatHandler.GetHistory)
+			chat.POST("/message", chatHandler.SendMessage)
+			chat.DELETE("/history", chatHandler.ClearHistory)
+		}
 		// Admin routes
 		admin := v1.Group("/admin")
 		admin.Use(middleware.AuthMiddleware(cfg))

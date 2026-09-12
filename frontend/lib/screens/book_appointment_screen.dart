@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../core/services/appointment_service.dart';
 import '../core/theme/theme.dart';
+import '../widgets/app_bottom_nav_bar.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
   const BookAppointmentScreen({super.key});
@@ -496,6 +497,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
           _buildMyBookingsTab(),
         ],
       ),
+      bottomNavigationBar: const AppBottomNavBar(currentIndex: 1),
     );
   }
 
@@ -585,76 +587,231 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
               style: const TextStyle(fontSize: 12, color: AppTheme.mutedText)),
           const SizedBox(height: 14),
 
-          // Room Cards
-          ...AppointmentService.opdRooms.map((room) {
-            final key = room['key'] as String;
-            final name = room['name'] as String;
-            final subtitle = room['subtitle'] as String;
-            final color = Color(room['color'] as int);
-            final queueCount = _queueCounts[key] ?? 0;
-            final isSelected = _selectedRoomKey == key;
+          // Room Cards (2-Column 3D Glass Grid)
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.05,
+            ),
+            itemCount: AppointmentService.opdRooms.length,
+            itemBuilder: (context, index) {
+              final room = AppointmentService.opdRooms[index];
+              final key = room['key'] as String;
+              final name = room['name'] as String;
+              final subtitle = room['subtitle'] as String;
+              final color = Color(room['color'] as int);
+              final queueCount = _queueCounts[key] ?? 0;
+              final isSelected = _selectedRoomKey == key;
 
-            return _buildRoomCard(
-              key: key,
-              name: name,
-              subtitle: subtitle,
-              color: color,
-              queueCount: queueCount,
-              isSelected: isSelected,
-            );
-          }),
+              return _buildRoomCard(
+                key: key,
+                name: name,
+                subtitle: subtitle,
+                color: color,
+                queueCount: queueCount,
+                isSelected: isSelected,
+              );
+            },
+          ),
 
           const SizedBox(height: 20),
-
-          // Notes Field
-          const Text('Additional Notes (Optional)',
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkText)),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _notesController,
-            maxLines: 3,
-            decoration: const InputDecoration(
-              hintText: 'Describe your symptoms or reason for visit...',
-              prefixIcon: Padding(
-                padding: EdgeInsets.only(left: 14, right: 8, top: 14),
-                child: Icon(Icons.edit_note_rounded, color: AppTheme.primaryTeal),
-              ),
-            ),
-          ),
-          const SizedBox(height: 28),
-
-          // Book Button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _isBooking ? null : _bookAppointment,
-              style: ElevatedButton.styleFrom(
-                minimumSize: const Size(0, 56),
-                backgroundColor: AppTheme.primaryTeal,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                elevation: 4,
-                shadowColor: AppTheme.primaryTeal.withValues(alpha: 0.4),
-              ),
-              child: _isBooking
-                  ? const SizedBox(
-                      height: 24,
-                      width: 24,
-                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                    )
-                  : const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.confirmation_number_rounded, size: 22),
-                        SizedBox(width: 10),
-                        Text('Book Appointment & Get Queue Number',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                      ],
-                    ),
-            ),
-          ),
-          const SizedBox(height: 16),
         ],
       ),
+    );
+  }
+
+  void _showBookingConfirmationSheet({
+    required String roomKey,
+    required String roomName,
+    required String roomSubtitle,
+    required Color roomColor,
+    required int queueCount,
+  }) {
+    final dateStr = _formatDate(_selectedDate);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          return Container(
+            padding: const EdgeInsets.all(24),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.only(
+                topLeft: Radius.circular(28),
+                topRight: Radius.circular(28),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black26,
+                  blurRadius: 20,
+                  offset: Offset(0, -5),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+
+                // Icon & Header
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [roomColor, roomColor.withValues(alpha: 0.75)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: roomColor.withValues(alpha: 0.35),
+                        blurRadius: 14,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
+                  ),
+                  child: Icon(_getRoomIcon(roomKey), color: Colors.white, size: 32),
+                ),
+                const SizedBox(height: 16),
+
+                const Text(
+                  'Confirm OPD Booking',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.darkText,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Review details before generating your queue ticket',
+                  style: TextStyle(fontSize: 12, color: AppTheme.mutedText),
+                ),
+                const SizedBox(height: 20),
+
+                // Detail Summary Container
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: roomColor.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: roomColor.withValues(alpha: 0.2)),
+                  ),
+                  child: Column(
+                    children: [
+                      _buildConfirmDetailRow(
+                        icon: Icons.meeting_room_rounded,
+                        label: 'OPD Room',
+                        value: roomName,
+                        color: roomColor,
+                      ),
+                      const Divider(height: 20, thickness: 0.8),
+                      _buildConfirmDetailRow(
+                        icon: Icons.calendar_today_rounded,
+                        label: 'Appointment Date',
+                        value: dateStr,
+                        color: AppTheme.primarySkyBlue,
+                      ),
+                      const Divider(height: 20, thickness: 0.8),
+                      _buildConfirmDetailRow(
+                        icon: Icons.groups_rounded,
+                        label: 'Live Queue Status',
+                        value: '$queueCount ahead in queue',
+                        color: AppTheme.accentGreen,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Confirm Button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _isBooking
+                        ? null
+                        : () async {
+                            Navigator.pop(ctx);
+                            await _bookAppointment();
+                          },
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(0, 54),
+                      backgroundColor: AppTheme.primaryTeal,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      elevation: 4,
+                      shadowColor: AppTheme.primaryTeal.withValues(alpha: 0.4),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 22),
+                        SizedBox(width: 10),
+                        Text(
+                          'Confirm & Get Queue Ticket',
+                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Cancel button
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel', style: TextStyle(color: AppTheme.mutedText, fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildConfirmDetailRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: color),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.mutedText)),
+            Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.darkText)),
+          ],
+        ),
+      ],
     );
   }
 
@@ -667,115 +824,128 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
     required bool isSelected,
   }) {
     return GestureDetector(
-      onTap: () => setState(() => _selectedRoomKey = key),
+      onTap: () {
+        setState(() => _selectedRoomKey = key);
+        _showBookingConfirmationSheet(
+          roomKey: key,
+          roomName: name,
+          roomSubtitle: subtitle,
+          roomColor: color,
+          queueCount: queueCount,
+        );
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
           color: isSelected ? color.withValues(alpha: 0.08) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isSelected ? color : Colors.grey.shade200,
-            width: isSelected ? 2 : 1.5,
-          ),
           boxShadow: [
             BoxShadow(
-              color: isSelected ? color.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.04),
-              blurRadius: isSelected ? 12 : 6,
-              offset: const Offset(0, 4),
+              color: isSelected ? color.withValues(alpha: 0.28) : color.withValues(alpha: 0.10),
+              blurRadius: isSelected ? 16 : 10,
+              spreadRadius: isSelected ? 1 : 0,
+              offset: const Offset(0, 6),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 5,
+              offset: const Offset(0, 2),
             ),
           ],
+          border: Border.all(
+            color: isSelected ? color : color.withValues(alpha: 0.2),
+            width: isSelected ? 2.5 : 1.5,
+          ),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Room icon container
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: isSelected ? color : color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(
-                _getRoomIcon(key),
-                color: isSelected ? Colors.white : color,
-                size: 26,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name,
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: isSelected ? color : AppTheme.darkText,
-                      )),
-                  const SizedBox(height: 2),
-                  Text(subtitle,
-                      style: const TextStyle(fontSize: 12, color: AppTheme.mutedText)),
-                ],
-              ),
-            ),
-            // Queue count badge
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+            // Top Row: 3D Gradient Icon Container & Queue Badge
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: _isLoadingQueues
-                        ? Colors.grey.shade200
-                        : (queueCount > 15
-                            ? AppTheme.errorRed.withValues(alpha: 0.12)
-                            : queueCount > 8
-                                ? Colors.orange.withValues(alpha: 0.12)
-                                : AppTheme.accentGreen.withValues(alpha: 0.12)),
-                    borderRadius: BorderRadius.circular(20),
+                    gradient: LinearGradient(
+                      colors: isSelected
+                          ? [color, color.withValues(alpha: 0.8)]
+                          : [color.withValues(alpha: 0.15), color.withValues(alpha: 0.05)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: color.withValues(alpha: 0.3)),
                   ),
-                  child: _isLoadingQueues
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(
-                          '$queueCount',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                            color: queueCount > 15
-                                ? AppTheme.errorRed
-                                : queueCount > 8
-                                    ? Colors.orange.shade700
-                                    : AppTheme.accentGreen,
-                          ),
-                        ),
+                  child: Icon(
+                    _getRoomIcon(key),
+                    color: isSelected ? Colors.white : color,
+                    size: 22,
+                  ),
                 ),
-                const SizedBox(height: 2),
-                Text('in queue', style: TextStyle(fontSize: 10, color: AppTheme.mutedText.withValues(alpha: 0.7))),
+                // Queue Badge & Selection Check
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isSelected ? color : color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (isSelected)
+                        const Padding(
+                          padding: EdgeInsets.only(right: 3),
+                          child: Icon(Icons.check_circle_rounded, color: Colors.white, size: 12),
+                        ),
+                      _isLoadingQueues
+                          ? const SizedBox(
+                              width: 10,
+                              height: 10,
+                              child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.grey),
+                            )
+                          : Text(
+                              '$queueCount in q',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected ? Colors.white : color,
+                              ),
+                            ),
+                    ],
+                  ),
+                ),
               ],
             ),
-            const SizedBox(width: 8),
-            // Selection indicator
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isSelected ? color : Colors.transparent,
-                border: Border.all(
-                  color: isSelected ? color : Colors.grey.shade400,
-                  width: 2,
+            
+            // Bottom Info Column
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected ? color : AppTheme.darkText,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              child: isSelected
-                  ? const Icon(Icons.check_rounded, color: Colors.white, size: 14)
-                  : null,
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.mutedText.withValues(alpha: 0.85),
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
           ],
         ),
