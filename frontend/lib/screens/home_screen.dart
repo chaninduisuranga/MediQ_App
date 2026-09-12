@@ -1677,42 +1677,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     _buildUpcomingAppointmentCard(),
                     const SizedBox(height: 24),
 
-                    // HEALTH INSIGHTS SECTION
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          "Health Insights",
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: () => Navigator.pushNamed(context, '/symptom-checker'),
-                          child: const Row(
-                            children: [
-                              Text(
-                                "View all",
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF2563EB),
-                                ),
-                              ),
-                              SizedBox(width: 2),
-                              Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFF2563EB)),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 14),
-
-                    // Health Insight Card matching Reference UI
-                    _buildHealthInsightCard(),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
                   ],
                 ),
               ),
@@ -1943,79 +1908,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  // HEALTH INSIGHT CARD WIDGET
-  Widget _buildHealthInsightCard() {
-    return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, '/symptom-checker'),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFFF1F5F9)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    "How to maintain a\nhealthy heart",
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0F172A),
-                      height: 1.3,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    "5 min read",
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF94A3B8),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Heart Illustration Image / Graphic
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Center(
-                child: Image.asset(
-                  'assets/images/health_vitals.png',
-                  width: 55,
-                  height: 55,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.favorite_rounded,
-                    size: 40,
-                    color: Color(0xFFEF4444),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
