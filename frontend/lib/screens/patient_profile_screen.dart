@@ -33,7 +33,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Profile photo updated successfully!'),
-              backgroundColor: AppTheme.primaryTeal,
+              backgroundColor: Color(0xFF2563EB),
               behavior: SnackBarBehavior.floating,
             ),
           );
@@ -83,17 +83,17 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
             return Padding(
               padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-                left: 20,
-                right: 20,
-                top: 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                left: 24,
+                right: 24,
+                top: 24,
               ),
               child: SingleChildScrollView(
                 child: Column(
@@ -105,31 +105,45 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                       children: [
                         const Text(
                           'Edit Patient Profile',
-                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close_rounded),
+                          icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
                           onPressed: () => Navigator.pop(context),
                         ),
                       ],
                     ),
-                    const Divider(),
+                    const Divider(color: Color(0xFFE2E8F0)),
                     const SizedBox(height: 12),
 
-                    const Text('Full Name', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    const Text('Full Name', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF475569))),
                     const SizedBox(height: 6),
                     TextField(
                       controller: fullNameController,
-                      decoration: const InputDecoration(hintText: 'Full Name'),
+                      decoration: InputDecoration(
+                        hintText: 'Full Name',
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
+                      ),
                     ),
                     const SizedBox(height: 12),
 
-                    const Text('Phone Number', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    const Text('Phone Number', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF475569))),
                     const SizedBox(height: 6),
                     TextField(
                       controller: phoneController,
                       keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(hintText: 'Phone Number'),
+                      decoration: InputDecoration(
+                        hintText: 'Phone Number',
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
+                      ),
                     ),
                     const SizedBox(height: 12),
 
@@ -139,10 +153,15 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Gender', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                              const Text('Gender', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF475569))),
                               const SizedBox(height: 6),
                               DropdownButtonFormField<String>(
                                 initialValue: selectedGender,
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: const Color(0xFFF8FAFC),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                                ),
                                 items: ['Male', 'Female', 'Other'].map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
                                 onChanged: (v) => setSheetState(() => selectedGender = v!),
                               ),
@@ -154,10 +173,15 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Civil Status', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                              const Text('Civil Status', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF475569))),
                               const SizedBox(height: 6),
                               DropdownButtonFormField<String>(
                                 initialValue: selectedCivilStatus,
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: const Color(0xFFF8FAFC),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                                ),
                                 items: ['Single', 'Married', 'Other'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                                 onChanged: (v) => setSheetState(() => selectedCivilStatus = v!),
                               ),
@@ -168,12 +192,19 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    const Text('Address', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    const Text('Address', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF475569))),
                     const SizedBox(height: 6),
                     TextField(
                       controller: addressController,
                       maxLines: 2,
-                      decoration: const InputDecoration(hintText: 'Address'),
+                      decoration: InputDecoration(
+                        hintText: 'Address',
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
+                      ),
                     ),
                     const SizedBox(height: 12),
 
@@ -183,10 +214,15 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('District', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                              const Text('District', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF475569))),
                               const SizedBox(height: 6),
                               DropdownButtonFormField<String>(
                                 initialValue: selectedDistrict,
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: const Color(0xFFF8FAFC),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                                ),
                                 items: districts.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
                                 onChanged: (v) => setSheetState(() => selectedDistrict = v!),
                               ),
@@ -198,10 +234,15 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Blood Group', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                              const Text('Blood Group', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF475569))),
                               const SizedBox(height: 6),
                               DropdownButtonFormField<String>(
                                 initialValue: selectedBloodGroup,
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: const Color(0xFFF8FAFC),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                                ),
                                 items: bloodGroups.map((bg) => DropdownMenuItem(value: bg, child: Text(bg))).toList(),
                                 onChanged: (v) => setSheetState(() => selectedBloodGroup = v!),
                               ),
@@ -212,74 +253,118 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    const Text('Emergency Contact Name', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    const Text('Emergency Contact Name', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF475569))),
                     const SizedBox(height: 6),
                     TextField(
                       controller: emergencyNameController,
-                      decoration: const InputDecoration(hintText: 'Emergency Contact Name'),
+                      decoration: InputDecoration(
+                        hintText: 'Emergency Contact Name',
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                      ),
                     ),
                     const SizedBox(height: 12),
 
-                    const Text('Emergency Contact Phone', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    const Text('Emergency Contact Phone', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF475569))),
                     const SizedBox(height: 6),
                     TextField(
                       controller: emergencyPhoneController,
                       keyboardType: TextInputType.phone,
-                      decoration: const InputDecoration(hintText: 'Emergency Contact Phone'),
+                      decoration: InputDecoration(
+                        hintText: 'Emergency Contact Phone',
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                      ),
                     ),
                     const SizedBox(height: 12),
 
-                    const Text('Allergies', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    const Text('Allergies', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF475569))),
                     const SizedBox(height: 6),
                     TextField(
                       controller: allergiesController,
-                      decoration: const InputDecoration(hintText: 'Drug / Food Allergies'),
+                      decoration: InputDecoration(
+                        hintText: 'Drug / Food Allergies',
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                      ),
                     ),
                     const SizedBox(height: 12),
 
-                    const Text('Pre-existing Medical Conditions', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    const Text('Pre-existing Medical Conditions', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF475569))),
                     const SizedBox(height: 6),
                     TextField(
                       controller: medicalConditionsController,
                       maxLines: 2,
-                      decoration: const InputDecoration(hintText: 'Medical Conditions'),
+                      decoration: InputDecoration(
+                        hintText: 'Medical Conditions',
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                      ),
                     ),
                     const SizedBox(height: 24),
 
                     SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          final messenger = ScaffoldMessenger.of(context);
-                          Navigator.pop(context);
-                          setState(() => _isLoading = true);
+                      height: 52,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          onPressed: () async {
+                            final messenger = ScaffoldMessenger.of(context);
+                            Navigator.pop(context);
+                            setState(() => _isLoading = true);
 
-                          final res = await AuthService.updateProfile(
-                            fullName: fullNameController.text,
-                            phone: phoneController.text,
-                            gender: selectedGender,
-                            dateOfBirth: user['date_of_birth'] ?? '',
-                            civilStatus: selectedCivilStatus,
-                            address: addressController.text,
-                            district: selectedDistrict,
-                            emergencyContactName: emergencyNameController.text,
-                            emergencyContactPhone: emergencyPhoneController.text,
-                            bloodGroup: selectedBloodGroup,
-                            allergies: allergiesController.text,
-                            medicalConditions: medicalConditionsController.text,
-                          );
-
-                          if (mounted) {
-                            setState(() => _isLoading = false);
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text(res['message'] ?? 'Profile updated'),
-                                backgroundColor: res['success'] == true ? AppTheme.primaryTeal : AppTheme.errorRed,
-                              ),
+                            final res = await AuthService.updateProfile(
+                              fullName: fullNameController.text,
+                              phone: phoneController.text,
+                              gender: selectedGender,
+                              dateOfBirth: user['date_of_birth'] ?? '',
+                              civilStatus: selectedCivilStatus,
+                              address: addressController.text,
+                              district: selectedDistrict,
+                              emergencyContactName: emergencyNameController.text,
+                              emergencyContactPhone: emergencyPhoneController.text,
+                              bloodGroup: selectedBloodGroup,
+                              allergies: allergiesController.text,
+                              medicalConditions: medicalConditionsController.text,
                             );
-                          }
-                        },
-                        child: const Text('Save Changes'),
+
+                            if (mounted) {
+                              setState(() => _isLoading = false);
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(res['message'] ?? 'Profile updated'),
+                                  backgroundColor: res['success'] == true ? const Color(0xFF2563EB) : AppTheme.errorRed,
+                                ),
+                              );
+                            }
+                          },
+                          child: const Text(
+                            'Save Changes',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -297,26 +382,27 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(
             children: [
               Icon(Icons.warning_amber_rounded, color: AppTheme.errorRed, size: 28),
               SizedBox(width: 10),
-              Text('Delete Account?'),
+              Text('Delete Account?', style: TextStyle(fontWeight: FontWeight.bold)),
             ],
           ),
           content: const Text(
             'Are you sure you want to permanently delete your MediQ patient profile? This action cannot be undone.',
-            style: TextStyle(fontSize: 14),
+            style: TextStyle(fontSize: 14, color: Color(0xFF475569)),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
+              child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.errorRed,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () async {
                 final messenger = ScaffoldMessenger.of(context);
@@ -346,7 +432,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   }
                 }
               },
-              child: const Text('Delete Permanently'),
+              child: const Text('Delete Permanently', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ],
         );
@@ -372,39 +458,58 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     final medicalConditions = user['medical_conditions'] ?? 'None';
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Text(LanguageService.tr('patient_profile')),
+        backgroundColor: const Color(0xFF0F172A),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: Text(
+          LanguageService.tr('patient_profile'),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            tooltip: LanguageService.tr('edit_profile'),
-            onPressed: _showEditProfileSheet,
+          Container(
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.edit_outlined, color: Colors.white, size: 20),
+              tooltip: LanguageService.tr('edit_profile'),
+              onPressed: _showEditProfileSheet,
+            ),
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryTeal))
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)))
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
               child: Column(
                 children: [
-                  // Profile Header Card
+                  // 1. Ultra-Creative Hero Header Card with Glassmorphic 3D Ring
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(22),
                     decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
-                      borderRadius: BorderRadius.circular(20),
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(
-                          color: AppTheme.primaryTeal.withValues(alpha: 0.25),
-                          blurRadius: 15,
-                          offset: const Offset(0, 8),
+                          color: const Color(0xFF1E3A8A).withValues(alpha: 0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
                         ),
                       ],
                     ),
                     child: Column(
                       children: [
+                        // 3D Neon Ring Avatar
                         ValueListenableBuilder<String?>(
                           valueListenable: AuthService.profilePhotoNotifier,
                           builder: (context, photoPath, _) {
@@ -413,33 +518,35 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                               alignment: Alignment.center,
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.all(3),
+                                  padding: const EdgeInsets.all(4),
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white.withValues(alpha: 0.8), width: 2.5),
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFF38BDF8), Color(0xFF818CF8), Color(0xFFC084FC)],
+                                    ),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.15),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
+                                        color: const Color(0xFF38BDF8).withValues(alpha: 0.5),
+                                        blurRadius: 16,
+                                        spreadRadius: 2,
                                       ),
                                     ],
                                   ),
                                   child: CircleAvatar(
-                                    radius: 44,
+                                    radius: 46,
                                     backgroundColor: Colors.white,
                                     child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(44),
+                                      borderRadius: BorderRadius.circular(46),
                                       child: hasPhoto
                                           ? Image.file(
                                               File(photoPath),
-                                              width: 88,
-                                              height: 88,
+                                              width: 92,
+                                              height: 92,
                                               fit: BoxFit.cover,
                                             )
                                           : Text(
                                               fullName.isNotEmpty ? fullName[0].toUpperCase() : 'P',
-                                              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold, color: AppTheme.primaryTeal),
+                                              style: const TextStyle(fontSize: 38, fontWeight: FontWeight.bold, color: Color(0xFF1E3A8A)),
                                             ),
                                     ),
                                   ),
@@ -450,21 +557,21 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                                   child: GestureDetector(
                                     onTap: _pickProfileImage,
                                     child: Container(
-                                      padding: const EdgeInsets.all(7),
+                                      padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
                                         color: Colors.white,
                                         shape: BoxShape.circle,
                                         boxShadow: [
                                           BoxShadow(
                                             color: Colors.black.withValues(alpha: 0.25),
-                                            blurRadius: 6,
-                                            offset: const Offset(0, 2),
+                                            blurRadius: 8,
+                                            offset: const Offset(0, 3),
                                           ),
                                         ],
                                       ),
                                       child: const Icon(
                                         Icons.camera_alt_rounded,
-                                        color: AppTheme.primaryTeal,
+                                        color: Color(0xFF2563EB),
                                         size: 18,
                                       ),
                                     ),
@@ -474,21 +581,76 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                             );
                           },
                         ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 14),
                         Text(
                           fullName,
-                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white),
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.3),
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 6),
+                        
+                        // NIC & Blood Group Tags
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 6,
+                          alignment: WrapAlignment.center,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: const BoxDecoration(color: Color(0xFF4ADE80), shape: BoxShape.circle),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'NIC: $nic',
+                                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4444).withValues(alpha: 0.25),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: const Color(0xFFFCA5A5).withValues(alpha: 0.3)),
+                              ),
+                              child: Text(
+                                '🩸 Blood: $bloodGroup',
+                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 18),
+                        
+                        // Quick Stats Row inside Header
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(12),
+                            color: Colors.white.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
                           ),
-                          child: Text(
-                            '${LanguageService.tr('nic')}: $nic',
-                            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _buildHeaderStatItem('GENDER', gender),
+                              Container(width: 1, height: 28, color: Colors.white.withValues(alpha: 0.2)),
+                              _buildHeaderStatItem('DISTRICT', district),
+                              Container(width: 1, height: 28, color: Colors.white.withValues(alpha: 0.2)),
+                              _buildHeaderStatItem('STATUS', civilStatus),
+                            ],
                           ),
                         ),
                       ],
@@ -497,9 +659,10 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   const SizedBox(height: 20),
 
                   // Section 1: Personal Details
-                  _buildSectionCard(
+                  _buildGlassSectionCard(
                     title: LanguageService.tr('personal_info'),
-                    icon: Icons.person_outline_rounded,
+                    icon: Icons.person_rounded,
+                    iconGradientColors: [const Color(0xFF2563EB), const Color(0xFF3B82F6)],
                     items: [
                       _buildInfoRow(LanguageService.tr('full_name'), fullName),
                       _buildInfoRow(LanguageService.tr('nic'), nic),
@@ -511,9 +674,10 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   const SizedBox(height: 16),
 
                   // Section 2: Contact Details
-                  _buildSectionCard(
+                  _buildGlassSectionCard(
                     title: LanguageService.tr('contact_location'),
-                    icon: Icons.contact_mail_outlined,
+                    icon: Icons.contact_mail_rounded,
+                    iconGradientColors: [const Color(0xFF0EA5E9), const Color(0xFF38BDF8)],
                     items: [
                       _buildInfoRow(LanguageService.tr('phone'), phone),
                       _buildInfoRow(LanguageService.tr('address'), address),
@@ -523,9 +687,10 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   const SizedBox(height: 16),
 
                   // Section 3: Emergency Contact
-                  _buildSectionCard(
+                  _buildGlassSectionCard(
                     title: LanguageService.tr('emergency_contact'),
-                    icon: Icons.phone_in_talk_outlined,
+                    icon: Icons.phone_in_talk_rounded,
+                    iconGradientColors: [const Color(0xFFEF4444), const Color(0xFFDC2626)],
                     items: [
                       _buildInfoRow('Contact Person', emergencyName),
                       _buildInfoRow('Emergency Phone', emergencyPhone),
@@ -534,42 +699,74 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                   const SizedBox(height: 16),
 
                   // Section 4: Medical Background
-                  _buildSectionCard(
+                  _buildGlassSectionCard(
                     title: LanguageService.tr('medical_background'),
-                    icon: Icons.medical_information_outlined,
+                    icon: Icons.medical_information_rounded,
+                    iconGradientColors: [const Color(0xFF10B981), const Color(0xFF34D399)],
                     items: [
                       _buildInfoRow(LanguageService.tr('blood_group'), bloodGroup),
                       _buildInfoRow(LanguageService.tr('allergies'), allergies),
                       _buildInfoRow(LanguageService.tr('medical_conditions'), medicalConditions),
                     ],
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
 
                   // Action Buttons: Edit & Delete
                   Row(
                     children: [
                       Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: _showEditProfileSheet,
-                          icon: const Icon(Icons.edit_rounded, size: 18),
-                          label: Text(LanguageService.tr('edit_profile')),
+                        child: Container(
+                          height: 50,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              shadowColor: Colors.transparent,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            onPressed: _showEditProfileSheet,
+                            icon: const Icon(Icons.edit_rounded, size: 18, color: Colors.white),
+                            label: Text(
+                              LanguageService.tr('edit_profile'),
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: OutlinedButton.icon(
-                          style: OutlinedButton.styleFrom(
-                            side: const BorderSide(color: AppTheme.errorRed, width: 1.5),
-                            foregroundColor: AppTheme.errorRed,
+                        child: SizedBox(
+                          height: 50,
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFEF2F2),
+                              side: BorderSide(color: const Color(0xFFFCA5A5).withValues(alpha: 0.5), width: 1.5),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
+                            onPressed: _showDeleteAccountDialog,
+                            icon: const Icon(Icons.delete_forever_rounded, color: AppTheme.errorRed, size: 20),
+                            label: Text(
+                              LanguageService.tr('delete_profile'),
+                              style: const TextStyle(color: AppTheme.errorRed, fontWeight: FontWeight.bold),
+                            ),
                           ),
-                          onPressed: _showDeleteAccountDialog,
-                          icon: const Icon(Icons.delete_forever_rounded, color: AppTheme.errorRed, size: 18),
-                          label: Text(LanguageService.tr('delete_profile'), style: const TextStyle(color: AppTheme.errorRed)),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -577,15 +774,50 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     );
   }
 
-  Widget _buildSectionCard({
+  Widget _buildHeaderStatItem(String label, String value) {
+    return Column(
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w800,
+            color: Colors.white.withValues(alpha: 0.7),
+            letterSpacing: 1.0,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGlassSectionCard({
     required String title,
     required IconData icon,
+    required List<Color> iconGradientColors,
     required List<Widget> items,
   }) {
-    return Card(
-      elevation: 2,
-      shadowColor: Colors.black.withValues(alpha: 0.05),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
@@ -593,17 +825,36 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
           children: [
             Row(
               children: [
-                Icon(icon, color: AppTheme.primaryTeal, size: 22),
-                const SizedBox(width: 8),
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: iconGradientColors,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: iconGradientColors.first.withValues(alpha: 0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 18),
+                ),
+                const SizedBox(width: 12),
                 Text(
                   title,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            const Divider(),
-            const SizedBox(height: 8),
+            const Divider(color: Color(0xFFF1F5F9)),
+            const SizedBox(height: 6),
             ...items,
           ],
         ),
@@ -621,13 +872,13 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
             width: 130,
             child: Text(
               label,
-              style: const TextStyle(fontSize: 13, color: AppTheme.mutedText, fontWeight: FontWeight.w500),
+              style: const TextStyle(fontSize: 13, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(fontSize: 13, color: AppTheme.darkText, fontWeight: FontWeight.w600),
+              style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B), fontWeight: FontWeight.w600),
             ),
           ),
         ],
