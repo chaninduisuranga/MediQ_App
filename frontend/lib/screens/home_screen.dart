@@ -1573,7 +1573,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           child: IconButton(
                             icon: const Icon(Icons.tune_rounded, color: Color(0xFF2563EB), size: 22),
-                            onPressed: _showChooseOPDRoomSheet,
+                            onPressed: () {
+                              FocusScope.of(context).unfocus();
+                            },
                           ),
                         ),
                       ],
@@ -1809,7 +1811,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         GestureDetector(
-                          onTap: _showChooseOPDRoomSheet,
+                          onTap: _openBookAppointment,
                           child: const Row(
                             children: [
                               Text(
