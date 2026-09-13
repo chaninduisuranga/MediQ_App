@@ -921,99 +921,212 @@ class _HomeScreenState extends State<HomeScreen> {
         return Scaffold(
           backgroundColor: const Color(0xFFF8FAFC),
           
-          // Drawer menu
+          // Ultra-Modern Glassmorphic Navigation Drawer
           drawer: Drawer(
+            backgroundColor: const Color(0xFFF8FAFC),
             child: Column(
               children: [
-                UserAccountsDrawerHeader(
+                // 1. Ultra-Modern Glassmorphic Header Card
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.only(
+                    top: MediaQuery.of(context).padding.top + 20,
+                    bottom: 24,
+                    left: 20,
+                    right: 20,
+                  ),
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Color(0xFF1D4ED8), Color(0xFF3B82F6)],
+                      colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF2563EB)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Color(0x331E3A8A),
+                        blurRadius: 16,
+                        offset: Offset(0, 8),
+                      ),
+                    ],
                   ),
-                  currentAccountPicture: ValueListenableBuilder<String?>(
-                    valueListenable: AuthService.profilePhotoNotifier,
-                    builder: (context, photoPath, _) {
-                      final hasPhoto = photoPath != null && photoPath.isNotEmpty && File(photoPath).existsSync();
-                      return CircleAvatar(
-                        backgroundColor: Colors.white,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(36),
-                          child: hasPhoto
-                              ? Image.file(
-                                  File(photoPath),
-                                  width: 72,
-                                  height: 72,
-                                  fit: BoxFit.cover,
-                                )
-                              : Text(
-                                  fullName.isNotEmpty ? fullName[0].toUpperCase() : 'P',
-                                  style: const TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xFF2563EB),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          // 3D Avatar Ring with Glow
+                          ValueListenableBuilder<String?>(
+                            valueListenable: AuthService.profilePhotoNotifier,
+                            builder: (context, photoPath, _) {
+                              final hasPhoto = photoPath != null && photoPath.isNotEmpty && File(photoPath).existsSync();
+                              return Container(
+                                padding: const EdgeInsets.all(3),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF38BDF8), Color(0xFF818CF8), Color(0xFFC084FC)],
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF38BDF8).withValues(alpha: 0.5),
+                                      blurRadius: 12,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                                child: CircleAvatar(
+                                  radius: 30,
+                                  backgroundColor: Colors.white,
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(30),
+                                    child: hasPhoto
+                                        ? Image.file(
+                                            File(photoPath),
+                                            width: 60,
+                                            height: 60,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : Text(
+                                            fullName.isNotEmpty ? fullName[0].toUpperCase() : 'P',
+                                            style: const TextStyle(
+                                              fontSize: 26,
+                                              fontWeight: FontWeight.bold,
+                                              color: Color(0xFF1E3A8A),
+                                            ),
+                                          ),
                                   ),
                                 ),
-                        ),
-                      );
-                    },
+                              );
+                            },
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  fullName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 6,
+                                        height: 6,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFF4ADE80),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'NIC: $nic • $phone',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                  accountName: Text(
-                    fullName,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  accountEmail: Text('NIC: $nic | Phone: $phone'),
                 ),
 
+                // 2. Scrollable Glass Menu Categories
                 Expanded(
                   child: ListView(
-                    padding: EdgeInsets.zero,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     children: [
-                      ListTile(
-                        leading: const Icon(Icons.smart_toy_outlined, color: Color(0xFF2563EB)),
-                        title: const Text('MediQ AI Assistant', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2563EB))),
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                          decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(8)),
-                          child: const Text('AI', style: TextStyle(color: Color(0xFF2563EB), fontSize: 10, fontWeight: FontWeight.bold)),
+                      // --- CORE SERVICES CATEGORY ---
+                      const Padding(
+                        padding: EdgeInsets.only(left: 8, top: 8, bottom: 8),
+                        child: Text(
+                          'CORE SERVICES',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF94A3B8),
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+                      
+                      // AI Assistant
+                      _buildModernDrawerTile(
+                        icon: Icons.smart_toy_rounded,
+                        iconGradientColors: [const Color(0xFF6366F1), const Color(0xFFA855F7)],
+                        title: 'MediQ AI Assistant',
+                        titleColor: const Color(0xFF4F46E5),
+                        badge: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(colors: [Color(0xFF818CF8), Color(0xFFC084FC)]),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(color: const Color(0xFF818CF8).withValues(alpha: 0.4), blurRadius: 6),
+                            ],
+                          ),
+                          child: const Text('✨ AI', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                         ),
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.pushNamed(context, '/ai-chat');
                         },
                       ),
-                      ListTile(
-                        leading: const Icon(Icons.person_outline_rounded, color: Color(0xFF2563EB)),
-                        title: Text(LanguageService.tr('menu_my_profile'), style: const TextStyle(fontWeight: FontWeight.w600)),
+
+                      // My Profile
+                      _buildModernDrawerTile(
+                        icon: Icons.person_rounded,
+                        iconGradientColors: [const Color(0xFF2563EB), const Color(0xFF3B82F6)],
+                        title: LanguageService.tr('menu_my_profile'),
                         onTap: () {
                           Navigator.pop(context);
                           Navigator.pushNamed(context, '/profile');
                         },
                       ),
-                      ListTile(
-                        leading: Stack(
-                          children: [
-                            const Icon(Icons.notifications_none_rounded, color: Color(0xFF2563EB)),
-                            if (_unreadNotificationCount > 0)
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: const BoxDecoration(color: AppTheme.errorRed, shape: BoxShape.circle),
-                                ),
-                              ),
-                          ],
-                        ),
-                        title: Text(LanguageService.tr('menu_notifications'), style: const TextStyle(fontWeight: FontWeight.w600)),
-                        trailing: _unreadNotificationCount > 0
+
+                      // Notifications
+                      _buildModernDrawerTile(
+                        icon: Icons.notifications_rounded,
+                        iconGradientColors: [const Color(0xFFF59E0B), const Color(0xFFFBBF24)],
+                        title: LanguageService.tr('menu_notifications'),
+                        badge: _unreadNotificationCount > 0
                             ? Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(color: AppTheme.errorRed, borderRadius: BorderRadius.circular(10)),
-                                child: Text('$_unreadNotificationCount', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.errorRed,
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: [
+                                    BoxShadow(color: AppTheme.errorRed.withValues(alpha: 0.4), blurRadius: 6),
+                                  ],
+                                ),
+                                child: Text(
+                                  '$_unreadNotificationCount',
+                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                ),
                               )
                             : null,
                         onTap: () {
@@ -1021,60 +1134,89 @@ class _HomeScreenState extends State<HomeScreen> {
                           _showNotificationsSheet();
                         },
                       ),
-                      ListTile(
-                        leading: const Icon(Icons.family_restroom_rounded, color: Color(0xFF8B5CF6)),
-                        title: Text(LanguageService.tr('menu_family_cards'), style: const TextStyle(fontWeight: FontWeight.w600)),
+
+                      // Family Profiles
+                      _buildModernDrawerTile(
+                        icon: Icons.family_restroom_rounded,
+                        iconGradientColors: [const Color(0xFF8B5CF6), const Color(0xFFA78BFA)],
+                        title: LanguageService.tr('menu_family_cards'),
                         onTap: () {
                           Navigator.pop(context);
                           _showFamilyProfilesDialog();
                         },
                       ),
 
-                      const Divider(),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16, top: 4, bottom: 4),
-                        child: Text(LanguageService.tr('menu_opd_assistance'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B), letterSpacing: 0.5)),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 10),
+                        child: Divider(height: 1, color: Color(0xFFE2E8F0)),
                       ),
 
-                      ListTile(
-                        leading: const Icon(Icons.phone_in_talk_rounded, color: Color(0xFFEF4444)),
-                        title: Text(LanguageService.tr('menu_emergency'), style: const TextStyle(fontWeight: FontWeight.w600)),
-                        onTap: () {
-                          Navigator.pop(context);
-                          _showEmergencyHelplineDialog();
-                        },
+                      // --- OPD ASSISTANCE CATEGORY ---
+                      const Padding(
+                        padding: EdgeInsets.only(left: 8, top: 4, bottom: 8),
+                        child: Text(
+                          'OPD ASSISTANCE',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF94A3B8),
+                            letterSpacing: 1.2,
+                          ),
+                        ),
                       ),
-                      ListTile(
-                        leading: const Icon(Icons.map_outlined, color: Color(0xFF0077B6)),
-                        title: Text(LanguageService.tr('menu_counter_guide'), style: const TextStyle(fontWeight: FontWeight.w600)),
+
+                      // Hospital Guide
+                      _buildModernDrawerTile(
+                        icon: Icons.map_rounded,
+                        iconGradientColors: [const Color(0xFF0EA5E9), const Color(0xFF38BDF8)],
+                        title: LanguageService.tr('menu_counter_guide'),
                         onTap: () {
                           Navigator.pop(context);
                           _showHospitalGuideSheet();
                         },
                       ),
-                      ListTile(
-                        leading: const Icon(Icons.help_outline_rounded, color: Color(0xFF059669)),
-                        title: Text(LanguageService.tr('menu_help_faq'), style: const TextStyle(fontWeight: FontWeight.w600)),
+
+                      // Help & FAQ
+                      _buildModernDrawerTile(
+                        icon: Icons.help_center_rounded,
+                        iconGradientColors: [const Color(0xFF10B981), const Color(0xFF34D399)],
+                        title: LanguageService.tr('menu_help_faq'),
                         onTap: () {
                           Navigator.pop(context);
                           _showHelpFaqSheet();
                         },
                       ),
 
-                      const Divider(),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 16, top: 4, bottom: 4),
-                        child: Text(LanguageService.tr('menu_preferences'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF64748B), letterSpacing: 0.5)),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 10),
+                        child: Divider(height: 1, color: Color(0xFFE2E8F0)),
                       ),
 
-                      ListTile(
-                        leading: const Icon(Icons.language_rounded, color: Color(0xFF2563EB)),
-                        title: Text(LanguageService.tr('menu_language'), style: const TextStyle(fontWeight: FontWeight.w600)),
-                        trailing: Container(
+                      // --- PREFERENCES CATEGORY ---
+                      const Padding(
+                        padding: EdgeInsets.only(left: 8, top: 4, bottom: 8),
+                        child: Text(
+                          'PREFERENCES',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF94A3B8),
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+
+                      // Language Selector
+                      _buildModernDrawerTile(
+                        icon: Icons.language_rounded,
+                        iconGradientColors: [const Color(0xFF2563EB), const Color(0xFF60A5FA)],
+                        title: LanguageService.tr('menu_language'),
+                        badge: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+                            color: const Color(0xFFEFF6FF),
                             borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFBFDBFE)),
                           ),
                           child: Text(
                             LanguageService.currentLanguage == 'si'
@@ -1090,17 +1232,23 @@ class _HomeScreenState extends State<HomeScreen> {
                           _showLanguageSelectorDialog();
                         },
                       ),
-                      ListTile(
-                        leading: const Icon(Icons.settings_outlined, color: Color(0xFF0F172A)),
-                        title: Text(LanguageService.tr('menu_settings'), style: const TextStyle(fontWeight: FontWeight.w600)),
+
+                      // App Settings
+                      _buildModernDrawerTile(
+                        icon: Icons.settings_rounded,
+                        iconGradientColors: [const Color(0xFF64748B), const Color(0xFF94A3B8)],
+                        title: LanguageService.tr('menu_settings'),
                         onTap: () {
                           Navigator.pop(context);
                           _showAppSettingsDialog();
                         },
                       ),
-                      ListTile(
-                        leading: const Icon(Icons.info_outline_rounded, color: Color(0xFF64748B)),
-                        title: Text(LanguageService.tr('menu_app_info'), style: const TextStyle(fontWeight: FontWeight.w500)),
+
+                      // App Info
+                      _buildModernDrawerTile(
+                        icon: Icons.info_rounded,
+                        iconGradientColors: [const Color(0xFF94A3B8), const Color(0xFFCBD5E1)],
+                        title: LanguageService.tr('menu_app_info'),
                         onTap: () {
                           Navigator.pop(context);
                           showAboutDialog(
@@ -1111,25 +1259,112 @@ class _HomeScreenState extends State<HomeScreen> {
                           );
                         },
                       ),
+
+                      const SizedBox(height: 12),
+
+                      // 3. Emergency Suwa Seriya Quick Call Card
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showEmergencyHelplineDialog();
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFFFF1F2), Color(0xFFFFE4E6)],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFFECDD3)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFEF4444).withValues(alpha: 0.08),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(colors: [Color(0xFFEF4444), Color(0xFFDC2626)]),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFEF4444).withValues(alpha: 0.4),
+                                      blurRadius: 8,
+                                    ),
+                                  ],
+                                ),
+                                child: const Icon(Icons.phone_in_talk_rounded, color: Colors.white, size: 20),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: const [
+                                    Text(
+                                      'Emergency Hotline 1990',
+                                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF991B1B)),
+                                    ),
+                                    Text(
+                                      '1990 Suwa Seriya Ambulance',
+                                      style: TextStyle(fontSize: 10, color: Color(0xFFB91C1C)),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFFEF4444), size: 14),
+                            ],
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
 
-                const Divider(height: 1),
-
-                ListTile(
-                  leading: const Icon(Icons.logout_rounded, color: AppTheme.errorRed),
-                  title: Text(
-                    LanguageService.tr('menu_logout'),
-                    style: const TextStyle(color: AppTheme.errorRed, fontWeight: FontWeight.bold),
+                // 4. Modern Red-Tinted Glass Logout Footer Button
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.pop(context);
+                        AuthService.logout();
+                        Navigator.pushReplacementNamed(context, '/login');
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF2F2),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFFCA5A5).withValues(alpha: 0.5)),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.logout_rounded, color: AppTheme.errorRed, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              LanguageService.tr('menu_logout'),
+                              style: const TextStyle(
+                                color: AppTheme.errorRed,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                  onTap: () {
-                    Navigator.pop(context);
-                    AuthService.logout();
-                    Navigator.pushReplacementNamed(context, '/login');
-                  },
                 ),
-                const SizedBox(height: 12),
               ],
             ),
           ),
@@ -1908,6 +2143,66 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildModernDrawerTile({
+    required IconData icon,
+    required List<Color> iconGradientColors,
+    required String title,
+    Color? titleColor,
+    Widget? badge,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: iconGradientColors,
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: iconGradientColors.first.withValues(alpha: 0.3),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: titleColor ?? const Color(0xFF1E293B),
+                    ),
+                  ),
+                ),
+                if (badge != null) badge,
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
