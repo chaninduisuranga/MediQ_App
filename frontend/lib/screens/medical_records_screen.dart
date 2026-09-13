@@ -335,6 +335,16 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> with Single
         foregroundColor: Colors.white,
         elevation: 0,
         title: const Text('Medical Records & History', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushReplacementNamed(context, '/home');
+            }
+          },
+        ),
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: const Color(0xFF38BDF8),

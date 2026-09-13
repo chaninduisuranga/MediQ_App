@@ -467,6 +467,16 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
           LanguageService.tr('patient_profile'),
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushReplacementNamed(context, '/home');
+            }
+          },
+        ),
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 12),

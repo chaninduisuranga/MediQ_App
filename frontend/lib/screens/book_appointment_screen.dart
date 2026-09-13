@@ -481,8 +481,14 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
         title: const Text('Book OPD Appointment',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded),
-          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushReplacementNamed(context, '/home');
+            }
+          },
         ),
         bottom: TabBar(
           controller: _tabController,

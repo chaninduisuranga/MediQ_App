@@ -100,8 +100,14 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
         elevation: 0,
         title: const Text('OPD Symptom Checker', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded),
-          onPressed: () => Navigator.pop(context),
+          icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushReplacementNamed(context, '/home');
+            }
+          },
         ),
       ),
       body: SingleChildScrollView(
