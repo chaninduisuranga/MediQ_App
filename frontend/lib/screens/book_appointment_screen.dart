@@ -166,16 +166,19 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
           decoration: BoxDecoration(
-            color: isSelected ? AppTheme.primaryTeal : Colors.white,
+            gradient: isSelected
+                ? const LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)])
+                : null,
+            color: isSelected ? null : Colors.white,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isSelected ? AppTheme.primaryTeal : Colors.grey.shade300,
+              color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
               width: isSelected ? 2 : 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: isSelected ? AppTheme.primaryTeal.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.04),
-                blurRadius: isSelected ? 10 : 4,
+                color: isSelected ? const Color(0xFF2563EB).withValues(alpha: 0.35) : const Color(0xFF0F172A).withValues(alpha: 0.04),
+                blurRadius: isSelected ? 12 : 4,
                 offset: const Offset(0, 4),
               ),
             ],
@@ -187,7 +190,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                 style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.bold,
-                  color: isSelected ? Colors.white70 : AppTheme.mutedText,
+                  color: isSelected ? Colors.white70 : const Color(0xFF64748B),
                 ),
               ),
               const SizedBox(height: 4),
@@ -196,7 +199,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w900,
-                  color: isSelected ? Colors.white : AppTheme.darkText,
+                  color: isSelected ? Colors.white : const Color(0xFF0F172A),
                 ),
               ),
             ],
@@ -212,7 +215,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(res['message'] ?? (res['success'] == true ? 'Cancelled' : 'Failed')),
-          backgroundColor: res['success'] == true ? AppTheme.primaryTeal : AppTheme.errorRed,
+          backgroundColor: res['success'] == true ? const Color(0xFF2563EB) : AppTheme.errorRed,
         ),
       );
       if (res['success'] == true) _loadMyAppointments();
@@ -238,7 +241,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                   ),
                 ],
               ),
-              backgroundColor: AppTheme.accentGreen,
+              backgroundColor: const Color(0xFF10B981),
               duration: const Duration(seconds: 4),
             ),
           );
@@ -251,7 +254,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
     ScaffoldMessenger.of(ctx).showSnackBar(
       SnackBar(
         content: Text('📸 Ticket #$queueNum QR Image saved to photo gallery!'),
-        backgroundColor: AppTheme.accentGreen,
+        backgroundColor: const Color(0xFF10B981),
       ),
     );
   }
@@ -294,7 +297,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           decoration: BoxDecoration(
-                            gradient: LinearGradient(colors: [AppTheme.primaryBlue, roomColor]),
+                            gradient: LinearGradient(colors: [const Color(0xFF0F172A), roomColor]),
                             borderRadius: BorderRadius.circular(14),
                           ),
                           child: Row(
@@ -341,7 +344,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                               ),
                               const SizedBox(height: 4),
                               Text('Date: $date',
-                                  style: const TextStyle(fontSize: 12, color: AppTheme.darkText, fontWeight: FontWeight.bold)),
+                                  style: const TextStyle(fontSize: 12, color: Color(0xFF0F172A), fontWeight: FontWeight.bold)),
                             ],
                           ),
                         ),
@@ -381,7 +384,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                                   ),
                                   dataModuleStyle: const QrDataModuleStyle(
                                     dataModuleShape: QrDataModuleShape.square,
-                                    color: AppTheme.darkText,
+                                    color: Color(0xFF0F172A),
                                   ),
                                 )
                               : const SizedBox(
@@ -408,8 +411,8 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                       flex: 3,
                       child: ElevatedButton.icon(
                         onPressed: () => _downloadQRTicketImage(captureKey, ctx, queueNum, room),
-                        icon: const Icon(Icons.download_rounded, size: 18),
-                        label: const Text('Save to Gallery', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                        icon: const Icon(Icons.download_rounded, size: 18, color: Colors.white),
+                        label: const Text('Save to Gallery', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white)),
                         style: ElevatedButton.styleFrom(
                           minimumSize: const Size(0, 44),
                           backgroundColor: roomColor,
@@ -444,7 +447,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                 const SizedBox(height: 8),
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Close'),
+                  child: const Text('Close', style: TextStyle(color: Color(0xFF64748B))),
                 ),
               ],
             ),
@@ -457,11 +460,11 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
   Widget _buildInfoRow(IconData icon, String text) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: AppTheme.mutedText),
+        Icon(icon, size: 16, color: const Color(0xFF64748B)),
         const SizedBox(width: 8),
         Expanded(
           child: Text(text,
-              style: const TextStyle(fontSize: 14, color: AppTheme.darkText, fontWeight: FontWeight.w500)),
+              style: const TextStyle(fontSize: 14, color: Color(0xFF0F172A), fontWeight: FontWeight.w500)),
         ),
       ],
     );
@@ -470,19 +473,23 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
+        backgroundColor: const Color(0xFF0F172A),
+        foregroundColor: Colors.white,
+        elevation: 0,
         title: const Text('Book OPD Appointment',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 19)),
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded),
           onPressed: () => Navigator.pop(context),
         ),
         bottom: TabBar(
           controller: _tabController,
-          indicatorColor: AppTheme.primaryTeal,
+          indicatorColor: const Color(0xFF38BDF8),
           indicatorWeight: 3,
-          labelColor: AppTheme.primaryTeal,
-          unselectedLabelColor: AppTheme.mutedText,
+          labelColor: Colors.white,
+          unselectedLabelColor: const Color(0xFF94A3B8),
           labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           tabs: const [
             Tab(icon: Icon(Icons.calendar_today_rounded), text: 'Book Now'),
@@ -504,29 +511,37 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
   // ─── TAB 1: Book Appointment ──────────────────────────────────────────────
   Widget _buildBookTab() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Info Banner
+          // Info Banner Card
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppTheme.primaryBlue.withValues(alpha: 0.08), AppTheme.primaryTeal.withValues(alpha: 0.08)],
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF2563EB)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppTheme.primaryTeal.withValues(alpha: 0.25)),
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF1E3A8A).withValues(alpha: 0.25),
+                  blurRadius: 16,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
             child: Row(
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
-                    borderRadius: BorderRadius.circular(12),
+                    color: Colors.white.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.calendar_month_rounded, color: Colors.white, size: 22),
+                  child: const Icon(Icons.calendar_month_rounded, color: Color(0xFF38BDF8), size: 24),
                 ),
                 const SizedBox(width: 14),
                 const Expanded(
@@ -534,10 +549,10 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Selectable Date Window (3 Days)',
-                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.darkText)),
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white)),
                       SizedBox(height: 2),
-                      Text('Appointments can only be booked for today or within the next 2 days. Other dates are locked.',
-                          style: TextStyle(fontSize: 12, color: AppTheme.mutedText)),
+                      Text('Appointments can only be booked for today or within the next 2 days.',
+                          style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
                     ],
                   ),
                 ),
@@ -554,14 +569,14 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Select Appointment Date',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.darkText)),
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                   Text('Pick one of 3 available days',
-                      style: TextStyle(fontSize: 11, color: AppTheme.mutedText)),
+                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                 ],
               ),
               IconButton.filledTonal(
                 onPressed: _pickCustomDate,
-                icon: const Icon(Icons.date_range_rounded, color: AppTheme.primaryTeal),
+                icon: const Icon(Icons.date_range_rounded, color: Color(0xFF2563EB)),
                 tooltip: 'Calendar Picker (3-Day Limit)',
               ),
             ],
@@ -581,10 +596,10 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
           const SizedBox(height: 24),
 
           const Text('Choose OPD Room',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.darkText)),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
           const SizedBox(height: 4),
           Text('Available rooms & live queue counts for ${_formatDate(_selectedDate)}',
-              style: const TextStyle(fontSize: 12, color: AppTheme.mutedText)),
+              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
           const SizedBox(height: 14),
 
           // Room Cards (2-Column 3D Glass Grid)
@@ -664,7 +679,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 20),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
+                    color: const Color(0xFFE2E8F0),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -697,13 +712,13 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.darkText,
+                    color: Color(0xFF0F172A),
                   ),
                 ),
                 const SizedBox(height: 4),
                 const Text(
                   'Review details before generating your queue ticket',
-                  style: TextStyle(fontSize: 12, color: AppTheme.mutedText),
+                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                 ),
                 const SizedBox(height: 20),
 
@@ -728,14 +743,14 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                         icon: Icons.calendar_today_rounded,
                         label: 'Appointment Date',
                         value: dateStr,
-                        color: AppTheme.primarySkyBlue,
+                        color: const Color(0xFF2563EB),
                       ),
                       const Divider(height: 20, thickness: 0.8),
                       _buildConfirmDetailRow(
                         icon: Icons.groups_rounded,
                         label: 'Live Queue Status',
                         value: '$queueCount ahead in queue',
-                        color: AppTheme.accentGreen,
+                        color: const Color(0xFF10B981),
                       ),
                     ],
                   ),
@@ -745,30 +760,44 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                 // Confirm Button
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isBooking
-                        ? null
-                        : () async {
-                            Navigator.pop(ctx);
-                            await _bookAppointment();
-                          },
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(0, 54),
-                      backgroundColor: AppTheme.primaryTeal,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      elevation: 4,
-                      shadowColor: AppTheme.primaryTeal.withValues(alpha: 0.4),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 22),
-                        SizedBox(width: 10),
-                        Text(
-                          'Confirm & Get Queue Ticket',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                  height: 52,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
                         ),
                       ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: _isBooking
+                          ? null
+                          : () async {
+                              Navigator.pop(ctx);
+                              await _bookAppointment();
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 22),
+                          SizedBox(width: 10),
+                          Text(
+                            'Confirm & Get Queue Ticket',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -777,7 +806,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                 // Cancel button
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Cancel', style: TextStyle(color: AppTheme.mutedText, fontWeight: FontWeight.w600)),
+                  child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B), fontWeight: FontWeight.w600)),
                 ),
               ],
             ),
@@ -807,8 +836,8 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.mutedText)),
-            Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.darkText)),
+            Text(label, style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+            Text(value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
           ],
         ),
       ],
@@ -862,7 +891,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // Top Row: 3D Gradient Icon Container & Queue Badge
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -886,7 +914,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                     size: 22,
                   ),
                 ),
-                // Queue Badge & Selection Check
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
@@ -921,7 +948,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
               ],
             ),
             
-            // Bottom Info Column
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -930,7 +956,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: isSelected ? color : AppTheme.darkText,
+                    color: isSelected ? color : const Color(0xFF0F172A),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -938,9 +964,9 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 11,
-                    color: AppTheme.mutedText.withValues(alpha: 0.85),
+                    color: Color(0xFF64748B),
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -975,20 +1001,20 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
     return RefreshIndicator(
       onRefresh: _loadMyAppointments,
       child: _isLoadingAppointments
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryTeal))
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)))
           : _myAppointments.isEmpty
               ? _buildEmptyBookings()
               : SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text('My OPD Appointments',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.darkText)),
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
                       const SizedBox(height: 4),
                       Text('${_myAppointments.length} active appointment(s)',
-                          style: const TextStyle(fontSize: 13, color: AppTheme.mutedText)),
+                          style: const TextStyle(fontSize: 13, color: Color(0xFF64748B))),
                       const SizedBox(height: 16),
                       ..._myAppointments.map((appt) => _buildAppointmentCard(appt)),
                     ],
@@ -1008,7 +1034,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
     final id = appt['id'] as int? ?? 0;
     final notes = appt['notes'] ?? '';
 
-    // Today's date check for showing big queue number
     final now = DateTime.now();
     final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
     final isToday = date == todayStr;
@@ -1021,11 +1046,11 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
         boxShadow: [
           BoxShadow(
             color: roomColor.withValues(alpha: 0.12),
-            blurRadius: 12,
+            blurRadius: 14,
             offset: const Offset(0, 4),
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 6,
           ),
         ],
@@ -1038,7 +1063,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
             padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [roomColor.withValues(alpha: 0.85), roomColor],
+                colors: [const Color(0xFF0F172A), roomColor],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -1062,7 +1087,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                     ],
                   ),
                 ),
-                // Status badge
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
@@ -1083,19 +1107,18 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Queue Number - Big
                 Expanded(
                   flex: 2,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Queue Number',
-                          style: TextStyle(fontSize: 11, color: AppTheme.mutedText.withValues(alpha: 0.8))),
+                      const Text('Queue Number',
+                          style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                       const SizedBox(height: 4),
                       Text(
-                        '$queueNum',
+                        '#$queueNum',
                         style: TextStyle(
-                          fontSize: 56,
+                          fontSize: 54,
                           fontWeight: FontWeight.w900,
                           color: roomColor,
                           height: 1.0,
@@ -1103,20 +1126,20 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                       ),
                       if (isToday)
                         Container(
-                          margin: const EdgeInsets.only(top: 4),
+                          margin: const EdgeInsets.only(top: 6),
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: AppTheme.accentGreen.withValues(alpha: 0.12),
+                            color: const Color(0xFF10B981).withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: AppTheme.accentGreen.withValues(alpha: 0.3)),
+                            border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
                           ),
                           child: const Text('Today\'s Slot',
-                              style: TextStyle(fontSize: 11, color: AppTheme.accentGreen, fontWeight: FontWeight.bold)),
+                              style: TextStyle(fontSize: 11, color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
                         ),
                       if (notes.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Text('Note: $notes',
-                            style: const TextStyle(fontSize: 12, color: AppTheme.mutedText),
+                            style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis),
                       ],
@@ -1125,7 +1148,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                 ),
                 const SizedBox(width: 16),
 
-                // QR Code preview (small)
                 if (qrData.isNotEmpty)
                   GestureDetector(
                     onTap: () => _showQRDialog(appt),
@@ -1136,7 +1158,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                           decoration: BoxDecoration(
                             color: Colors.white,
                             border: Border.all(color: roomColor.withValues(alpha: 0.3)),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(14),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.06),
@@ -1152,13 +1174,13 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                             eyeStyle: QrEyeStyle(eyeShape: QrEyeShape.square, color: roomColor),
                             dataModuleStyle: const QrDataModuleStyle(
                               dataModuleShape: QrDataModuleShape.square,
-                              color: AppTheme.darkText,
+                              color: Color(0xFF0F172A),
                             ),
                           ),
                         ),
                         const SizedBox(height: 6),
-                        Text('Tap to enlarge',
-                            style: TextStyle(fontSize: 10, color: AppTheme.mutedText.withValues(alpha: 0.7))),
+                        const Text('Tap to enlarge',
+                            style: TextStyle(fontSize: 10, color: Color(0xFF64748B))),
                       ],
                     ),
                   ),
@@ -1166,7 +1188,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
             ),
           ),
 
-          // Footer actions
           if (status == 'PENDING' || status == 'CONFIRMED')
             Padding(
               padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
@@ -1176,11 +1197,11 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                     child: OutlinedButton.icon(
                       onPressed: () => _showQRDialog(appt),
                       icon: Icon(Icons.qr_code_rounded, size: 18, color: roomColor),
-                      label: Text('View QR', style: TextStyle(color: roomColor)),
+                      label: Text('View QR', style: TextStyle(color: roomColor, fontWeight: FontWeight.bold)),
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size(0, 42),
                         side: BorderSide(color: roomColor.withValues(alpha: 0.5)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                   ),
@@ -1189,11 +1210,11 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                     child: OutlinedButton.icon(
                       onPressed: () => _confirmCancel(id),
                       icon: const Icon(Icons.cancel_outlined, size: 18, color: AppTheme.errorRed),
-                      label: const Text('Cancel', style: TextStyle(color: AppTheme.errorRed)),
+                      label: const Text('Cancel', style: TextStyle(color: AppTheme.errorRed, fontWeight: FontWeight.bold)),
                       style: OutlinedButton.styleFrom(
                         minimumSize: const Size(0, 42),
                         side: BorderSide(color: AppTheme.errorRed.withValues(alpha: 0.5)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                     ),
                   ),
@@ -1214,19 +1235,19 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
           children: [
             Icon(Icons.warning_amber_rounded, color: AppTheme.errorRed),
             SizedBox(width: 8),
-            Text('Cancel Appointment?'),
+            Text('Cancel Appointment?', style: TextStyle(fontWeight: FontWeight.bold)),
           ],
         ),
         content: const Text('Are you sure you want to cancel this OPD appointment?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Keep It')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Keep It', style: TextStyle(color: Color(0xFF64748B)))),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorRed),
             onPressed: () {
               Navigator.pop(ctx);
               _cancelAppointment(id);
             },
-            child: const Text('Yes, Cancel'),
+            child: const Text('Yes, Cancel', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -1245,29 +1266,30 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryTeal.withValues(alpha: 0.08),
+                  color: const Color(0xFF2563EB).withValues(alpha: 0.08),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(Icons.event_busy_rounded,
-                    size: 64, color: AppTheme.primaryTeal),
+                    size: 64, color: Color(0xFF2563EB)),
               ),
               const SizedBox(height: 20),
               const Text('No Active Bookings',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.darkText)),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
               const SizedBox(height: 8),
               const Text(
                 'You have no OPD appointments today.\nGo to Book Now tab to get your queue number.',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: AppTheme.mutedText),
+                style: TextStyle(fontSize: 14, color: Color(0xFF64748B)),
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
                 onPressed: () => _tabController.animateTo(0),
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('Book Appointment'),
+                icon: const Icon(Icons.add_rounded, color: Colors.white),
+                label: const Text('Book Appointment', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 style: ElevatedButton.styleFrom(
                   minimumSize: const Size(200, 50),
-                  backgroundColor: AppTheme.primaryTeal,
+                  backgroundColor: const Color(0xFF2563EB),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
               ),
             ],
