@@ -1,7 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../core/theme/theme.dart';
 
 class HealthVitalsScreen extends StatefulWidget {
   const HealthVitalsScreen({super.key});
@@ -47,13 +46,13 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
 
     if (bmiVal < 18.5) {
       cat = 'Underweight';
-      color = Colors.blue.shade600;
+      color = const Color(0xFF0EA5E9);
     } else if (bmiVal < 25.0) {
       cat = 'Normal Weight';
       color = const Color(0xFF10B981);
     } else if (bmiVal < 30.0) {
       cat = 'Overweight';
-      color = Colors.orange.shade700;
+      color = const Color(0xFFF59E0B);
     } else {
       cat = 'Obese';
       color = const Color(0xFFEF4444);
@@ -142,7 +141,7 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
     _sugarController.clear();
 
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Health reading logged successfully!')),
+      const SnackBar(content: Text('Health reading logged successfully!'), backgroundColor: Color(0xFF2563EB)),
     );
   }
 
@@ -156,32 +155,39 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Health Vitals & BMI', style: TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true,
+        backgroundColor: const Color(0xFF0F172A),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Health Vitals & BMI', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_rounded),
+          onPressed: () => Navigator.pop(context),
+        ),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppTheme.primaryTeal))
+          ? const Center(child: CircularProgressIndicator(color: Color(0xFF2563EB)))
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // BMI Calculator Card
+                  // 3D Glassmorphic BMI Calculator Card
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(22),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 14,
+                          color: const Color(0xFF0F172A).withValues(alpha: 0.05),
+                          blurRadius: 16,
                           offset: const Offset(0, 4),
                         ),
                       ],
-                      border: Border.all(color: Colors.grey.shade200),
+                      border: Border.all(color: const Color(0xFFF1F5F9)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,17 +197,23 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFEC4899).withValues(alpha: 0.12),
+                                gradient: const LinearGradient(colors: [Color(0xFFEC4899), Color(0xFFF43F5E)]),
                                 borderRadius: BorderRadius.circular(12),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFEC4899).withValues(alpha: 0.3),
+                                    blurRadius: 8,
+                                  ),
+                                ],
                               ),
-                              child: const Icon(Icons.monitor_weight_outlined, color: Color(0xFFEC4899), size: 24),
+                              child: const Icon(Icons.monitor_weight_rounded, color: Colors.white, size: 22),
                             ),
                             const SizedBox(width: 12),
                             const Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text('BMI Calculator', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.darkText)),
-                                Text('Body Mass Index & Ideal Weight', style: TextStyle(fontSize: 11, color: AppTheme.mutedText)),
+                                Text('BMI Calculator', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                                Text('Body Mass Index & Ideal Weight', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                               ],
                             ),
                           ],
@@ -213,9 +225,12 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
                               child: TextField(
                                 controller: _heightController,
                                 keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Height (cm)',
-                                  prefixIcon: Icon(Icons.height_rounded),
+                                  prefixIcon: const Icon(Icons.height_rounded, color: Color(0xFF2563EB)),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF8FAFC),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
                                 ),
                                 onChanged: (_) => _calculateBMI(),
                               ),
@@ -225,9 +240,12 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
                               child: TextField(
                                 controller: _weightController,
                                 keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Weight (kg)',
-                                  prefixIcon: Icon(Icons.scale_rounded),
+                                  prefixIcon: const Icon(Icons.scale_rounded, color: Color(0xFF2563EB)),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF8FAFC),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
                                 ),
                                 onChanged: (_) => _calculateBMI(),
                               ),
@@ -238,10 +256,10 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
 
                         // BMI Result Display
                         Container(
-                          padding: const EdgeInsets.all(14),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: _bmiColor.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(16),
                             border: Border.all(color: _bmiColor.withValues(alpha: 0.3)),
                           ),
                           child: Row(
@@ -249,7 +267,7 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('YOUR BMI', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.mutedText)),
+                                  const Text('YOUR BMI', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Color(0xFF64748B), letterSpacing: 0.5)),
                                   Text(
                                     _bmi.toStringAsFixed(1),
                                     style: TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: _bmiColor),
@@ -265,6 +283,9 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
                                     decoration: BoxDecoration(
                                       color: _bmiColor,
                                       borderRadius: BorderRadius.circular(10),
+                                      boxShadow: [
+                                        BoxShadow(color: _bmiColor.withValues(alpha: 0.3), blurRadius: 6),
+                                      ],
                                     ),
                                     child: Text(
                                       _bmiCategory,
@@ -274,7 +295,7 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
                                   const SizedBox(height: 4),
                                   Text(
                                     'Ideal: $_targetWeightRange',
-                                    style: const TextStyle(fontSize: 11, color: AppTheme.mutedText),
+                                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontWeight: FontWeight.w500),
                                   ),
                                 ],
                               ),
@@ -285,10 +306,10 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 22),
                   const Text(
                     'Log Daily Vitals',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
                   const SizedBox(height: 12),
 
@@ -297,8 +318,15 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.grey.shade200),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFFF1F5F9)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
                     child: Column(
                       children: [
@@ -308,9 +336,12 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
                               child: TextField(
                                 controller: _sysBpController,
                                 keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Systolic BP',
                                   hintText: '120',
+                                  filled: true,
+                                  fillColor: const Color(0xFFF8FAFC),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
                                 ),
                               ),
                             ),
@@ -319,9 +350,12 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
                               child: TextField(
                                 controller: _diaBpController,
                                 keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   labelText: 'Diastolic BP',
                                   hintText: '80',
+                                  filled: true,
+                                  fillColor: const Color(0xFFF8FAFC),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
                                 ),
                               ),
                             ),
@@ -331,23 +365,43 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
                         TextField(
                           controller: _sugarController,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             labelText: 'Fasting Blood Sugar (mg/dL)',
                             hintText: 'e.g., 95',
-                            prefixIcon: Icon(Icons.water_drop_outlined, color: AppTheme.errorRed),
+                            prefixIcon: const Icon(Icons.water_drop_rounded, color: Color(0xFFEF4444)),
+                            filled: true,
+                            fillColor: const Color(0xFFF8FAFC),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
                           ),
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         SizedBox(
                           width: double.infinity,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFEC4899),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          height: 48,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFEC4899), Color(0xFFF43F5E)],
+                              ),
+                              borderRadius: BorderRadius.circular(14),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFEC4899).withValues(alpha: 0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
                             ),
-                            icon: const Icon(Icons.bookmark_add_outlined, color: Colors.white),
-                            label: const Text('Save Vitals Log', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                            onPressed: _addVitalsLogEntry,
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                              ),
+                              icon: const Icon(Icons.bookmark_add_rounded, color: Colors.white, size: 20),
+                              label: const Text('Save Vitals Log', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                              onPressed: _addVitalsLogEntry,
+                            ),
                           ),
                         ),
                       ],
@@ -357,9 +411,9 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
                   const SizedBox(height: 24),
                   const Text(
                     'Vitals History Log',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
 
                   ListView.separated(
                     shrinkWrap: true,
@@ -373,18 +427,25 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.grey.shade200),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFF1F5F9)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF0F172A).withValues(alpha: 0.03),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
                         ),
                         child: Row(
                           children: [
                             Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: AppTheme.primaryTeal.withValues(alpha: 0.1),
+                                color: const Color(0xFF2563EB).withValues(alpha: 0.1),
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.favorite_rounded, color: AppTheme.primaryTeal, size: 20),
+                              child: const Icon(Icons.favorite_rounded, color: Color(0xFF2563EB), size: 20),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -393,18 +454,18 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
                                 children: [
                                   Text(
                                     'BP: ${item['bp']}  |  Sugar: ${item['sugar']}',
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkText),
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A)),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
                                     'Weight: ${item['weight']}  •  Logged: ${item['date']}',
-                                    style: const TextStyle(fontSize: 11, color: AppTheme.mutedText),
+                                    style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                                   ),
                                 ],
                               ),
                             ),
                             IconButton(
-                              icon: Icon(Icons.delete_outline, size: 18, color: Colors.grey.shade400),
+                              icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Color(0xFF94A3B8)),
                               onPressed: () => _deleteVitalsEntry(index),
                             ),
                           ],
@@ -412,6 +473,7 @@ class _HealthVitalsScreenState extends State<HealthVitalsScreen> {
                       );
                     },
                   ),
+                  const SizedBox(height: 16),
                 ],
               ),
             ),
