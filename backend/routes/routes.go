@@ -84,6 +84,10 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			adminUserHandler := handlers.NewAdminUserHandler()
 			admin.GET("/users", adminUserHandler.ListUsers)
 			admin.PATCH("/users/:id", adminUserHandler.UpdateUser)
+
+			adminAppointmentHandler := handlers.NewAdminAppointmentHandler()
+			admin.GET("/appointments", adminAppointmentHandler.ListAppointments)
+			admin.PATCH("/appointments/:id", adminAppointmentHandler.UpdateAppointment)
 		}
 	}
 

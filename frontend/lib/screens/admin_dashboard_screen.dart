@@ -55,6 +55,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     await Navigator.pushNamed(context, '/admin/users');
   }
 
+  Future<void> _openAppointmentManagement() async {
+    await Navigator.pushNamed(context, '/admin/appointments');
+  }
+
   Future<void> _openMedicalRecords() async {
     await Navigator.pushNamed(context, '/medical-records');
   }
@@ -267,12 +271,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       const Color(0xFFE11D48),
                       const Color(0xFFF43F5E)
                     ],
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Emergency Hotline: Dial 1990')),
-                      );
-                    },
+                    onTap: _openAppointmentManagement,
                   ),
                 ],
               ),

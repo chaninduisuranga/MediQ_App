@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../constants/constants.dart';
+import '../models/admin_appointment_model.dart';
 import '../models/admin_user_model.dart';
 import 'auth_service.dart';
 
@@ -107,6 +108,85 @@ class AdminService {
       return {'success': false, 'message': 'Unable to update this user.'};
     }
   }
+
+  static Future<Map<String, dynamic>> getAppointments({
+    String search = '',
+    String date = '',
+    String service = '',
+    String status = '',
+    int page = 1,
+    int limit = 50,
+  }) async {
+    try {
+      final query = Uri(queryParameters: {
+        if (search.trim().isNotEmpty) 'search': search.trim(),
+        if (date.isNotEmpty) 'date': date,
+        if (service.isNotEmpty) 'service': service,
+        if (status.isNotEmpty) 'status': status,
+        'page': '$page',
+        'limit': '$limit',
+      }).query;
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/appointments?$query'),
+        headers: _authHeaders,
+      );
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200 && data['success'] == true) {
+        final payload = data['data'] as Map<String, dynamic>;
+        return {
+          'success': true,
+          'appointments': (payload['appointments'] as List<dynamic>? ?? [])
+              .map((item) =>
+                  AdminAppointment.fromJson(item as Map<String, dynamic>))
+              .toList(),
+          'total': payload['total'] ?? 0,
+        };
+      }
+      return {'success': false, 'message': _errorMessage(data)};
+    } catch (_) {
+      return {
+        'success': false,
+        'message': 'Cannot connect to MediQ backend server.'
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> updateAppointment(
+    int appointmentId, {
+    String? date,
+    String? time,
+    String? service,
+    String? status,
+  }) async {
+    try {
+      final body = <String, String>{};
+      if (date != null && date.isNotEmpty) body['appointment_date'] = date;
+      if (time != null && time.isNotEmpty) body['appointment_time'] = time;
+      if (service != null && service.isNotEmpty) body['room'] = service;
+      if (status != null && status.isNotEmpty) body['status'] = status;
+      final response = await http.patch(
+        Uri.parse('$baseUrl/admin/appointments/$appointmentId'),
+        headers: _authHeaders,
+        body: jsonEncode(body),
+      );
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {'success': true, 'message': data['message']};
+      }
+      return {'success': false, 'message': _errorMessage(data)};
+    } catch (_) {
+      return {
+        'success': false,
+        'message': 'Unable to update this appointment.'
+      };
+    }
+  }
+
+  static Map<String, String> get _authHeaders => {
+        'Content-Type': 'application/json',
+        if (AuthService.token != null)
+          'Authorization': 'Bearer ${AuthService.token}',
+      };
 
   static String _errorMessage(Map<String, dynamic> data) {
     return data['error'] as String? ??

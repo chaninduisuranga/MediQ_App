@@ -13,6 +13,7 @@ import '../screens/ai_chat_screen.dart';
 
 import '../screens/admin_dashboard_screen.dart';
 import '../screens/admin_user_management_screen.dart';
+import '../screens/admin_appointment_management_screen.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -28,6 +29,7 @@ class AppRoutes {
   static const String aiChat = '/ai-chat';
   static const String adminDashboard = '/admin-dashboard';
   static const String adminUserManagement = '/admin/users';
+  static const String adminAppointmentManagement = '/admin/appointments';
 
   static Map<String, WidgetBuilder> get routes => {
         splash: (context) => const SplashScreen(),
@@ -43,5 +45,7 @@ class AppRoutes {
         aiChat: (context) => const AiChatScreen(),
         adminDashboard: (context) => const AdminDashboardScreen(),
         adminUserManagement: (context) => const AdminUserManagementScreen(),
+        adminAppointmentManagement: (context) =>
+            const AdminAppointmentManagementScreen(),
       };
 }

@@ -57,8 +57,8 @@ func (h *AppointmentHandler) BookAppointment(c *gin.Context) {
 	userID := userIDVal.(uint)
 
 	type BookRequest struct {
-		Room string `json:"room" binding:"required"`
-		Date string `json:"date"` // Format: YYYY-MM-DD (optional, defaults to today)
+		Room  string `json:"room" binding:"required"`
+		Date  string `json:"date"` // Format: YYYY-MM-DD (optional, defaults to today)
 		Notes string `json:"notes"`
 	}
 
@@ -120,12 +120,15 @@ func (h *AppointmentHandler) BookAppointment(c *gin.Context) {
 		Scan(&maxQueue)
 
 	newQueueNumber := maxQueue + 1
+	appointmentTime := time.Date(2000, 1, 1, 8, 0, 0, 0, loc).
+		Add(time.Duration(newQueueNumber-1) * 15 * time.Minute)
 
 	appointment := models.OPDAppointment{
 		PatientID:       userID,
 		Room:            room,
 		QueueNumber:     newQueueNumber,
 		AppointmentDate: selectedDate,
+		AppointmentTime: appointmentTime.Format("15:04"),
 		PatientName:     user.FullName,
 		PatientNIC:      user.NIC,
 		PatientPhone:    user.Phone,
