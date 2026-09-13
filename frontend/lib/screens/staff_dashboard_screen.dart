@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/services/appointment_service.dart';
 import '../core/services/queue_service.dart';
 import '../core/theme/theme.dart';
+import '../widgets/staff_bottom_nav_bar.dart';
 
 class StaffDashboardScreen extends StatefulWidget {
   const StaffDashboardScreen({super.key});
@@ -11,12 +12,17 @@ class StaffDashboardScreen extends StatefulWidget {
 }
 
 class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
-  String _selectedRoomKey = 'DRESSING_ROOM';
+  String _selectedRoomKey = 'GENERAL_OPD';
   bool _isLoading = true;
+  // ignore: prefer_final_fields
+  bool _isOnDuty = true;
   int _totalCount = 0;
   int _checkedInCount = 0;
   int _waitingCount = 0;
   int _inProgressCount = 0;
+  int _priorityCount = 0;
+  String _currentToken = '--';
+  int _avgWaitTime = 15;
 
   @override
   void initState() {
@@ -28,19 +34,151 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
     setState(() => _isLoading = true);
     final appointments = await QueueService.getQueueByRoom(_selectedRoomKey);
     if (mounted) {
+      final activePatient = appointments.firstWhere(
+        (a) => a['status'] == 'IN_PROGRESS',
+        orElse: () => <String, dynamic>{},
+      );
+
       setState(() {
         _totalCount = appointments.length;
-        _checkedInCount = appointments.where((a) => a['status'] == 'CHECKED_IN').length;
-        _inProgressCount = appointments.where((a) => a['status'] == 'IN_PROGRESS').length;
-        _waitingCount = appointments.where((a) => a['status'] == 'PENDING' || a['status'] == 'CONFIRMED').length;
+        _checkedInCount =
+            appointments.where((a) => a['status'] == 'CHECKED_IN').length;
+        _inProgressCount =
+            appointments.where((a) => a['status'] == 'IN_PROGRESS').length;
+        _waitingCount = appointments
+            .where((a) =>
+                a['status'] == 'PENDING' ||
+                a['status'] == 'CONFIRMED' ||
+                a['status'] == 'CHECKED_IN')
+            .length;
+        _priorityCount =
+            appointments.where((a) => (a['priority'] as bool?) == true).length;
+        _currentToken = activePatient.isNotEmpty
+            ? (activePatient['queue_number'] ?? '--')
+            : '--';
+        _avgWaitTime = (_waitingCount > 0) ? (_waitingCount * 5) : 10;
         _isLoading = false;
       });
     }
   }
 
+  void _showQuickCallNextDialog() async {
+    final appointments = await QueueService.getQueueByRoom(_selectedRoomKey);
+    final waiting = appointments
+        .where((a) => a['status'] == 'CHECKED_IN' || a['status'] == 'PENDING')
+        .toList();
+
+    if (!mounted) return;
+
+    if (waiting.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No patients currently waiting in this room queue.'),
+          backgroundColor: AppTheme.mutedText,
+        ),
+      );
+      return;
+    }
+
+    final nextAppt = waiting.first;
+    final token = nextAppt['queue_number'] ?? 'N/A';
+    final patientName = nextAppt['patient_name'] ?? 'Patient';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.campaign_rounded,
+                color: AppTheme.primarySkyBlue, size: 28),
+            SizedBox(width: 10),
+            Text('Call Next Patient',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Confirm calling patient to consultation room:',
+                style: TextStyle(fontSize: 13, color: AppTheme.mutedText)),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.lightBg,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: AppTheme.primarySkyBlue.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    'TOKEN #$token',
+                    style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.primarySkyBlue),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    patientName,
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.darkText),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Room: ${AppointmentService.getRoomDisplayName(_selectedRoomKey)}',
+                    style: const TextStyle(
+                        fontSize: 13, color: AppTheme.mutedText),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppTheme.mutedText)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              final active = appointments.firstWhere(
+                  (a) => a['status'] == 'IN_PROGRESS',
+                  orElse: () => <String, dynamic>{});
+              final currentId = (active['id'] as int?) ?? 0;
+              final nextId = (nextAppt['id'] as int?) ?? 0;
+
+              await QueueService.callNextPatient(currentId, nextId);
+              await _fetchQueueStats();
+
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content:
+                        Text('Calling Token #$token ($patientName) to Room!'),
+                    backgroundColor: AppTheme.accentGreen,
+                  ),
+                );
+              }
+            },
+            child: const Text('CALL NOW'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final selectedRoomName = AppointmentService.getRoomDisplayName(_selectedRoomKey);
+    final selectedRoomName =
+        AppointmentService.getRoomDisplayName(_selectedRoomKey);
 
     return Scaffold(
       appBar: AppBar(
@@ -49,6 +187,11 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.history_rounded),
+            tooltip: 'Queue History',
+            onPressed: () => Navigator.pushNamed(context, '/queue-history'),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Refresh Queue',
@@ -64,7 +207,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Banner Card
+              // Header Banner Card with Staff Info & On Duty status
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
@@ -73,38 +216,78 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: AppTheme.primaryTeal.withValues(alpha: 0.3),
+                      color: AppTheme.primarySkyBlue.withValues(alpha: 0.3),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                child: Row(
+                child: Column(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.admin_panel_settings_rounded, color: Colors.white, size: 32),
-                    ),
-                    const SizedBox(width: 16),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'OPD Staff Control Center',
-                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 26,
+                          backgroundColor: Colors.white.withValues(alpha: 0.2),
+                          child: const Icon(Icons.badge_rounded,
+                              color: Colors.white, size: 28),
+                        ),
+                        const SizedBox(width: 14),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Chaminda Bandara',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'Senior OPD Staff | ID: STF-8842',
+                                style: TextStyle(
+                                    color: Colors.white70, fontSize: 12),
+                              ),
+                            ],
                           ),
-                          SizedBox(height: 4),
-                          Text(
-                            'Real-time queue monitoring & check-in',
-                            style: TextStyle(color: Colors.white70, fontSize: 13),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _isOnDuty
+                                ? Colors.lightGreenAccent.shade400
+                                    .withValues(alpha: 0.3)
+                                : Colors.white24,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white30),
                           ),
-                        ],
-                      ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: _isOnDuty
+                                      ? Colors.greenAccent
+                                      : Colors.grey,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _isOnDuty ? 'ON DUTY' : 'OFF DUTY',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -114,12 +297,16 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
 
               // Room Selector Section
               const Text(
-                'Select OPD Room',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+                'Select OPD / Room Area',
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.darkText),
               ),
               const SizedBox(height: 10),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
@@ -129,7 +316,8 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                   child: DropdownButton<String>(
                     value: _selectedRoomKey,
                     isExpanded: true,
-                    icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.primaryTeal),
+                    icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                        color: AppTheme.primarySkyBlue),
                     items: AppointmentService.opdRooms.map((room) {
                       return DropdownMenuItem<String>(
                         value: room['key'] as String,
@@ -146,7 +334,9 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                             const SizedBox(width: 10),
                             Text(
                               room['name'] as String,
-                              style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.darkText),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.darkText),
                             ),
                           ],
                         ),
@@ -171,14 +361,18 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                 children: [
                   Text(
                     'Queue Overview ($selectedRoomName)',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.darkText),
                   ),
                   const Spacer(),
                   if (_isLoading)
                     const SizedBox(
                       width: 16,
                       height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryTeal),
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppTheme.primarySkyBlue),
                     ),
                 ],
               ),
@@ -195,37 +389,88 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                 children: [
                   _buildStatCard(
                     title: 'Total Patients',
-                    count: _totalCount,
+                    countText: '$_totalCount',
                     icon: Icons.groups_rounded,
                     color: AppTheme.primaryBlue,
                   ),
                   _buildStatCard(
                     title: 'Checked-In',
-                    count: _checkedInCount,
+                    countText: '$_checkedInCount',
                     icon: Icons.how_to_reg_rounded,
-                    color: AppTheme.accentGreen,
+                    color: AppTheme.primarySkyBlue,
                   ),
                   _buildStatCard(
                     title: 'In Progress',
-                    count: _inProgressCount,
+                    countText: '$_inProgressCount',
                     icon: Icons.sync_rounded,
                     color: Colors.orange.shade700,
                   ),
                   _buildStatCard(
                     title: 'Waiting List',
-                    count: _waitingCount,
+                    countText: '$_waitingCount',
                     icon: Icons.hourglass_top_rounded,
                     color: AppTheme.mutedText,
+                  ),
+                  _buildStatCard(
+                    title: 'Priority Patients',
+                    countText: '$_priorityCount',
+                    icon: Icons.assignment_late_rounded,
+                    color: AppTheme.errorRed,
+                  ),
+                  _buildStatCard(
+                    title: 'Current Token',
+                    countText: _currentToken,
+                    icon: Icons.confirmation_number_rounded,
+                    color: AppTheme.primarySkyBlue,
                   ),
                 ],
               ),
 
+              const SizedBox(height: 14),
+
+              // Avg Waiting Time Banner
+              Container(
+                width: double.infinity,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                      color: AppTheme.primarySkyBlue.withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.timer_outlined,
+                        color: AppTheme.primarySkyBlue, size: 22),
+                    const SizedBox(width: 10),
+                    const Text(
+                      'Average Waiting Time: ',
+                      style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.mutedText),
+                    ),
+                    Text(
+                      '~$_avgWaitTime min per patient',
+                      style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.primarySkyBlue),
+                    ),
+                  ],
+                ),
+              ),
+
               const SizedBox(height: 28),
 
-              // Quick Actions Navigation Buttons
+              // Quick Actions Navigation & Tools
               const Text(
                 'Quick Navigation & Staff Tools',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+                style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.darkText),
               ),
               const SizedBox(height: 14),
 
@@ -233,7 +478,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                 title: 'Live OPD Queue Management',
                 subtitle: 'View queue, call next patient, update status',
                 icon: Icons.live_tv_rounded,
-                color: AppTheme.primaryTeal,
+                color: AppTheme.primarySkyBlue,
                 onTap: () {
                   Navigator.pushNamed(
                     context,
@@ -241,6 +486,16 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                     arguments: {'roomKey': _selectedRoomKey},
                   );
                 },
+              ),
+
+              const SizedBox(height: 12),
+
+              _buildNavigationTile(
+                title: 'Call Next Patient',
+                subtitle: 'Direct turn call popup for selected room',
+                icon: Icons.campaign_rounded,
+                color: Colors.orange.shade800,
+                onTap: _showQuickCallNextDialog,
               ),
 
               const SizedBox(height: 12),
@@ -266,21 +521,46 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                   Navigator.pushNamed(context, '/check-in');
                 },
               ),
+
+              const SizedBox(height: 12),
+
+              _buildNavigationTile(
+                title: 'Queue History',
+                subtitle: 'View past called, skipped & completed records',
+                icon: Icons.history_rounded,
+                color: Colors.purple.shade600,
+                onTap: () {
+                  Navigator.pushNamed(context, '/queue-history');
+                },
+              ),
+
+              const SizedBox(height: 12),
+
+              _buildNavigationTile(
+                title: 'Staff Profile & Shift Details',
+                subtitle: 'Manage duty status, shift & account info',
+                icon: Icons.person_pin_rounded,
+                color: AppTheme.mutedText,
+                onTap: () {
+                  Navigator.pushNamed(context, '/staff-profile');
+                },
+              ),
             ],
           ),
         ),
       ),
+      bottomNavigationBar: const StaffBottomNavBar(currentIndex: 0),
     );
   }
 
   Widget _buildStatCard({
     required String title,
-    required int count,
+    required String countText,
     required IconData icon,
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -300,17 +580,24 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                title,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.mutedText),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.mutedText),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              Icon(icon, color: color, size: 22),
+              Icon(icon, color: color, size: 20),
             ],
           ),
           Text(
-            '$count',
+            countText,
             style: TextStyle(
-              fontSize: 28,
+              fontSize: countText.length > 3 ? 20 : 26,
               fontWeight: FontWeight.bold,
               color: color,
             ),
@@ -360,17 +647,22 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                 children: [
                   Text(
                     title,
-                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.darkText),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: const TextStyle(fontSize: 12, color: AppTheme.mutedText),
+                    style: const TextStyle(
+                        fontSize: 12, color: AppTheme.mutedText),
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppTheme.mutedText),
+            const Icon(Icons.arrow_forward_ios_rounded,
+                size: 16, color: AppTheme.mutedText),
           ],
         ),
       ),

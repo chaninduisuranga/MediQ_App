@@ -14,9 +14,9 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
       'id': 'opd_clinic',
       'title': 'Fever, Cough & Body Pain',
       'titleSi': 'කැස්ස, හෙම්බිරිස්සාව & ඇඟපත',
-      'icon': Icons.health_and_safety_outlined,
+      'icon': Icons.health_and_safety_rounded,
       'room': 'OPD Clinic Room (4 Doctors)',
-      'color': const Color(0xFF0077B6),
+      'color': const Color(0xFF2563EB),
       'advice': 'General OPD consultation room with 4 doctors attending to patients for fever, cold & aches.',
       'checklist': [
         'Bring National Identity Card (NIC / Passport)',
@@ -42,7 +42,7 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
       'id': 'injection',
       'title': 'Prescribed Injections',
       'titleSi': 'ඉන්ජෙක්ෂන් (විදීම්) ලබාගැනීම',
-      'icon': Icons.vaccines_outlined,
+      'icon': Icons.vaccines_rounded,
       'room': 'Injection Room',
       'color': const Color(0xFF8B5CF6),
       'advice': 'Queue for patients prescribed IM/IV injection shots by doctors.',
@@ -56,7 +56,7 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
       'id': 'animal_bite',
       'title': 'Animal Bite Treatment',
       'titleSi': 'සතුන් හපාකෑම & රේබීස් එන්නත',
-      'icon': Icons.pets_outlined,
+      'icon': Icons.pets_rounded,
       'room': 'Animal Bite Room',
       'color': const Color(0xFFEF4444),
       'advice': 'Dedicated queue & doctor for dog/cat/animal bites and Anti-Rabies vaccination.',
@@ -70,7 +70,7 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
       'id': 'bleeding',
       'title': 'Blood Sample Draw',
       'titleSi': 'ලේ ලබාදීම (Bleeding Room)',
-      'icon': Icons.water_drop_outlined,
+      'icon': Icons.water_drop_rounded,
       'room': 'Bleeding Room',
       'color': const Color(0xFFEC4899),
       'advice': 'Combined queue for registered OPD patients and external clinic referral chits for blood draws.',
@@ -93,29 +93,42 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
     );
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('OPD Symptom Checker', style: TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true,
+        backgroundColor: const Color(0xFF0F172A),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('OPD Symptom Checker', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushReplacementNamed(context, '/home');
+            }
+          },
+        ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header Banner
+            // 3D Glassmorphic Header Banner
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(22),
                 gradient: const LinearGradient(
-                  colors: [Color(0xFFD97706), Color(0xFFF59E0B)],
+                  colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF2563EB)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFFD97706).withValues(alpha: 0.3),
+                    color: const Color(0xFF1E3A8A).withValues(alpha: 0.3),
                     blurRadius: 16,
                     offset: const Offset(0, 8),
                   ),
@@ -126,10 +139,10 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
+                      color: Colors.white.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.psychology_outlined, color: Colors.white, size: 30),
+                    child: const Icon(Icons.psychology_rounded, color: Color(0xFF38BDF8), size: 28),
                   ),
                   const SizedBox(width: 14),
                   const Expanded(
@@ -143,7 +156,7 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
                         SizedBox(height: 4),
                         Text(
                           'Select your symptom to find your hospital room & queue instructions.',
-                          style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.3),
+                          style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11, height: 1.3),
                         ),
                       ],
                     ),
@@ -155,11 +168,11 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
             const SizedBox(height: 24),
             const Text(
               '1. Select Primary Symptom / Queue',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
             ),
             const SizedBox(height: 12),
 
-            // Symptom Selection Grid
+            // Symptom Selection Grid (2-Column 3D Glass)
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -186,15 +199,15 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       color: isSelected ? catColor.withValues(alpha: 0.08) : Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(18),
                       border: Border.all(
-                        color: isSelected ? catColor : Colors.grey.shade300,
+                        color: isSelected ? catColor : const Color(0xFFE2E8F0),
                         width: isSelected ? 2 : 1,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: isSelected ? catColor.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.03),
-                          blurRadius: 8,
+                          color: isSelected ? catColor.withValues(alpha: 0.2) : const Color(0xFF0F172A).withValues(alpha: 0.03),
+                          blurRadius: isSelected ? 10 : 4,
                           offset: const Offset(0, 3),
                         ),
                       ],
@@ -211,33 +224,33 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
                                 color: catColor.withValues(alpha: 0.12),
                                 shape: BoxShape.circle,
                               ),
-                              child: Icon(cat['icon'], color: catColor, size: 22),
+                              child: Icon(cat['icon'], color: catColor, size: 20),
                             ),
                             const Spacer(),
                             if (isSelected)
-                              Icon(Icons.check_circle_rounded, color: catColor, size: 20),
+                              Icon(Icons.check_circle_rounded, color: catColor, size: 18),
                           ],
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 8),
                         Text(
                           cat['title'],
                           style: TextStyle(
-                            fontSize: 13.5,
+                            fontSize: 13,
                             fontWeight: FontWeight.bold,
                             height: 1.25,
-                            color: isSelected ? catColor : AppTheme.darkText,
+                            color: isSelected ? catColor : const Color(0xFF0F172A),
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 2),
                         Text(
                           cat['titleSi'],
                           style: const TextStyle(
-                            fontSize: 11.5,
+                            fontSize: 11,
                             fontWeight: FontWeight.w500,
                             height: 1.25,
-                            color: AppTheme.mutedText,
+                            color: Color(0xFF64748B),
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -252,17 +265,17 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
             const SizedBox(height: 24),
             const Text(
               '2. Symptom Intensity Level',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
             ),
             const SizedBox(height: 10),
 
             Row(
               children: [
-                _buildSeverityChip(0, 'Mild (සුළු)', Colors.green),
+                _buildSeverityChip(0, 'Mild (සුළු)', const Color(0xFF10B981)),
                 const SizedBox(width: 8),
-                _buildSeverityChip(1, 'Moderate (මධ්‍යස්ථ)', Colors.orange),
+                _buildSeverityChip(1, 'Moderate (මධ්‍යස්ථ)', const Color(0xFFF59E0B)),
                 const SizedBox(width: 8),
-                _buildSeverityChip(2, 'Severe (දරුණු)', Colors.red),
+                _buildSeverityChip(2, 'Severe (දරුණු)', const Color(0xFFEF4444)),
               ],
             ),
 
@@ -274,11 +287,11 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(22),
                 border: Border.all(color: selectedItem['color'].withValues(alpha: 0.4), width: 1.5),
                 boxShadow: [
                   BoxShadow(
-                    color: selectedItem['color'].withValues(alpha: 0.08),
+                    color: selectedItem['color'].withValues(alpha: 0.1),
                     blurRadius: 16,
                     offset: const Offset(0, 4),
                   ),
@@ -331,10 +344,10 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
                   const SizedBox(height: 6),
                   Text(
                     'Guidance: ${selectedItem['advice']}',
-                    style: const TextStyle(fontSize: 13, color: AppTheme.darkText, height: 1.4),
+                    style: const TextStyle(fontSize: 13, color: Color(0xFF334155), height: 1.4),
                   ),
-                  const Divider(height: 24),
-                  const Text('📋 OPD Pre-Visit Checklist:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.darkText)),
+                  const Divider(height: 24, color: Color(0xFFF1F5F9)),
+                  const Text('📋 OPD Pre-Visit Checklist:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF0F172A))),
                   const SizedBox(height: 8),
                   if (selectedItem['checklist'] != null)
                     ...List.generate(
@@ -351,18 +364,35 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
             SizedBox(
               width: double.infinity,
               height: 52,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryTeal,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF2563EB).withValues(alpha: 0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                icon: const Icon(Icons.event_available_rounded, color: Colors.white),
-                label: const Text('Book OPD Appointment Now', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
-                onPressed: () {
-                  Navigator.pushNamed(context, '/book-appointment');
-                },
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  icon: const Icon(Icons.event_available_rounded, color: Colors.white),
+                  label: const Text('Book OPD Appointment Now', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/book-appointment');
+                  },
+                ),
               ),
             ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -379,13 +409,14 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
             _severity = level;
           });
         },
-        child: Container(
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
             color: isSelected ? color.withValues(alpha: 0.15) : Colors.white,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isSelected ? color : Colors.grey.shade300,
+              color: isSelected ? color : const Color(0xFFE2E8F0),
               width: isSelected ? 2 : 1,
             ),
           ),
@@ -395,7 +426,7 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                color: isSelected ? color : AppTheme.darkText,
+                color: isSelected ? color : const Color(0xFF0F172A),
               ),
             ),
           ),
@@ -410,10 +441,10 @@ class _SymptomCheckerScreenState extends State<SymptomCheckerScreen> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.check_circle_outline_rounded, color: AppTheme.accentGreen, size: 16),
+          const Icon(Icons.check_circle_outline_rounded, color: Color(0xFF10B981), size: 16),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(text, style: const TextStyle(fontSize: 12, color: AppTheme.mutedText)),
+            child: Text(text, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
           ),
         ],
       ),

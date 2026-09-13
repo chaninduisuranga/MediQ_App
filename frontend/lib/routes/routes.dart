@@ -10,6 +10,12 @@ import '../screens/pill_tracker_screen.dart';
 import '../screens/symptom_checker_screen.dart';
 import '../screens/health_vitals_screen.dart';
 import '../screens/ai_chat_screen.dart';
+import '../screens/staff_dashboard_screen.dart';
+import '../screens/opd_queue_screen.dart';
+import '../screens/qr_scanner_screen.dart';
+import '../screens/check_in_screen.dart';
+import '../screens/staff_profile_screen.dart';
+import '../screens/queue_history_screen.dart';
 
 import '../screens/admin_dashboard_screen.dart';
 import '../screens/admin_user_management_screen.dart';
@@ -30,6 +36,12 @@ class AppRoutes {
   static const String adminDashboard = '/admin-dashboard';
   static const String adminUserManagement = '/admin/users';
   static const String adminAppointmentManagement = '/admin/appointments';
+  static const String staffDashboard = '/staff-dashboard';
+  static const String opdQueue = '/opd-queue';
+  static const String qrScanner = '/qr-scanner';
+  static const String checkIn = '/check-in';
+  static const String staffProfile = '/staff-profile';
+  static const String queueHistory = '/queue-history';
 
   static Map<String, WidgetBuilder> get routes => {
         splash: (context) => const SplashScreen(),
@@ -47,5 +59,11 @@ class AppRoutes {
         adminUserManagement: (context) => const AdminUserManagementScreen(),
         adminAppointmentManagement: (context) =>
             const AdminAppointmentManagementScreen(),
+        staffDashboard: (context) => const StaffDashboardScreen(),
+        opdQueue: (context) => const OpdQueueScreen(),
+        qrScanner: (context) => const QrScannerScreen(),
+        checkIn: (context) => const CheckInScreen(),
+        staffProfile: (context) => const StaffProfileScreen(),
+        queueHistory: (context) => const QueueHistoryScreen(),
       };
 }

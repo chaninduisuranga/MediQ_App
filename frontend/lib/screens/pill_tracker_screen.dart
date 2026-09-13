@@ -259,18 +259,36 @@ class _PillTrackerScreenState extends State<PillTrackerScreen> {
     int totalPills = _medicines.length;
     int takenCount = _medicines.where((m) => m['isTakenToday'] == true).length;
     double progress = totalPills == 0 ? 0.0 : (takenCount / totalPills);
-
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Pill & Dose Tracker', style: TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true,
+        backgroundColor: const Color(0xFF0F172A),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: const Text('Pill & Dose Tracker', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushReplacementNamed(context, '/home');
+            }
+          },
+        ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFF8B5CF6), size: 28),
-            onPressed: _showAddMedicineModal,
-            tooltip: 'Add Medicine',
+          Container(
+            margin: const EdgeInsets.only(right: 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
+              onPressed: _showAddMedicineModal,
+              tooltip: 'Add Medicine',
+            ),
           ),
-          const SizedBox(width: 8),
         ],
       ),
       body: _isLoading

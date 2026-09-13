@@ -7,6 +7,13 @@ class AppointmentService {
 
   static const List<Map<String, dynamic>> opdRooms = [
     {
+      'key': 'GENERAL_OPD',
+      'name': 'General OPD',
+      'subtitle': 'General Medical OPD Consultation',
+      'icon': 'clinic',
+      'color': 0xFF0284C7,
+    },
+    {
       'key': 'DRESSING_ROOM',
       'name': 'Dressing Room',
       'subtitle': 'Wound Care & Bandaging',
@@ -21,13 +28,6 @@ class AppointmentService {
       'color': 0xFF00A896,
     },
     {
-      'key': 'BLEEDING_ROOM',
-      'name': 'Bleeding Room',
-      'subtitle': 'Hemorrhage & Bleeding Control',
-      'icon': 'blood',
-      'color': 0xFFE11D48,
-    },
-    {
       'key': 'ANIMAL_BITE_ROOM',
       'name': 'Animal Bite Room',
       'subtitle': 'Bite Wounds & ARV Treatment',
@@ -35,9 +35,23 @@ class AppointmentService {
       'color': 0xFFD97706,
     },
     {
+      'key': 'BLEEDING_ROOM',
+      'name': 'Bleeding Room',
+      'subtitle': 'Hemorrhage & Bleeding Control',
+      'icon': 'blood',
+      'color': 0xFFE11D48,
+    },
+    {
+      'key': 'PHARMACY',
+      'name': 'Pharmacy',
+      'subtitle': 'Medication Dispensing & Queue',
+      'icon': 'pill',
+      'color': 0xFF059669,
+    },
+    {
       'key': 'OPD_CLINIC_ROOM',
       'name': 'OPD Clinic Room',
-      'subtitle': 'General OPD Consultation',
+      'subtitle': 'Specialized OPD Consultation',
       'icon': 'clinic',
       'color': 0xFF7C3AED,
     },
