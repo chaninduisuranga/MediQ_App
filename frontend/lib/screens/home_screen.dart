@@ -1799,35 +1799,13 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 24),
 
                     // OUR SERVICES SECTION (All 6 OPD Modules)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          "Our Services",
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                        GestureDetector(
-                          onTap: _openBookAppointment,
-                          child: const Row(
-                            children: [
-                              Text(
-                                "View all",
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF2563EB),
-                                ),
-                              ),
-                              SizedBox(width: 2),
-                              Icon(Icons.chevron_right_rounded, size: 18, color: Color(0xFF2563EB)),
-                            ],
-                          ),
-                        ),
-                      ],
+                    const Text(
+                      "Our Services",
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F172A),
+                      ),
                     ),
                     const SizedBox(height: 14),
 
