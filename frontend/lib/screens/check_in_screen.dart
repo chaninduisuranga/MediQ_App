@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/services/appointment_service.dart';
 import '../core/services/queue_service.dart';
 import '../core/theme/theme.dart';
+import '../widgets/staff_bottom_nav_bar.dart';
 
 class CheckInScreen extends StatefulWidget {
   final int? initialAppointmentId;
@@ -19,6 +20,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
   bool _isLoading = false;
   bool _isCheckingIn = false;
   String? _errorMessage;
+  Map<String, dynamic>? _checkInSummary;
 
   @override
   void initState() {
@@ -62,6 +64,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
       setState(() {
         _errorMessage = 'Please enter a valid numeric Appointment ID';
         _appointmentData = null;
+        _checkInSummary = null;
       });
       return;
     }
@@ -69,6 +72,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
+      _checkInSummary = null;
     });
 
     final data = await QueueService.getAppointmentById(id);
@@ -91,18 +95,21 @@ class _CheckInScreenState extends State<CheckInScreen> {
     if (_appointmentId == null || _appointmentData == null || _isCheckingIn) return;
 
     setState(() => _isCheckingIn = true);
-    final success = await QueueService.checkInPatient(_appointmentId!);
+    final result = await QueueService.checkInPatientWithDetails(_appointmentId!);
 
     if (mounted) {
-      setState(() => _isCheckingIn = false);
-      if (success) {
-        setState(() {
+      setState(() {
+        _isCheckingIn = false;
+        if (result['success'] == true) {
           _appointmentData!['status'] = 'CHECKED_IN';
-        });
+          _checkInSummary = result;
+        }
+      });
 
+      if (result['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Patient #${_appointmentData!['queue_number']} Checked-In Successfully!'),
+            content: Text('Patient Token #${result['token']} Checked-In Successfully!'),
             backgroundColor: AppTheme.accentGreen,
           ),
         );
@@ -136,7 +143,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Search / ID Entry Card
+            // Search / ID Lookup Input Card
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -159,7 +166,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                           controller: _searchController,
                           keyboardType: TextInputType.number,
                           decoration: InputDecoration(
-                            hintText: 'Enter Appointment ID',
+                            hintText: 'Enter Appointment ID (e.g. 103)',
                             prefixIcon: const Icon(Icons.search_rounded),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -210,7 +217,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
             ],
 
             if (hasData) ...[
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
               // Patient Detail Confirmation Card
               Container(
@@ -239,12 +246,12 @@ class _CheckInScreenState extends State<CheckInScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text(
-                              'QUEUE NUMBER',
+                              'QUEUE TOKEN',
                               style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.mutedText, letterSpacing: 0.5),
                             ),
                             Text(
                               '#${_appointmentData!['queue_number'] ?? 'N/A'}',
-                              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: AppTheme.primaryTeal),
+                              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: AppTheme.primarySkyBlue),
                             ),
                           ],
                         ),
@@ -282,13 +289,76 @@ class _CheckInScreenState extends State<CheckInScreen> {
                       Icons.meeting_room_outlined,
                     ),
                     _buildDetailRow('Appointment Date', _appointmentData!['appointment_date'] ?? 'N/A', Icons.calendar_today_outlined),
+                    _buildDetailRow('Appointment Time', _appointmentData!['appointment_time'] ?? 'N/A', Icons.access_time_rounded),
                     if ((_appointmentData!['notes'] ?? '').toString().isNotEmpty)
-                      _buildDetailRow('Patient Notes', _appointmentData!['notes'], Icons.note_outlined),
+                      _buildDetailRow('Notes', _appointmentData!['notes'], Icons.note_outlined),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
+
+              // Post Check-In Generated Summary (Token, Wait Time, Patients Before)
+              if (_checkInSummary != null || isAlreadyCheckedIn)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentGreen.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: AppTheme.accentGreen.withValues(alpha: 0.4)),
+                  ),
+                  child: Column(
+                    children: [
+                      const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle_rounded, color: AppTheme.accentGreen, size: 22),
+                          SizedBox(width: 8),
+                          Text(
+                            'PATIENT CHECKED IN!',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.accentGreen),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          Column(
+                            children: [
+                              Text(
+                                '${_appointmentData!['queue_number'] ?? 'G-012'}',
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.primarySkyBlue),
+                              ),
+                              const Text('Token Number', style: TextStyle(fontSize: 11, color: AppTheme.mutedText)),
+                            ],
+                          ),
+                          Column(
+                            children: [
+                              Text(
+                                '${_checkInSummary?['estimated_wait_minutes'] ?? 15} min',
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.darkText),
+                              ),
+                              const Text('Estimated Wait', style: TextStyle(fontSize: 11, color: AppTheme.mutedText)),
+                            ],
+                          ),
+                          Column(
+                            children: [
+                              Text(
+                                '${_checkInSummary?['waiting_before'] ?? 5}',
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.darkText),
+                              ),
+                              const Text('Patients Before You', style: TextStyle(fontSize: 11, color: AppTheme.mutedText)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+              const SizedBox(height: 20),
 
               // Confirm & Check In Action Button
               SizedBox(
@@ -307,7 +377,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                   label: Text(
                     isAlreadyCheckedIn
                         ? 'PATIENT ALREADY CHECKED-IN'
-                        : (isCompleted ? 'APPOINTMENT COMPLETED' : 'CONFIRM & CHECK IN PATIENT'),
+                        : (isCompleted ? 'APPOINTMENT COMPLETED' : 'CHECK-IN PATIENT'),
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
                   ),
                 ),
@@ -316,6 +386,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
           ],
         ),
       ),
+      bottomNavigationBar: const StaffBottomNavBar(currentIndex: 3),
     );
   }
 
@@ -328,7 +399,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
           Icon(icon, size: 18, color: AppTheme.mutedText),
           const SizedBox(width: 10),
           SizedBox(
-            width: 120,
+            width: 130,
             child: Text(
               label,
               style: const TextStyle(fontSize: 13, color: AppTheme.mutedText, fontWeight: FontWeight.w500),
