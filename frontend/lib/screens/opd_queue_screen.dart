@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../core/services/appointment_service.dart';
 import '../core/services/queue_service.dart';
 import '../core/theme/theme.dart';
+import '../widgets/staff_bottom_nav_bar.dart';
 
 class OpdQueueScreen extends StatefulWidget {
   final String? initialRoomKey;
@@ -12,14 +13,17 @@ class OpdQueueScreen extends StatefulWidget {
   State<OpdQueueScreen> createState() => _OpdQueueScreenState();
 }
 
-class _OpdQueueScreenState extends State<OpdQueueScreen> {
+class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProviderStateMixin {
   late String _selectedRoomKey;
+  late TabController _tabController;
   bool _isCallingNext = false;
+  final TextEditingController _skipNotesController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    _selectedRoomKey = widget.initialRoomKey ?? 'DRESSING_ROOM';
+    _selectedRoomKey = widget.initialRoomKey ?? 'GENERAL_OPD';
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -27,64 +31,344 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
     super.didChangeDependencies();
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is Map<String, dynamic> && args.containsKey('roomKey')) {
-      setState(() {
-        _selectedRoomKey = args['roomKey'] as String;
-      });
+      final key = args['roomKey'] as String;
+      if (key != _selectedRoomKey) {
+        setState(() {
+          _selectedRoomKey = key;
+        });
+      }
     }
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _skipNotesController.dispose();
+    super.dispose();
   }
 
   Future<void> _handleCallNext(List<Map<String, dynamic>> queue) async {
     if (_isCallingNext) return;
 
-    // Current patient in consultation (IN_PROGRESS)
     final currentAppt = queue.firstWhere(
       (a) => a['status'] == 'IN_PROGRESS',
       orElse: () => <String, dynamic>{},
     );
 
-    // Next candidate to call (prefers CHECKED_IN, then PENDING / CONFIRMED)
-    final checkedInCandidates = queue.where((a) => a['status'] == 'CHECKED_IN').toList();
-    final pendingCandidates = queue.where((a) => a['status'] == 'PENDING' || a['status'] == 'CONFIRMED').toList();
+    final waitingList = queue
+        .where((a) => a['status'] == 'CHECKED_IN' || a['status'] == 'PENDING' || a['status'] == 'CONFIRMED')
+        .toList();
 
-    final nextAppt = checkedInCandidates.isNotEmpty
-        ? checkedInCandidates.first
-        : (pendingCandidates.isNotEmpty ? pendingCandidates.first : <String, dynamic>{});
-
-    final currentId = (currentAppt['id'] as int?) ?? 0;
-    final nextId = (nextAppt['id'] as int?) ?? 0;
-
-    if (nextId == 0 && currentId == 0) {
+    if (waitingList.isEmpty && currentAppt.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('No patients waiting in queue to call.'),
+          content: Text('No patients currently waiting in queue to call.'),
           backgroundColor: AppTheme.mutedText,
         ),
       );
       return;
     }
 
-    setState(() => _isCallingNext = true);
-    final success = await QueueService.callNextPatient(currentId, nextId);
-    if (mounted) {
-      setState(() => _isCallingNext = false);
-      if (success) {
-        final nextToken = nextAppt['queue_number'] ?? 'N/A';
-        final patientName = nextAppt['patient_name'] ?? 'Patient';
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Calling Token #$nextToken ($patientName) to Room!'),
-            backgroundColor: AppTheme.accentGreen,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to call next patient. Please try again.'),
-            backgroundColor: AppTheme.errorRed,
-          ),
-        );
-      }
+    final nextAppt = waitingList.isNotEmpty ? waitingList.first : <String, dynamic>{};
+    final currentId = (currentAppt['id'] as int?) ?? 0;
+    final nextId = (nextAppt['id'] as int?) ?? 0;
+
+    if (nextId == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No more waiting patients in queue.'),
+          backgroundColor: AppTheme.mutedText,
+        ),
+      );
+      return;
     }
+
+    final token = nextAppt['queue_number'] ?? 'N/A';
+    final patientName = nextAppt['patient_name'] ?? 'Patient';
+    final roomDisplayName = AppointmentService.getRoomDisplayName(_selectedRoomKey);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.campaign_rounded, color: Colors.orange, size: 28),
+            SizedBox(width: 10),
+            Text('Now Calling', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: AppTheme.lightBg,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.orange.shade300),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    '$token',
+                    style: TextStyle(fontSize: 42, fontWeight: FontWeight.w900, color: Colors.orange.shade800),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    patientName,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    roomDisplayName,
+                    style: const TextStyle(fontSize: 14, color: AppTheme.mutedText, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.mutedText)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentGreen),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              setState(() => _isCallingNext = true);
+              final success = await QueueService.callNextPatient(currentId, nextId);
+              if (mounted) {
+                setState(() => _isCallingNext = false);
+                if (success) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Calling Token #$token ($patientName) to Room!'),
+                      backgroundColor: AppTheme.accentGreen,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('OK - CALL PATIENT'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showSkipDialog(int patientId, String token, String name) {
+    String selectedReason = 'Patient not present';
+    _skipNotesController.clear();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                const Icon(Icons.redo_rounded, color: Colors.grey),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text('Skip Patient #$token', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Skip turn for $name?', style: const TextStyle(fontSize: 14, color: AppTheme.darkText, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 14),
+                const Text('Select Skip Reason:', style: TextStyle(fontSize: 12, color: AppTheme.mutedText, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  initialValue: selectedReason,
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'Patient not present', child: Text('Patient not present')),
+                    DropdownMenuItem(value: 'Emergency situation', child: Text('Emergency situation')),
+                    DropdownMenuItem(value: 'Other', child: Text('Other')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) setDialogState(() => selectedReason = val);
+                  },
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _skipNotesController,
+                  decoration: InputDecoration(
+                    hintText: 'Optional notes...',
+                    labelText: 'Notes',
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel', style: TextStyle(color: AppTheme.mutedText)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade700),
+                onPressed: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  Navigator.pop(ctx);
+                  await QueueService.skipPatient(
+                    patientId,
+                    reason: selectedReason,
+                    notes: _skipNotesController.text.trim(),
+                  );
+                  if (mounted) {
+                    setState(() {});
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text('Patient #$token marked as Skipped.'),
+                        backgroundColor: Colors.grey.shade700,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('CONFIRM SKIP'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _showRecallDialog(int patientId, String token, String name) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.replay_rounded, color: AppTheme.primarySkyBlue),
+            SizedBox(width: 10),
+            Text('Recall Patient', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          'Recall patient #$token ($name) back into the active waiting queue?',
+          style: const TextStyle(fontSize: 14, color: AppTheme.darkText),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: AppTheme.mutedText)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              Navigator.pop(ctx);
+              await QueueService.recallPatient(patientId);
+              if (mounted) {
+                setState(() {});
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text('Patient #$token recalled to waiting list.'),
+                    backgroundColor: AppTheme.primarySkyBlue,
+                  ),
+                );
+              }
+            },
+            child: const Text('RECALL PATIENT'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPriorityDialog(int patientId, String token, String name, bool currentPriority) {
+    String selectedCategory = 'Elderly';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                const Icon(Icons.priority_high_rounded, color: AppTheme.errorRed),
+                const SizedBox(width: 10),
+                Text(currentPriority ? 'Update Priority' : 'Mark as Priority', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Set priority category for $name (#$token):', style: const TextStyle(fontSize: 13, color: AppTheme.darkText)),
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: ['Elderly', 'Disability', 'Pregnant', 'Emergency', 'Child'].map((cat) {
+                    final isSelected = selectedCategory == cat;
+                    return ChoiceChip(
+                      label: Text(cat),
+                      selected: isSelected,
+                      selectedColor: AppTheme.errorRed,
+                      labelStyle: TextStyle(color: isSelected ? Colors.white : AppTheme.darkText, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
+                      onSelected: (selected) {
+                        if (selected) setDialogState(() => selectedCategory = cat);
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+            actions: [
+              if (currentPriority)
+                TextButton(
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    await QueueService.markPriority(patientId, category: '', isPriority: false);
+                    if (mounted) setState(() {});
+                  },
+                  child: const Text('Remove Priority', style: TextStyle(color: AppTheme.mutedText)),
+                ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel', style: TextStyle(color: AppTheme.mutedText)),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorRed),
+                onPressed: () async {
+                  final messenger = ScaffoldMessenger.of(context);
+                  Navigator.pop(ctx);
+                  await QueueService.markPriority(patientId, category: selectedCategory, isPriority: true);
+                  if (mounted) {
+                    setState(() {});
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text('Patient #$token marked as Priority ($selectedCategory).'),
+                        backgroundColor: AppTheme.errorRed,
+                      ),
+                    );
+                  }
+                },
+                child: const Text('SET PRIORITY'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -98,261 +382,435 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
           '$roomDisplayName Queue',
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: AppTheme.primarySkyBlue,
+          labelColor: AppTheme.primarySkyBlue,
+          unselectedLabelColor: AppTheme.mutedText,
+          tabs: const [
+            Tab(icon: Icon(Icons.format_list_numbered_rounded), text: 'Active Queue'),
+            Tab(icon: Icon(Icons.history_toggle_off_rounded), text: 'Skipped & Completed'),
+          ],
+        ),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: QueueService.getQueueStream(_selectedRoomKey),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator(color: AppTheme.primaryTeal));
-          }
-
           final queueData = snapshot.data ?? [];
 
-          // Current patient IN_PROGRESS
+          // Stats calculation
           final currentPatient = queueData.firstWhere(
             (a) => a['status'] == 'IN_PROGRESS',
             orElse: () => <String, dynamic>{},
           );
 
-          // Waiting list (CHECKED_IN, PENDING, CONFIRMED)
           final waitingList = queueData
               .where((a) => a['status'] == 'CHECKED_IN' || a['status'] == 'PENDING' || a['status'] == 'CONFIRMED')
               .toList();
 
-          return Column(
+          final skippedOrCompletedList = queueData
+              .where((a) => a['status'] == 'SKIPPED' || a['status'] == 'COMPLETED')
+              .toList();
+
+          final currentToken = currentPatient.isNotEmpty ? (currentPatient['queue_number'] ?? '--') : '--';
+          final avgWaitTime = waitingList.isNotEmpty ? (waitingList.length * 5) : 10;
+
+          return TabBarView(
+            controller: _tabController,
             children: [
-              // Room Selector Bar
-              Container(
-                color: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                child: Row(
-                  children: [
-                    const Text('Room: ', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.darkText)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: AppTheme.lightBg,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: _selectedRoomKey,
-                            isExpanded: true,
-                            items: AppointmentService.opdRooms.map((r) {
-                              return DropdownMenuItem<String>(
-                                value: r['key'] as String,
-                                child: Text(
-                                  r['name'] as String,
-                                  style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (val) {
-                              if (val != null) {
-                                setState(() {
-                                  _selectedRoomKey = val;
-                                });
-                              }
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              const Divider(height: 1),
-
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Prominent Current Patient Card
-                      _buildCurrentPatientCard(currentPatient, roomColor),
-
-                      const SizedBox(height: 20),
-
-                      // CALL NEXT Action Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 56,
-                        child: ElevatedButton.icon(
-                          onPressed: _isCallingNext ? null : () => _handleCallNext(queueData),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppTheme.accentGreen,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            elevation: 4,
-                          ),
-                          icon: _isCallingNext
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
-                                )
-                              : const Icon(Icons.campaign_rounded, size: 28),
-                          label: Text(
-                            _isCallingNext ? 'CALLING PATIENT...' : 'CALL NEXT PATIENT',
-                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, letterSpacing: 0.8),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Waiting List Section
-                      Row(
-                        children: [
-                          const Text(
-                            'Waiting List',
-                            style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.darkText),
-                          ),
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+              // TAB 1: Active Queue View
+              Column(
+                children: [
+                  // Room Switcher Bar
+                  Container(
+                    color: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Row(
+                      children: [
+                        const Text('Room: ', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.darkText)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
-                              color: AppTheme.primaryTeal.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(12),
+                              color: AppTheme.lightBg,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.grey.shade300),
                             ),
-                            child: Text(
-                              '${waitingList.length}',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryTeal,
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _selectedRoomKey,
+                                isExpanded: true,
+                                items: AppointmentService.opdRooms.map((r) {
+                                  return DropdownMenuItem<String>(
+                                    value: r['key'] as String,
+                                    child: Text(
+                                      r['name'] as String,
+                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                    ),
+                                  );
+                                }).toList(),
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setState(() {
+                                      _selectedRoomKey = val;
+                                    });
+                                  }
+                                },
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
+                    ),
+                  ),
 
-                      const SizedBox(height: 12),
+                  // Room Stats Summary Strip
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    color: AppTheme.lightBg,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildMiniStat('Token', '$currentToken', AppTheme.primarySkyBlue),
+                        _buildMiniStat('Waiting', '${waitingList.length}', AppTheme.primaryBlue),
+                        _buildMiniStat('In Progress', currentPatient.isNotEmpty ? '1' : '0', Colors.orange.shade800),
+                        _buildMiniStat('Avg Wait', '~${avgWaitTime}m', AppTheme.mutedText),
+                      ],
+                    ),
+                  ),
 
-                      if (waitingList.isEmpty)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(32),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.grey.shade200),
+                  const Divider(height: 1),
+
+                  Expanded(
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Prominent Currently Serving Card
+                          _buildCurrentPatientCard(currentPatient, roomColor),
+
+                          const SizedBox(height: 16),
+
+                          // CALL NEXT PATIENT Action Button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 54,
+                            child: ElevatedButton.icon(
+                              onPressed: _isCallingNext ? null : () => _handleCallNext(queueData),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.accentGreen,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                elevation: 3,
+                              ),
+                              icon: _isCallingNext
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                                    )
+                                  : const Icon(Icons.campaign_rounded, size: 26),
+                              label: Text(
+                                _isCallingNext ? 'CALLING PATIENT...' : 'CALL NEXT PATIENT',
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                              ),
+                            ),
                           ),
-                          child: const Column(
+
+                          const SizedBox(height: 20),
+
+                          // Waiting Queue Header
+                          Row(
                             children: [
-                              Icon(Icons.check_circle_outline_rounded, size: 48, color: AppTheme.accentGreen),
-                              SizedBox(height: 12),
-                              Text(
-                                'No Patients Waiting',
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppTheme.darkText),
+                              const Text(
+                                'Waiting Queue List',
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.darkText),
                               ),
-                              SizedBox(height: 4),
-                              Text(
-                                'The queue is currently clear for this room.',
-                                style: TextStyle(color: AppTheme.mutedText, fontSize: 13),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primarySkyBlue.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  '${waitingList.length}',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.primarySkyBlue,
+                                  ),
+                                ),
                               ),
                             ],
                           ),
-                        )
-                      else
-                        ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: waitingList.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 10),
-                          itemBuilder: (context, index) {
-                            final item = waitingList[index];
-                            final status = item['status'] as String? ?? 'PENDING';
-                            final isCheckedIn = status == 'CHECKED_IN';
 
-                            return Container(
-                              padding: const EdgeInsets.all(14),
+                          const SizedBox(height: 12),
+
+                          if (waitingList.isEmpty)
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(28),
                               decoration: BoxDecoration(
                                 color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: isCheckedIn ? AppTheme.accentGreen.withValues(alpha: 0.4) : Colors.grey.shade200,
-                                  width: isCheckedIn ? 1.5 : 1,
-                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: Colors.grey.shade200),
                               ),
-                              child: Row(
+                              child: const Column(
                                 children: [
-                                  Container(
-                                    width: 44,
-                                    height: 44,
-                                    decoration: BoxDecoration(
-                                      color: isCheckedIn
-                                          ? AppTheme.accentGreen.withValues(alpha: 0.15)
-                                          : AppTheme.lightBg,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        '#${item['queue_number'] ?? index + 1}',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                          color: isCheckedIn ? AppTheme.accentGreen : AppTheme.darkText,
-                                        ),
-                                      ),
-                                    ),
+                                  Icon(Icons.check_circle_outline_rounded, size: 44, color: AppTheme.accentGreen),
+                                  SizedBox(height: 10),
+                                  Text(
+                                    'No Patients Waiting',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.darkText),
                                   ),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          item['patient_name'] ?? 'Patient',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 15,
-                                            color: AppTheme.darkText,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          'NIC: ${item['patient_nic'] ?? 'N/A'} | Phone: ${item['patient_phone'] ?? 'N/A'}',
-                                          style: const TextStyle(fontSize: 12, color: AppTheme.mutedText),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: isCheckedIn
-                                          ? AppTheme.accentGreen.withValues(alpha: 0.15)
-                                          : Colors.grey.shade100,
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: Text(
-                                      isCheckedIn ? 'CHECKED-IN' : 'WAITING',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: isCheckedIn ? AppTheme.accentGreen : AppTheme.mutedText,
-                                      ),
-                                    ),
+                                  SizedBox(height: 4),
+                                  Text(
+                                    'The queue is currently clear for this room.',
+                                    style: TextStyle(color: AppTheme.mutedText, fontSize: 13),
                                   ),
                                 ],
                               ),
-                            );
-                          },
-                        ),
-                    ],
+                            )
+                          else
+                            ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: waitingList.length,
+                              separatorBuilder: (_, __) => const SizedBox(height: 10),
+                              itemBuilder: (context, index) {
+                                final item = waitingList[index];
+                                final id = (item['id'] as int?) ?? 0;
+                                final token = item['queue_number'] ?? '${index + 1}';
+                                final name = item['patient_name'] ?? 'Patient';
+                                final status = item['status'] as String? ?? 'PENDING';
+                                final isPriority = (item['priority'] as bool?) ?? false;
+                                final priorityCat = item['priority_category'] as String?;
+                                final isCheckedIn = status == 'CHECKED_IN';
+
+                                return Container(
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(
+                                      color: isPriority
+                                          ? AppTheme.errorRed.withValues(alpha: 0.5)
+                                          : (isCheckedIn ? AppTheme.accentGreen.withValues(alpha: 0.4) : Colors.grey.shade200),
+                                      width: (isPriority || isCheckedIn) ? 1.5 : 1,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                            decoration: BoxDecoration(
+                                              color: isPriority
+                                                  ? AppTheme.errorRed.withValues(alpha: 0.15)
+                                                  : (isCheckedIn ? AppTheme.accentGreen.withValues(alpha: 0.15) : AppTheme.lightBg),
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: Text(
+                                              '$token',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                                color: isPriority
+                                                    ? AppTheme.errorRed
+                                                    : (isCheckedIn ? AppTheme.accentGreen : AppTheme.darkText),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  name,
+                                                  style: const TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 15,
+                                                    color: AppTheme.darkText,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Text(
+                                                  'Pos: #${index + 1} | NIC: ${item['patient_nic'] ?? 'N/A'}',
+                                                  style: const TextStyle(fontSize: 12, color: AppTheme.mutedText),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          if (isPriority)
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: AppTheme.errorRed,
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                'PRIORITY${priorityCat != null ? ' ($priorityCat)' : ''}',
+                                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                              ),
+                                            )
+                                          else
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              decoration: BoxDecoration(
+                                                color: isCheckedIn ? AppTheme.accentGreen.withValues(alpha: 0.15) : Colors.grey.shade100,
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                isCheckedIn ? 'Checked-In' : 'Waiting',
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isCheckedIn ? AppTheme.accentGreen : AppTheme.mutedText,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+
+                                      const SizedBox(height: 10),
+
+                                      // Action Buttons Row (Priority, Skip, Call)
+                                      Row(
+                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        children: [
+                                          OutlinedButton.icon(
+                                            style: OutlinedButton.styleFrom(
+                                              minimumSize: const Size(0, 32),
+                                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                                              side: BorderSide(color: isPriority ? AppTheme.errorRed : AppTheme.mutedText),
+                                            ),
+                                            onPressed: () => _showPriorityDialog(id, token, name, isPriority),
+                                            icon: Icon(
+                                              Icons.priority_high_rounded,
+                                              size: 14,
+                                              color: isPriority ? AppTheme.errorRed : AppTheme.mutedText,
+                                            ),
+                                            label: Text(
+                                              isPriority ? 'Priority' : 'Set Priority',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: isPriority ? AppTheme.errorRed : AppTheme.mutedText,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          OutlinedButton.icon(
+                                            style: OutlinedButton.styleFrom(
+                                              minimumSize: const Size(0, 32),
+                                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                                              side: BorderSide(color: Colors.grey.shade400),
+                                            ),
+                                            onPressed: () => _showSkipDialog(id, token, name),
+                                            icon: const Icon(Icons.redo_rounded, size: 14, color: AppTheme.mutedText),
+                                            label: const Text('Skip', style: TextStyle(fontSize: 11, color: AppTheme.mutedText)),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                ],
+              ),
+
+              // TAB 2: Skipped & Completed Queue History View
+              ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: skippedOrCompletedList.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  final item = skippedOrCompletedList[index];
+                  final id = (item['id'] as int?) ?? 0;
+                  final token = item['queue_number'] ?? 'N/A';
+                  final name = item['patient_name'] ?? 'Patient';
+                  final status = item['status'] as String? ?? 'COMPLETED';
+                  final isSkipped = status == 'SKIPPED';
+
+                  return Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isSkipped ? Colors.grey.shade200 : AppTheme.accentGreen.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '$token',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: isSkipped ? Colors.grey.shade700 : AppTheme.accentGreen,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                name,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.darkText),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                isSkipped ? 'Reason: ${item['skip_reason'] ?? 'Not Present'}' : 'Status: Completed',
+                                style: TextStyle(fontSize: 12, color: isSkipped ? Colors.grey.shade700 : AppTheme.accentGreen),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            minimumSize: const Size(0, 36),
+                            backgroundColor: AppTheme.primarySkyBlue,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                          ),
+                          onPressed: () => _showRecallDialog(id, token, name),
+                          icon: const Icon(Icons.replay_rounded, size: 16),
+                          label: const Text('Recall', style: TextStyle(fontSize: 12)),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
             ],
           );
         },
       ),
+      bottomNavigationBar: const StaffBottomNavBar(currentIndex: 1),
+    );
+  }
+
+  Widget _buildMiniStat(String label, String value, Color color) {
+    return Column(
+      children: [
+        Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: color)),
+        Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.mutedText)),
+      ],
     );
   }
 
@@ -368,7 +826,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [roomColor, AppTheme.primaryBlue],
+          colors: [roomColor, AppTheme.primarySkyBlue],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -405,15 +863,15 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
           Row(
             children: [
               Text(
-                '#$token',
+                '$token',
                 style: const TextStyle(
-                  fontSize: 48,
+                  fontSize: 44,
                   fontWeight: FontWeight.w900,
                   color: Colors.white,
                   height: 1,
                 ),
               ),
-              const SizedBox(width: 20),
+              const SizedBox(width: 18),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -421,7 +879,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
                     Text(
                       name,
                       style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: 19,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -431,11 +889,11 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> {
                     const SizedBox(height: 4),
                     Text(
                       'NIC: $nic',
-                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                     Text(
                       'Phone: $phone',
-                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                   ],
                 ),
