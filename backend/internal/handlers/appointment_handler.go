@@ -27,6 +27,7 @@ var validRooms = map[models.OPDRoom]string{
 	models.RoomBleeding:   "Bleeding Room",
 	models.RoomAnimalBite: "Animal Bite Room",
 	models.RoomOPDClinic:  "OPD Clinic Room",
+	models.RoomDispensary: "Dispensary",
 }
 
 // GetRooms returns all available OPD rooms
@@ -42,6 +43,7 @@ func (h *AppointmentHandler) GetRooms(c *gin.Context) {
 		{Key: string(models.RoomBleeding), Name: "Bleeding Room"},
 		{Key: string(models.RoomAnimalBite), Name: "Animal Bite Room"},
 		{Key: string(models.RoomOPDClinic), Name: "OPD Clinic Room"},
+		{Key: string(models.RoomDispensary), Name: "Dispensary"},
 	}
 
 	utils.SendSuccess(c, http.StatusOK, "Available OPD rooms", rooms)
@@ -57,8 +59,8 @@ func (h *AppointmentHandler) BookAppointment(c *gin.Context) {
 	userID := userIDVal.(uint)
 
 	type BookRequest struct {
-		Room string `json:"room" binding:"required"`
-		Date string `json:"date"` // Format: YYYY-MM-DD (optional, defaults to today)
+		Room  string `json:"room" binding:"required"`
+		Date  string `json:"date"` // Format: YYYY-MM-DD (optional, defaults to today)
 		Notes string `json:"notes"`
 	}
 
@@ -120,12 +122,15 @@ func (h *AppointmentHandler) BookAppointment(c *gin.Context) {
 		Scan(&maxQueue)
 
 	newQueueNumber := maxQueue + 1
+	appointmentTime := time.Date(2000, 1, 1, 8, 0, 0, 0, loc).
+		Add(time.Duration(newQueueNumber-1) * 15 * time.Minute)
 
 	appointment := models.OPDAppointment{
 		PatientID:       userID,
 		Room:            room,
 		QueueNumber:     newQueueNumber,
 		AppointmentDate: selectedDate,
+		AppointmentTime: appointmentTime.Format("15:04"),
 		PatientName:     user.FullName,
 		PatientNIC:      user.NIC,
 		PatientPhone:    user.Phone,

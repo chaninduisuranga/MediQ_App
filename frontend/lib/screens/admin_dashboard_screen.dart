@@ -47,16 +47,20 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
-  Future<void> _openBookAppointment() async {
-    await Navigator.pushNamed(context, '/book-appointment');
-  }
-
   Future<void> _openUserManagement() async {
     await Navigator.pushNamed(context, '/admin/users');
   }
 
-  Future<void> _openMedicalRecords() async {
-    await Navigator.pushNamed(context, '/medical-records');
+  Future<void> _openAppointmentManagement() async {
+    await Navigator.pushNamed(context, '/admin/appointments');
+  }
+
+  Future<void> _openQueueManagement() async {
+    await Navigator.pushNamed(context, '/admin/queues');
+  }
+
+  Future<void> _openClinicalStaffManagement() async {
+    await Navigator.pushNamed(context, '/admin/clinical-staff');
   }
 
   @override
@@ -247,7 +251,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       const Color(0xFF00A896),
                       const Color(0xFF02C39A)
                     ],
-                    onTap: _openBookAppointment,
+                    onTap: _openClinicalStaffManagement,
                   ),
                   _build3DGlassCard(
                     icon: Icons.medical_services_outlined,
@@ -257,7 +261,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       const Color(0xFF0284C7),
                       const Color(0xFF38BDF8)
                     ],
-                    onTap: _openMedicalRecords,
+                    onTap: _openQueueManagement,
                   ),
                   _build3DGlassCard(
                     icon: Icons.contact_support_outlined,
@@ -267,12 +271,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       const Color(0xFFE11D48),
                       const Color(0xFFF43F5E)
                     ],
-                    onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Emergency Hotline: Dial 1990')),
-                      );
-                    },
+                    onTap: _openAppointmentManagement,
                   ),
                 ],
               ),

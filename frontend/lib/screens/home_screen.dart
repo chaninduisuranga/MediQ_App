@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import '../core/services/appointment_service.dart';
 import '../core/services/auth_service.dart';
 import '../core/services/language_service.dart';
@@ -35,7 +36,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  Map<String, dynamic>? _nextAppointment;
+  List<dynamic> _allUpcomingAppointments = [];
 
   // Search controller
   final TextEditingController _searchController = TextEditingController();
@@ -77,9 +78,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
           if (activeList.isNotEmpty) {
             activeList.sort((a, b) => (a['appointment_date'] as String).compareTo(b['appointment_date'] as String));
-            _nextAppointment = activeList.first as Map<String, dynamic>;
+            _allUpcomingAppointments = activeList;
           } else {
-            _nextAppointment = null;
+            _allUpcomingAppointments = [];
           }
 
           // Generate dynamic notifications for active appointments
@@ -914,6 +915,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final fullName = user['full_name'] ?? 'Patient';
     final nic = user['nic'] ?? 'N/A';
     final phone = user['phone'] ?? 'N/A';
+    final now = DateTime.now();
+    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
 
     return ValueListenableBuilder<String>(
       valueListenable: LanguageService.currentLanguageNotifier,
@@ -1878,35 +1881,30 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 24),
 
                     // UPCOMING APPOINTMENT SECTION
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          "Upcoming Appointment",
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF0F172A),
-                          ),
-                        ),
-                        if (_nextAppointment != null)
-                          GestureDetector(
-                            onTap: _openBookAppointment,
-                            child: const Text(
-                              "Manage",
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF2563EB),
-                              ),
-                            ),
-                          ),
-                      ],
+                    const Text(
+                      "Upcoming Appointments",
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF0F172A),
+                      ),
                     ),
                     const SizedBox(height: 14),
 
-                    // Upcoming Appointment Card
-                    _buildUpcomingAppointmentCard(),
+                    // Display all appointments one by one ordered by date
+                    if (_allUpcomingAppointments.isEmpty)
+                      _buildEmptyAppointmentCard()
+                    else
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _allUpcomingAppointments.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (ctx, index) {
+                          final appt = _allUpcomingAppointments[index] as Map<String, dynamic>;
+                          return _buildUpcomingAppointmentCard(appt, todayStr);
+                        },
+                      ),
                     const SizedBox(height: 24),
 
                     const SizedBox(height: 12),
@@ -2034,110 +2032,433 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // UPCOMING APPOINTMENT CARD WIDGET
-  Widget _buildUpcomingAppointmentCard() {
-    final appt = _nextAppointment;
-    final doctorName = appt != null
-        ? (appt['doctor_name'] ?? AppointmentService.getRoomDisplayName(appt['room'] ?? ''))
-        : "Dr. James Carter";
-    final specialty = appt != null
-        ? AppointmentService.getRoomDisplayName(appt['room'] ?? '')
-        : "Cardiologist";
-    final dateStr = appt != null ? (appt['appointment_date'] ?? 'May 24, 2025') : "May 24, 2025";
-    final timeStr = appt != null ? "10:30 AM" : "10:30 AM";
+  String _formatDisplayDate(String dateStr) {
+    try {
+      final dt = DateTime.parse(dateStr);
+      final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      final dayName = days[dt.weekday - 1];
+      final monthName = months[dt.month - 1];
+      return '$dayName, $monthName ${dt.day}, ${dt.year}';
+    } catch (_) {
+      return dateStr;
+    }
+  }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFF1F5F9)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+  IconData _getRoomIcon(String roomKey) {
+    switch (roomKey) {
+      case 'DRESSING_ROOM':
+        return Icons.healing_rounded;
+      case 'INJECTION_ROOM':
+        return Icons.vaccines_rounded;
+      case 'BLEEDING_ROOM':
+        return Icons.water_drop_rounded;
+      case 'ANIMAL_BITE_ROOM':
+        return Icons.pets_rounded;
+      case 'OPD_CLINIC_ROOM':
+        return Icons.medical_services_rounded;
+      default:
+        return Icons.meeting_room_rounded;
+    }
+  }
+
+  void _showAppointmentQrModal(Map<String, dynamic> appt) {
+    final roomKey = appt['room'] as String? ?? '';
+    final roomName = AppointmentService.getRoomDisplayName(roomKey);
+    final roomColorInt = AppointmentService.getRoomColor(roomKey);
+    final roomColor = Color(roomColorInt);
+    final queueNum = appt['queue_number'] ?? 0;
+    final dateStr = appt['appointment_date'] as String? ?? '';
+    final formattedDate = _formatDisplayDate(dateStr);
+    final qrData = (appt['qr_code_data'] as String? ?? '').isNotEmpty
+        ? appt['qr_code_data'] as String
+        : 'http://mediq.app/appointment/${appt['id']}';
+    final user = AuthService.currentUser ?? {};
+    final patientName = user['full_name'] ?? appt['patient_name'] ?? 'Patient';
+    final patientNic = user['nic'] ?? appt['patient_nic'] ?? 'N/A';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        height: MediaQuery.of(context).size.height * 0.75,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(28),
+            topRight: Radius.circular(28),
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              // Doctor Avatar
-              Container(
-                width: 48,
-                height: 48,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFDBEAFE),
-                  shape: BoxShape.circle,
-                ),
-                child: const ClipRRect(
-                  borderRadius: BorderRadius.all(Radius.circular(24)),
-                  child: Icon(Icons.person_rounded, color: Color(0xFF2563EB), size: 28),
-                ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 20,
+              offset: Offset(0, -5),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
               ),
-              const SizedBox(width: 12),
-              Expanded(
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: roomColor.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(_getRoomIcon(roomKey), color: roomColor, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          roomName,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF0F172A)),
+                        ),
+                        Text(
+                          'Token #$queueNum • $formattedDate',
+                          style: const TextStyle(fontSize: 12, color: Color(0xFF64748B)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: Color(0xFF64748B)),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      doctorName,
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF0F172A),
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: roomColor.withValues(alpha: 0.3), width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: roomColor.withValues(alpha: 0.12),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: QrImageView(
+                        data: qrData,
+                        version: QrVersions.auto,
+                        size: 200,
+                        eyeStyle: QrEyeStyle(
+                          eyeShape: QrEyeShape.square,
+                          color: roomColor,
+                        ),
+                        dataModuleStyle: const QrDataModuleStyle(
+                          dataModuleShape: QrDataModuleShape.square,
+                          color: Color(0xFF0F172A),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 16),
                     Text(
-                      specialty,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF64748B),
+                      'Scan this QR code at OPD Counter 1',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: roomColor),
+                    ),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Column(
+                        children: [
+                          _buildModalDetailRow('Patient Name', patientName),
+                          const Divider(height: 16),
+                          _buildModalDetailRow('NIC Number', patientNic),
+                          const Divider(height: 16),
+                          _buildModalDetailRow('OPD Room', roomName),
+                          const Divider(height: 16),
+                          _buildModalDetailRow('Queue Token', '#$queueNum'),
+                          const Divider(height: 16),
+                          _buildModalDetailRow('Appointment Date', formattedDate),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-              // Status Pill Tag
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2563EB),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Text(
-                  "Confirmed",
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModalDetailRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+      ],
+    );
+  }
+
+  Widget _buildUpcomingAppointmentCard(Map<String, dynamic> appt, String todayStr) {
+    final roomKey = appt['room'] as String? ?? '';
+    final roomName = AppointmentService.getRoomDisplayName(roomKey);
+    final roomColorInt = AppointmentService.getRoomColor(roomKey);
+    final roomColor = Color(roomColorInt);
+    final queueNum = appt['queue_number'] ?? 0;
+    final dateStr = appt['appointment_date'] as String? ?? '';
+    final formattedDate = _formatDisplayDate(dateStr);
+    final isToday = (dateStr == todayStr);
+
+    final qrData = (appt['qr_code_data'] as String? ?? '').isNotEmpty
+        ? appt['qr_code_data'] as String
+        : 'http://mediq.app/appointment/${appt['id']}';
+
+    return GestureDetector(
+      onTap: () => _showAppointmentQrModal(appt),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isToday ? const Color(0xFFFFFBEB) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isToday ? const Color(0xFFF59E0B) : const Color(0xFFF1F5F9),
+            width: isToday ? 2 : 1,
           ),
-          const SizedBox(height: 14),
-          Container(height: 1, color: const Color(0xFFF1F5F9)),
+          boxShadow: [
+            BoxShadow(
+              color: isToday
+                  ? const Color(0xFFF59E0B).withValues(alpha: 0.22)
+                  : Colors.black.withValues(alpha: 0.03),
+              blurRadius: isToday ? 14 : 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Left Room Icon
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: roomColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(_getRoomIcon(roomKey), color: roomColor, size: 24),
+            ),
+            const SizedBox(width: 12),
+
+            // Middle Room & Date & Token details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          roomName,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF0F172A),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (isToday)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFEF4444), Color(0xFFF97316)],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFEF4444).withValues(alpha: 0.4),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.bolt_rounded, color: Colors.white, size: 12),
+                              SizedBox(width: 2),
+                              Text(
+                                "TODAY",
+                                style: TextStyle(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        )
+                      else
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Text(
+                            "Confirmed",
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2563EB),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: roomColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'Token #$queueNum',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: roomColor,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          formattedDate,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF64748B),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+
+            // Right Mini QR Code
+            Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isToday ? const Color(0xFFF59E0B) : const Color(0xFFE2E8F0),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 4,
+                  ),
+                ],
+              ),
+              child: QrImageView(
+                data: qrData,
+                version: QrVersions.auto,
+                size: 52,
+                eyeStyle: QrEyeStyle(
+                  eyeShape: QrEyeShape.square,
+                  color: roomColor,
+                ),
+                dataModuleStyle: const QrDataModuleStyle(
+                  dataModuleShape: QrDataModuleShape.square,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyAppointmentCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFF1F5F9)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2563EB).withValues(alpha: 0.08),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.event_available_rounded, size: 28, color: Color(0xFF2563EB)),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            "No Upcoming Appointments",
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            "Book an OPD token to get your appointment queue number.",
+            style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              const Icon(Icons.calendar_month_rounded, size: 16, color: Color(0xFF94A3B8)),
-              const SizedBox(width: 6),
-              Text(
-                dateStr,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
-              ),
-              const SizedBox(width: 20),
-              const Icon(Icons.access_time_rounded, size: 16, color: Color(0xFF94A3B8)),
-              const SizedBox(width: 6),
-              Text(
-                timeStr,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
-              ),
-            ],
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2563EB),
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            ),
+            onPressed: _openBookAppointment,
+            icon: const Icon(Icons.add_rounded, size: 16, color: Colors.white),
+            label: const Text('Book Appointment Now', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
