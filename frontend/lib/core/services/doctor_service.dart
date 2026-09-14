@@ -1,0 +1,509 @@
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'auth_service.dart';
+
+/// Service for all Doctor-specific API calls.
+/// Follows the same pattern as [QueueService] and [AppointmentService]:
+/// tries the backend first; falls back to local mock data on failure.
+class DoctorService {
+  static String get baseUrl => AuthService.baseUrl;
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Mock Data (fallback when backend is unavailable)
+  // ─────────────────────────────────────────────────────────────────────
+
+  static final List<Map<String, dynamic>> _mockTodayAppointments = [
+    {
+      'id': 1001,
+      'queue_number': 'G-001',
+      'raw_number': 1,
+      'patient_name': 'Saman Kumara',
+      'patient_id': 'PAT-2201',
+      'patient_nic': '851234567V',
+      'patient_phone': '0771234567',
+      'patient_age': 40,
+      'patient_gender': 'Male',
+      'appointment_time': '09:00 AM',
+      'appointment_date': '2026-09-14',
+      'room': 'GENERAL_OPD',
+      'appointment_status': 'COMPLETED',
+      'queue_status': 'COMPLETED',
+      'notes': 'Routine annual checkup',
+      'blood_group': 'B+',
+      'allergies': 'None',
+      'medical_conditions': 'Hypertension',
+    },
+    {
+      'id': 1002,
+      'queue_number': 'G-002',
+      'raw_number': 2,
+      'patient_name': 'Nimal Perera',
+      'patient_id': 'PAT-3350',
+      'patient_nic': '901234567V',
+      'patient_phone': '0719876543',
+      'patient_age': 35,
+      'patient_gender': 'Male',
+      'appointment_time': '09:15 AM',
+      'appointment_date': '2026-09-14',
+      'room': 'GENERAL_OPD',
+      'appointment_status': 'IN_CONSULTATION',
+      'queue_status': 'IN_PROGRESS',
+      'notes': 'Fever and cold symptoms',
+      'blood_group': 'O+',
+      'allergies': 'Penicillin',
+      'medical_conditions': 'None',
+    },
+    {
+      'id': 1003,
+      'queue_number': 'G-003',
+      'raw_number': 3,
+      'patient_name': 'Kasun Silva',
+      'patient_id': 'PAT-4411',
+      'patient_nic': '923456789V',
+      'patient_phone': '0754443322',
+      'patient_age': 28,
+      'patient_gender': 'Male',
+      'appointment_time': '09:30 AM',
+      'appointment_date': '2026-09-14',
+      'room': 'GENERAL_OPD',
+      'appointment_status': 'WAITING',
+      'queue_status': 'CHECKED_IN',
+      'notes': 'Persistent headache for 3 days',
+      'blood_group': 'A+',
+      'allergies': 'None',
+      'medical_conditions': 'None',
+    },
+    {
+      'id': 1004,
+      'queue_number': 'G-004',
+      'raw_number': 4,
+      'patient_name': 'Anu Perera',
+      'patient_id': 'PAT-5520',
+      'patient_nic': '685432109V',
+      'patient_phone': '0721112233',
+      'patient_age': 63,
+      'patient_gender': 'Female',
+      'appointment_time': '09:45 AM',
+      'appointment_date': '2026-09-14',
+      'room': 'GENERAL_OPD',
+      'appointment_status': 'WAITING',
+      'queue_status': 'CHECKED_IN',
+      'notes': 'Elderly patient — high BP follow-up',
+      'blood_group': 'AB-',
+      'allergies': 'Aspirin',
+      'medical_conditions': 'Hypertension, Diabetes',
+    },
+    {
+      'id': 1005,
+      'queue_number': 'G-005',
+      'raw_number': 5,
+      'patient_name': 'Kamal Fernando',
+      'patient_id': 'PAT-6630',
+      'patient_nic': '951112233V',
+      'patient_phone': '0783332211',
+      'patient_age': 31,
+      'patient_gender': 'Male',
+      'appointment_time': '10:00 AM',
+      'appointment_date': '2026-09-14',
+      'room': 'GENERAL_OPD',
+      'appointment_status': 'SCHEDULED',
+      'queue_status': 'PENDING',
+      'notes': 'Stomach ache and nausea',
+      'blood_group': 'O-',
+      'allergies': 'None',
+      'medical_conditions': 'None',
+    },
+  ];
+
+  static final List<Map<String, dynamic>> _mockPreviousAppointments = [
+    {
+      'id': 901,
+      'queue_number': 'G-044',
+      'patient_name': 'Dilini Wickramasinghe',
+      'patient_id': 'PAT-1180',
+      'patient_nic': '945554433V',
+      'appointment_time': '10:00 AM',
+      'appointment_date': '2026-09-13',
+      'consultation_status': 'COMPLETED',
+      'notes': 'Cold and flu — prescribed paracetamol',
+    },
+    {
+      'id': 902,
+      'queue_number': 'G-045',
+      'patient_name': 'Ruwan Gunawardena',
+      'patient_id': 'PAT-2290',
+      'patient_nic': '883332211V',
+      'appointment_time': '11:00 AM',
+      'appointment_date': '2026-09-13',
+      'consultation_status': 'COMPLETED',
+      'notes': 'BP monitoring — medication adjusted',
+    },
+    {
+      'id': 903,
+      'queue_number': 'G-011',
+      'patient_name': 'Priyantha Ranasinghe',
+      'patient_id': 'PAT-3310',
+      'patient_nic': '741112233V',
+      'appointment_time': '09:00 AM',
+      'appointment_date': '2026-09-12',
+      'consultation_status': 'NO_SHOW',
+      'notes': 'Patient did not attend',
+    },
+  ];
+
+  static final List<Map<String, dynamic>> _mockNotifications = [
+    {
+      'id': 1,
+      'type': 'NEW_APPOINTMENT',
+      'title': 'New Appointment Booked',
+      'message': 'Patient Kamal Fernando has booked an appointment for today 10:00 AM (Queue G-005).',
+      'timestamp': '2026-09-14T08:45:00',
+      'is_read': false,
+      'icon': 'calendar',
+    },
+    {
+      'id': 2,
+      'type': 'APPOINTMENT_CANCELLED',
+      'title': 'Appointment Cancelled',
+      'message': 'Patient Sunil Jayasinghe has cancelled their 11:30 AM appointment.',
+      'timestamp': '2026-09-14T08:20:00',
+      'is_read': false,
+      'icon': 'cancel',
+    },
+    {
+      'id': 3,
+      'type': 'QUEUE_UPDATE',
+      'title': 'Queue Update',
+      'message': 'Patient Anu Perera (G-004) has checked in and is now waiting.',
+      'timestamp': '2026-09-14T09:30:00',
+      'is_read': true,
+      'icon': 'queue',
+    },
+    {
+      'id': 4,
+      'type': 'ADMIN_ANNOUNCEMENT',
+      'title': 'Admin Announcement',
+      'message': 'OPD session extended by 1 hour today. Please accommodate all waiting patients.',
+      'timestamp': '2026-09-14T07:00:00',
+      'is_read': true,
+      'icon': 'announcement',
+    },
+  ];
+
+  static Map<String, dynamic> _mockAvailability = {
+    'is_available': true,
+    'working_days': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
+    'working_hours_start': '08:00 AM',
+    'working_hours_end': '04:00 PM',
+    'clinic': 'General OPD — Room 03',
+    'session_type': 'Morning Session',
+    'max_patients_per_day': 40,
+    'current_session_date': '2026-09-14',
+  };
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Today's Appointments
+  // ─────────────────────────────────────────────────────────────────────
+
+  static Future<List<Map<String, dynamic>>> getTodayAppointments() async {
+    try {
+      final token = AuthService.token;
+      final response = await http.get(
+        Uri.parse('$baseUrl/doctor/appointments/today'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['success'] == true && body['data'] != null) {
+          return List<Map<String, dynamic>>.from(body['data'] as List);
+        }
+      }
+    } catch (e) {
+      debugPrint('DoctorService.getTodayAppointments fallback: $e');
+    }
+    return List<Map<String, dynamic>>.from(_mockTodayAppointments);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Previous Appointments
+  // ─────────────────────────────────────────────────────────────────────
+
+  static Future<List<Map<String, dynamic>>> getPreviousAppointments({
+    String? filterStatus,
+    String? filterDate,
+  }) async {
+    try {
+      final token = AuthService.token;
+      final response = await http.get(
+        Uri.parse('$baseUrl/doctor/appointments/history'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['success'] == true && body['data'] != null) {
+          return List<Map<String, dynamic>>.from(body['data'] as List);
+        }
+      }
+    } catch (e) {
+      debugPrint('DoctorService.getPreviousAppointments fallback: $e');
+    }
+    var list = List<Map<String, dynamic>>.from(_mockPreviousAppointments);
+    if (filterStatus != null && filterStatus.isNotEmpty && filterStatus != 'ALL') {
+      list = list.where((a) => a['consultation_status'] == filterStatus).toList();
+    }
+    return list;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Update Appointment / Queue Status
+  // ─────────────────────────────────────────────────────────────────────
+
+  static Future<bool> updateAppointmentStatus(int id, String status) async {
+    try {
+      final token = AuthService.token;
+      final response = await http.put(
+        Uri.parse('$baseUrl/doctor/appointments/$id/status'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'status': status}),
+      );
+      if (response.statusCode == 200) return true;
+    } catch (e) {
+      debugPrint('DoctorService.updateAppointmentStatus fallback: $e');
+    }
+    // Update local mock data
+    final idx = _mockTodayAppointments.indexWhere((a) => a['id'] == id);
+    if (idx >= 0) {
+      _mockTodayAppointments[idx]['appointment_status'] = status;
+      _mockTodayAppointments[idx]['queue_status'] = _mapToQueueStatus(status);
+    }
+    return true;
+  }
+
+  static String _mapToQueueStatus(String appointmentStatus) {
+    switch (appointmentStatus) {
+      case 'IN_CONSULTATION':
+        return 'IN_PROGRESS';
+      case 'COMPLETED':
+        return 'COMPLETED';
+      case 'NO_SHOW':
+        return 'NO_SHOW';
+      case 'CANCELLED':
+        return 'CANCELLED';
+      default:
+        return 'CHECKED_IN';
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Availability
+  // ─────────────────────────────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> getAvailability() async {
+    try {
+      final token = AuthService.token;
+      final response = await http.get(
+        Uri.parse('$baseUrl/doctor/availability'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['success'] == true && body['data'] != null) {
+          return Map<String, dynamic>.from(body['data'] as Map);
+        }
+      }
+    } catch (e) {
+      debugPrint('DoctorService.getAvailability fallback: $e');
+    }
+    return Map<String, dynamic>.from(_mockAvailability);
+  }
+
+  static Future<bool> updateAvailability(bool isAvailable) async {
+    try {
+      final token = AuthService.token;
+      final response = await http.put(
+        Uri.parse('$baseUrl/doctor/availability'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({'is_available': isAvailable}),
+      );
+      if (response.statusCode == 200) return true;
+    } catch (e) {
+      debugPrint('DoctorService.updateAvailability fallback: $e');
+    }
+    _mockAvailability['is_available'] = isAvailable;
+    return true;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Notifications
+  // ─────────────────────────────────────────────────────────────────────
+
+  static Future<List<Map<String, dynamic>>> getNotifications() async {
+    try {
+      final token = AuthService.token;
+      final response = await http.get(
+        Uri.parse('$baseUrl/doctor/notifications'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['success'] == true && body['data'] != null) {
+          return List<Map<String, dynamic>>.from(body['data'] as List);
+        }
+      }
+    } catch (e) {
+      debugPrint('DoctorService.getNotifications fallback: $e');
+    }
+    return List<Map<String, dynamic>>.from(_mockNotifications);
+  }
+
+  static Future<bool> markNotificationRead(int id) async {
+    final idx = _mockNotifications.indexWhere((n) => n['id'] == id);
+    if (idx >= 0) _mockNotifications[idx]['is_read'] = true;
+    try {
+      final token = AuthService.token;
+      await http.put(
+        Uri.parse('$baseUrl/doctor/notifications/$id/read'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+    } catch (_) {}
+    return true;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Dashboard Stats (derived from today's appointments)
+  // ─────────────────────────────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> getDashboardStats() async {
+    final appointments = await getTodayAppointments();
+    final waiting = appointments
+        .where((a) =>
+            a['queue_status'] == 'CHECKED_IN' ||
+            a['appointment_status'] == 'WAITING')
+        .length;
+    final inConsultation = appointments
+        .where((a) =>
+            a['appointment_status'] == 'IN_CONSULTATION' ||
+            a['queue_status'] == 'IN_PROGRESS')
+        .length;
+    final completed = appointments
+        .where((a) => a['appointment_status'] == 'COMPLETED')
+        .length;
+
+    final currentPatient = appointments.firstWhere(
+      (a) =>
+          a['appointment_status'] == 'IN_CONSULTATION' ||
+          a['queue_status'] == 'IN_PROGRESS',
+      orElse: () => <String, dynamic>{},
+    );
+
+    final nextPatient = appointments.firstWhere(
+      (a) =>
+          a['queue_status'] == 'CHECKED_IN' ||
+          a['appointment_status'] == 'WAITING',
+      orElse: () => <String, dynamic>{},
+    );
+
+    final availability = await getAvailability();
+
+    return {
+      'total_today': appointments.length,
+      'waiting': waiting,
+      'in_consultation': inConsultation,
+      'completed': completed,
+      'current_queue_number': currentPatient.isNotEmpty
+          ? currentPatient['queue_number'] ?? '--'
+          : '--',
+      'current_patient_name': currentPatient.isNotEmpty
+          ? currentPatient['patient_name'] ?? '--'
+          : '--',
+      'next_patient_name': nextPatient.isNotEmpty
+          ? nextPatient['patient_name'] ?? '--'
+          : '--',
+      'next_queue_number': nextPatient.isNotEmpty
+          ? nextPatient['queue_number'] ?? '--'
+          : '--',
+      'is_available': availability['is_available'] ?? true,
+      'clinic': availability['clinic'] ?? 'General OPD',
+    };
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Helpers
+  // ─────────────────────────────────────────────────────────────────────
+
+  static int getUnreadNotificationCount(List<Map<String, dynamic>> notifications) {
+    return notifications.where((n) => n['is_read'] == false).length;
+  }
+
+  static Color getStatusColor(String status) {
+    switch (status.toUpperCase()) {
+      case 'COMPLETED':
+        return const Color(0xFF10B981); // green
+      case 'IN_CONSULTATION':
+      case 'IN_PROGRESS':
+        return const Color(0xFF0284C7); // sky blue
+      case 'WAITING':
+      case 'CHECKED_IN':
+        return const Color(0xFFF59E0B); // amber
+      case 'CALLED':
+        return const Color(0xFF8B5CF6); // purple
+      case 'SCHEDULED':
+      case 'PENDING':
+        return const Color(0xFF64748B); // muted
+      case 'CANCELLED':
+      case 'NO_SHOW':
+      case 'SKIPPED':
+        return const Color(0xFFEF4444); // red
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  static String getStatusLabel(String status) {
+    switch (status.toUpperCase()) {
+      case 'COMPLETED':
+        return 'Completed';
+      case 'IN_CONSULTATION':
+      case 'IN_PROGRESS':
+        return 'In Consultation';
+      case 'WAITING':
+      case 'CHECKED_IN':
+        return 'Waiting';
+      case 'CALLED':
+        return 'Called';
+      case 'SCHEDULED':
+      case 'PENDING':
+        return 'Scheduled';
+      case 'CANCELLED':
+        return 'Cancelled';
+      case 'NO_SHOW':
+        return 'No Show';
+      case 'SKIPPED':
+        return 'Skipped';
+      default:
+        return status;
+    }
+  }
+}

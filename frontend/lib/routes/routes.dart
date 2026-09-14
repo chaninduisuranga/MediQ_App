@@ -20,6 +20,17 @@ import '../screens/queue_history_screen.dart';
 import '../screens/admin_dashboard_screen.dart';
 import '../screens/admin_user_management_screen.dart';
 
+// Doctor Module
+import '../screens/doctor_dashboard_screen.dart';
+import '../screens/doctor_appointments_screen.dart';
+import '../screens/doctor_queue_screen.dart';
+import '../screens/doctor_patient_detail_screen.dart';
+import '../screens/doctor_consultation_screen.dart';
+import '../screens/doctor_previous_appointments_screen.dart';
+import '../screens/doctor_availability_screen.dart';
+import '../screens/doctor_profile_screen.dart';
+import '../screens/doctor_notifications_screen.dart';
+
 class AppRoutes {
   static const String splash = '/splash';
   static const String login = '/login';
@@ -41,6 +52,17 @@ class AppRoutes {
   static const String staffProfile = '/staff-profile';
   static const String queueHistory = '/queue-history';
 
+  // Doctor Module Routes
+  static const String doctorDashboard = '/doctor-dashboard';
+  static const String doctorAppointments = '/doctor-appointments';
+  static const String doctorQueue = '/doctor-queue';
+  static const String doctorPatientDetail = '/doctor-patient-detail';
+  static const String doctorConsultation = '/doctor-consultation';
+  static const String doctorPreviousAppointments = '/doctor-previous-appointments';
+  static const String doctorAvailability = '/doctor-availability';
+  static const String doctorProfile = '/doctor-profile';
+  static const String doctorNotifications = '/doctor-notifications';
+
   static Map<String, WidgetBuilder> get routes => {
         splash: (context) => const SplashScreen(),
         login: (context) => const LoginScreen(),
@@ -61,5 +83,16 @@ class AppRoutes {
         checkIn: (context) => const CheckInScreen(),
         staffProfile: (context) => const StaffProfileScreen(),
         queueHistory: (context) => const QueueHistoryScreen(),
+        
+        // Doctor Module Route Implementations
+        doctorDashboard: (context) => const DoctorDashboardScreen(),
+        doctorAppointments: (context) => const DoctorAppointmentsScreen(),
+        doctorQueue: (context) => const DoctorQueueScreen(),
+        doctorPatientDetail: (context) => const DoctorPatientDetailScreen(),
+        doctorConsultation: (context) => const DoctorConsultationScreen(),
+        doctorPreviousAppointments: (context) => const DoctorPreviousAppointmentsScreen(),
+        doctorAvailability: (context) => const DoctorAvailabilityScreen(),
+        doctorProfile: (context) => const DoctorProfileScreen(),
+        doctorNotifications: (context) => const DoctorNotificationsScreen(),
       };
 }

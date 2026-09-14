@@ -4,13 +4,13 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
-  // Use 10.0.2.2 for Android Emulator, localhost for Windows/Web
+  // Use 10.0.2.2 for Android Emulator, 127.0.0.1 for iOS/Windows/Web
   static String get baseUrl {
-    if (kIsWeb) return 'http://localhost:8085/api/v1';
+    if (kIsWeb) return 'http://127.0.0.1:8085/api/v1';
     if (defaultTargetPlatform == TargetPlatform.android) {
       return 'http://10.0.2.2:8085/api/v1';
     }
-    return 'http://localhost:8085/api/v1';
+    return 'http://127.0.0.1:8085/api/v1';
   }
 
   static String? _token;
