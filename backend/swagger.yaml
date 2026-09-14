@@ -239,6 +239,165 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/ServerError'
+  /admin/doctors:
+    get:
+      summary: List managed doctors
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          required: false
+          description: Search by doctor name, specialization, or SLMC number.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Doctors retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminDoctor'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Add a doctor profile to an existing doctor user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminDoctorRequest'
+      responses:
+        '201':
+          description: Doctor added successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/doctors/{id}:
+    patch:
+      summary: Edit, assign, activate, or deactivate a doctor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminDoctorRequest'
+      responses:
+        '200':
+          description: Doctor updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/staff:
+    get:
+      summary: List managed staff
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Staff retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminStaff'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Add a staff profile to an existing staff user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminStaffRequest'
+      responses:
+        '201':
+          description: Staff added successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/staff/{id}:
+    patch:
+      summary: Edit, assign, activate, or deactivate a staff profile
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminStaffRequest'
+      responses:
+        '200':
+          description: Staff updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 components:
   securitySchemes:
     bearerAuth:
@@ -392,6 +551,91 @@ components:
           type: string
         data:
           $ref: '#/components/schemas/AdminAppointment'
+    AdminDoctor:
+      type: object
+      required: [id, user_id, name, specialization, slmc_number, clinic_name, room, status, is_available, current_queue]
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        name:
+          type: string
+        specialization:
+          type: string
+        slmc_number:
+          type: string
+        clinic_name:
+          type: string
+        room:
+          type: string
+          enum: ['', OPD_CLINIC_ROOM, DRESSING_ROOM, INJECTION_ROOM, BLEEDING_ROOM, ANIMAL_BITE_ROOM]
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, SUSPENDED]
+        is_available:
+          type: boolean
+        current_queue:
+          type: integer
+          format: int64
+    AdminDoctorRequest:
+      type: object
+      required: [user_id, specialization, slmc_number, clinic_name]
+      properties:
+        user_id:
+          type: integer
+        specialization:
+          type: string
+        slmc_number:
+          type: string
+        clinic_name:
+          type: string
+        room:
+          type: string
+          enum: ['', OPD_CLINIC_ROOM, DRESSING_ROOM, INJECTION_ROOM, BLEEDING_ROOM, ANIMAL_BITE_ROOM]
+        is_available:
+          type: boolean
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, SUSPENDED]
+    AdminStaff:
+      type: object
+      required: [id, user_id, name, function, assigned_room, status, is_available]
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        name:
+          type: string
+        function:
+          type: string
+          enum: [REGISTRATION, NURSE, QUEUE_MANAGEMENT]
+        assigned_room:
+          type: string
+          enum: ['', OPD_CLINIC_ROOM, DRESSING_ROOM, INJECTION_ROOM, BLEEDING_ROOM, ANIMAL_BITE_ROOM]
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, SUSPENDED]
+        is_available:
+          type: boolean
+    AdminStaffRequest:
+      type: object
+      required: [user_id, function]
+      properties:
+        user_id:
+          type: integer
+        function:
+          type: string
+          enum: [REGISTRATION, NURSE, QUEUE_MANAGEMENT]
+        assigned_room:
+          type: string
+          enum: ['', OPD_CLINIC_ROOM, DRESSING_ROOM, INJECTION_ROOM, BLEEDING_ROOM, ANIMAL_BITE_ROOM]
+        is_available:
+          type: boolean
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, SUSPENDED]
   responses:
     BadRequest:
       description: Invalid request

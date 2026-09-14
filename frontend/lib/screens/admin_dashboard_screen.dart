@@ -47,16 +47,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
-  Future<void> _openBookAppointment() async {
-    await Navigator.pushNamed(context, '/book-appointment');
-  }
-
   Future<void> _openUserManagement() async {
     await Navigator.pushNamed(context, '/admin/users');
   }
 
   Future<void> _openAppointmentManagement() async {
     await Navigator.pushNamed(context, '/admin/appointments');
+  }
+
+  Future<void> _openClinicalStaffManagement() async {
+    await Navigator.pushNamed(context, '/admin/clinical-staff');
   }
 
   Future<void> _openMedicalRecords() async {
@@ -251,7 +251,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       const Color(0xFF00A896),
                       const Color(0xFF02C39A)
                     ],
-                    onTap: _openBookAppointment,
+                    onTap: _openClinicalStaffManagement,
                   ),
                   _build3DGlassCard(
                     icon: Icons.medical_services_outlined,
