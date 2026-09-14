@@ -13,6 +13,7 @@ type Doctor struct {
 	Specialization string         `gorm:"not null" json:"specialization"`
 	SLMCNumber     string         `gorm:"uniqueIndex;not null" json:"slmc_number"`
 	ClinicName     string         `gorm:"not null" json:"clinic_name"`
+	Room           OPDRoom        `gorm:"type:varchar(50)" json:"room"`
 	IsAvailable    bool           `gorm:"default:true" json:"is_available"`
 	CreatedAt      time.Time      `json:"created_at"`
 	UpdatedAt      time.Time      `json:"updated_at"`
