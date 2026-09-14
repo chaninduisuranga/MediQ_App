@@ -55,12 +55,12 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     await Navigator.pushNamed(context, '/admin/appointments');
   }
 
-  Future<void> _openClinicalStaffManagement() async {
-    await Navigator.pushNamed(context, '/admin/clinical-staff');
+  Future<void> _openQueueManagement() async {
+    await Navigator.pushNamed(context, '/admin/queues');
   }
 
-  Future<void> _openMedicalRecords() async {
-    await Navigator.pushNamed(context, '/medical-records');
+  Future<void> _openClinicalStaffManagement() async {
+    await Navigator.pushNamed(context, '/admin/clinical-staff');
   }
 
   @override
@@ -261,7 +261,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       const Color(0xFF0284C7),
                       const Color(0xFF38BDF8)
                     ],
-                    onTap: _openMedicalRecords,
+                    onTap: _openQueueManagement,
                   ),
                   _build3DGlassCard(
                     icon: Icons.contact_support_outlined,

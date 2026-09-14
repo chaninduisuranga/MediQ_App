@@ -15,6 +15,7 @@ const (
 	RoomBleeding   OPDRoom = "BLEEDING_ROOM"
 	RoomAnimalBite OPDRoom = "ANIMAL_BITE_ROOM"
 	RoomOPDClinic  OPDRoom = "OPD_CLINIC_ROOM"
+	RoomDispensary OPDRoom = "DISPENSARY_ROOM"
 )
 
 type AppointmentStatus string
@@ -22,6 +23,7 @@ type AppointmentStatus string
 const (
 	AppointmentPending   AppointmentStatus = "PENDING"
 	AppointmentConfirmed AppointmentStatus = "CONFIRMED"
+	AppointmentServing   AppointmentStatus = "SERVING"
 	AppointmentCompleted AppointmentStatus = "COMPLETED"
 	AppointmentCancelled AppointmentStatus = "CANCELLED"
 )
@@ -39,6 +41,8 @@ type OPDAppointment struct {
 	PatientPhone    string            `json:"patient_phone"`
 	Notes           string            `json:"notes"`
 	Status          AppointmentStatus `gorm:"type:varchar(20);default:'PENDING'" json:"status"`
+	StartedAt       *time.Time        `json:"started_at,omitempty"`
+	CompletedAt     *time.Time        `json:"completed_at,omitempty"`
 	QRCodeData      string            `gorm:"type:text" json:"qr_code_data"`
 	CreatedAt       time.Time         `json:"created_at"`
 	UpdatedAt       time.Time         `json:"updated_at"`

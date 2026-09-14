@@ -21,10 +21,10 @@ func InitDB(databaseURL string) *gorm.DB {
 	}
 
 	// Auto-migrate user, clinical profile, appointment, and chat tables
-	if err := db.AutoMigrate(&models.User{}, &models.Doctor{}, &models.AdminStaffAssignment{}, &models.MedicalRecord{}, &models.OPDAppointment{}, &models.ChatMessage{}); err != nil {
+	if err := db.AutoMigrate(&models.User{}, &models.Doctor{}, &models.AdminStaffAssignment{}, &models.MedicalRecord{}, &models.OPDAppointment{}, &models.QueueSession{}, &models.ChatMessage{}); err != nil {
 		log.Printf("Failed to auto-migrate database schema: %v", err)
 	} else {
-		log.Println("Database schema auto-migrated successfully (Users, Doctors, StaffAssignments, MedicalRecords, OPDAppointments, ChatMessages)")
+		log.Println("Database schema auto-migrated successfully (Users, Doctors, StaffAssignments, MedicalRecords, OPDAppointments, QueueSessions, ChatMessages)")
 	}
 
 	log.Println("Database connection established successfully")

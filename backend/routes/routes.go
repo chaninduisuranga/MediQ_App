@@ -98,6 +98,9 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			admin.GET("/staff", adminStaffHandler.ListStaff)
 			admin.POST("/staff", adminStaffHandler.CreateStaff)
 			admin.PATCH("/staff/:id", adminStaffHandler.UpdateStaff)
+
+			adminQueueHandler := handlers.NewAdminQueueHandler()
+			admin.GET("/queues", adminQueueHandler.GetQueues)
 		}
 	}
 
