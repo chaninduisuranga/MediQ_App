@@ -19,6 +19,7 @@ import '../screens/queue_history_screen.dart';
 
 import '../screens/admin_dashboard_screen.dart';
 import '../screens/admin_user_management_screen.dart';
+import '../screens/admin_appointment_management_screen.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -34,6 +35,7 @@ class AppRoutes {
   static const String aiChat = '/ai-chat';
   static const String adminDashboard = '/admin-dashboard';
   static const String adminUserManagement = '/admin/users';
+  static const String adminAppointmentManagement = '/admin/appointments';
   static const String staffDashboard = '/staff-dashboard';
   static const String opdQueue = '/opd-queue';
   static const String qrScanner = '/qr-scanner';
@@ -55,6 +57,8 @@ class AppRoutes {
         aiChat: (context) => const AiChatScreen(),
         adminDashboard: (context) => const AdminDashboardScreen(),
         adminUserManagement: (context) => const AdminUserManagementScreen(),
+        adminAppointmentManagement: (context) =>
+            const AdminAppointmentManagementScreen(),
         staffDashboard: (context) => const StaffDashboardScreen(),
         opdQueue: (context) => const OpdQueueScreen(),
         qrScanner: (context) => const QrScannerScreen(),
