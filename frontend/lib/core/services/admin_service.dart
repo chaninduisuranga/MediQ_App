@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import '../constants/constants.dart';
 import '../models/admin_appointment_model.dart';
 import '../models/admin_doctor_model.dart';
+import '../models/admin_queue_model.dart';
 import '../models/admin_staff_model.dart';
 import '../models/admin_user_model.dart';
 import 'auth_service.dart';
@@ -242,6 +243,38 @@ class AdminService {
       parser: AdminStaff.fromJson,
       key: 'staff',
     );
+  }
+
+  static Future<Map<String, dynamic>> getQueues({String date = ''}) async {
+    try {
+      final query =
+          date.isEmpty ? '' : '?date=${Uri.encodeQueryComponent(date)}';
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/queues$query'),
+        headers: _authHeaders,
+      );
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200 && data['success'] == true) {
+        final payload = data['data'] as Map<String, dynamic>;
+        return {
+          'success': true,
+          'date': payload['date'] as String? ?? date,
+          'queues': (payload['queues'] as List<dynamic>? ?? [])
+              .map((item) => AdminQueue.fromJson(item as Map<String, dynamic>))
+              .toList(),
+          'alerts': (payload['alerts'] as List<dynamic>? ?? [])
+              .map((item) =>
+                  AdminQueueAlert.fromJson(item as Map<String, dynamic>))
+              .toList(),
+        };
+      }
+      return {'success': false, 'message': _errorMessage(data)};
+    } catch (_) {
+      return {
+        'success': false,
+        'message': 'Cannot connect to MediQ backend server.',
+      };
+    }
   }
 
   static Future<Map<String, dynamic>> createStaff({

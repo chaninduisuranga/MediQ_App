@@ -8,14 +8,15 @@ class AuthService {
   static String get baseUrl {
     if (kIsWeb) return 'http://localhost:8085/api/v1';
     if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8085/api/v1';
+      return 'http://192.168.8.129:8085/api/v1';
     }
     return 'http://localhost:8085/api/v1';
   }
 
   static String? _token;
   static Map<String, dynamic>? _currentUser;
-  static final ValueNotifier<String?> profilePhotoNotifier = ValueNotifier<String?>(null);
+  static final ValueNotifier<String?> profilePhotoNotifier =
+      ValueNotifier<String?>(null);
 
   static String? get token => _token;
   static Map<String, dynamic>? get currentUser => _currentUser;
@@ -65,17 +66,24 @@ class AuthService {
         _token = data['data']['token'];
         _currentUser = data['data']['user'];
         await loadSavedProfilePhoto();
-        return {'success': true, 'message': data['message'] ?? 'Login successful', 'data': data['data']};
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Login successful',
+          'data': data['data']
+        };
       } else {
         return {
           'success': false,
-          'message': data['error'] ?? data['message'] ?? 'Failed to login. Please try again.',
+          'message': data['error'] ??
+              data['message'] ??
+              'Failed to login. Please try again.',
         };
       }
     } catch (e) {
       return {
         'success': false,
-        'message': 'Cannot connect to MediQ backend server. Please check your connection.',
+        'message':
+            'Cannot connect to MediQ backend server. Please check your connection.',
       };
     }
   }
@@ -108,17 +116,24 @@ class AuthService {
         } else {
           await loadSavedProfilePhoto();
         }
-        return {'success': true, 'message': data['message'] ?? 'Google login successful', 'data': data['data']};
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Google login successful',
+          'data': data['data']
+        };
       } else {
         return {
           'success': false,
-          'message': data['error'] ?? data['message'] ?? 'Failed to login with Google.',
+          'message': data['error'] ??
+              data['message'] ??
+              'Failed to login with Google.',
         };
       }
     } catch (e) {
       return {
         'success': false,
-        'message': 'Cannot connect to MediQ backend server. Please check your connection.',
+        'message':
+            'Cannot connect to MediQ backend server. Please check your connection.',
       };
     }
   }
@@ -167,11 +182,17 @@ class AuthService {
         _token = data['data']['token'];
         _currentUser = data['data']['user'];
         await loadSavedProfilePhoto();
-        return {'success': true, 'message': data['message'] ?? 'Registration successful', 'data': data['data']};
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Registration successful',
+          'data': data['data']
+        };
       } else {
         return {
           'success': false,
-          'message': data['error'] ?? data['message'] ?? 'Registration failed. Please check your information.',
+          'message': data['error'] ??
+              data['message'] ??
+              'Registration failed. Please check your information.',
         };
       }
     } catch (e) {
@@ -223,11 +244,16 @@ class AuthService {
 
       if (response.statusCode == 200 && data['success'] == true) {
         _currentUser = data['data'];
-        return {'success': true, 'message': data['message'] ?? 'Profile updated successfully', 'data': data['data']};
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Profile updated successfully',
+          'data': data['data']
+        };
       } else {
         return {
           'success': false,
-          'message': data['error'] ?? data['message'] ?? 'Failed to update profile.',
+          'message':
+              data['error'] ?? data['message'] ?? 'Failed to update profile.',
         };
       }
     } catch (e) {
@@ -252,11 +278,15 @@ class AuthService {
 
       if (response.statusCode == 200 && data['success'] == true) {
         logout();
-        return {'success': true, 'message': data['message'] ?? 'Account deleted successfully'};
+        return {
+          'success': true,
+          'message': data['message'] ?? 'Account deleted successfully'
+        };
       } else {
         return {
           'success': false,
-          'message': data['error'] ?? data['message'] ?? 'Failed to delete account.',
+          'message':
+              data['error'] ?? data['message'] ?? 'Failed to delete account.',
         };
       }
     } catch (e) {
