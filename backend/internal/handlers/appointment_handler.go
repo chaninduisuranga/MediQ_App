@@ -27,6 +27,7 @@ var validRooms = map[models.OPDRoom]string{
 	models.RoomBleeding:   "Bleeding Room",
 	models.RoomAnimalBite: "Animal Bite Room",
 	models.RoomOPDClinic:  "OPD Clinic Room",
+	models.RoomDispensary: "Dispensary",
 }
 
 // GetRooms returns all available OPD rooms
@@ -42,6 +43,7 @@ func (h *AppointmentHandler) GetRooms(c *gin.Context) {
 		{Key: string(models.RoomBleeding), Name: "Bleeding Room"},
 		{Key: string(models.RoomAnimalBite), Name: "Animal Bite Room"},
 		{Key: string(models.RoomOPDClinic), Name: "OPD Clinic Room"},
+		{Key: string(models.RoomDispensary), Name: "Dispensary"},
 	}
 
 	utils.SendSuccess(c, http.StatusOK, "Available OPD rooms", rooms)

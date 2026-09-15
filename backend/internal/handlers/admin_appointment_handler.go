@@ -184,6 +184,13 @@ func (h *AdminAppointmentHandler) UpdateAppointment(c *gin.Context) {
 	}
 	if request.Status != "" {
 		appointment.Status = request.Status
+		now := time.Now()
+		if request.Status == models.AppointmentServing && appointment.StartedAt == nil {
+			appointment.StartedAt = &now
+		}
+		if request.Status == models.AppointmentCompleted && appointment.CompletedAt == nil {
+			appointment.CompletedAt = &now
+		}
 	}
 	if err := database.DB.Save(&appointment).Error; err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "Failed to update appointment: "+err.Error())
@@ -211,7 +218,7 @@ func adminAppointmentSummary(appointment models.OPDAppointment) AdminAppointment
 }
 
 func isValidAdminAppointmentStatus(status models.AppointmentStatus) bool {
-	return status == models.AppointmentPending || status == models.AppointmentConfirmed || status == models.AppointmentCompleted || status == models.AppointmentCancelled
+	return status == models.AppointmentPending || status == models.AppointmentConfirmed || status == models.AppointmentServing || status == models.AppointmentCompleted || status == models.AppointmentCancelled
 }
 
 func isAdminAppointmentDate(value string) bool {
