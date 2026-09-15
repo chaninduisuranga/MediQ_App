@@ -19,6 +19,7 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
   // Form Controllers
   final _fullNameController = TextEditingController();
   final _nicController = TextEditingController();
+  final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _dobController = TextEditingController();
   final _addressController = TextEditingController();
@@ -55,6 +56,7 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
   void dispose() {
     _fullNameController.dispose();
     _nicController.dispose();
+    _emailController.dispose();
     _phoneController.dispose();
     _dobController.dispose();
     _addressController.dispose();
@@ -151,6 +153,7 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
     final result = await AuthService.signupPatient(
       fullName: _fullNameController.text,
       nic: _nicController.text,
+      email: _emailController.text,
       phone: _phoneController.text,
       password: _passwordController.text,
       gender: _selectedGender,
@@ -586,6 +589,27 @@ class _PatientSignupScreenState extends State<PatientSignupScreen> {
             decoration: const InputDecoration(
               hintText: 'e.g. 0771234567',
               prefixIcon: Icon(Icons.phone_outlined, color: AppTheme.primarySkyBlue),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          const Text('Email Address (විද්‍යුත් තැපෑල)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          const SizedBox(height: 6),
+          TextFormField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            validator: (v) {
+              if (v != null && v.trim().isNotEmpty) {
+                final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                if (!emailRegex.hasMatch(v.trim())) {
+                  return 'Please enter a valid email address';
+                }
+              }
+              return null;
+            },
+            decoration: const InputDecoration(
+              hintText: 'e.g. patient@example.com',
+              prefixIcon: Icon(Icons.email_outlined, color: AppTheme.primarySkyBlue),
             ),
           ),
           const SizedBox(height: 16),

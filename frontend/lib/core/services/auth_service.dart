@@ -126,6 +126,7 @@ class AuthService {
   static Future<Map<String, dynamic>> signupPatient({
     required String fullName,
     required String nic,
+    String email = '',
     required String phone,
     required String password,
     required String gender,
@@ -146,6 +147,7 @@ class AuthService {
         body: jsonEncode({
           'full_name': fullName,
           'nic': nic.trim().toUpperCase(),
+          'email': email,
           'phone': phone,
           'password': password,
           'gender': gender,
@@ -184,6 +186,7 @@ class AuthService {
 
   static Future<Map<String, dynamic>> updateProfile({
     required String fullName,
+    String email = '',
     required String phone,
     required String gender,
     required String dateOfBirth,
@@ -205,6 +208,7 @@ class AuthService {
         },
         body: jsonEncode({
           'full_name': fullName,
+          'email': email,
           'phone': phone,
           'gender': gender,
           'date_of_birth': dateOfBirth,
