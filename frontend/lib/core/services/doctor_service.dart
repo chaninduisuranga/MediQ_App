@@ -157,7 +157,8 @@ class DoctorService {
       'id': 1,
       'type': 'NEW_APPOINTMENT',
       'title': 'New Appointment Booked',
-      'message': 'Patient Kamal Fernando has booked an appointment for today 10:00 AM (Queue G-005).',
+      'message':
+          'Patient Kamal Fernando has booked an appointment for today 10:00 AM (Queue G-005).',
       'timestamp': '2026-09-14T08:45:00',
       'is_read': false,
       'icon': 'calendar',
@@ -166,7 +167,8 @@ class DoctorService {
       'id': 2,
       'type': 'APPOINTMENT_CANCELLED',
       'title': 'Appointment Cancelled',
-      'message': 'Patient Sunil Jayasinghe has cancelled their 11:30 AM appointment.',
+      'message':
+          'Patient Sunil Jayasinghe has cancelled their 11:30 AM appointment.',
       'timestamp': '2026-09-14T08:20:00',
       'is_read': false,
       'icon': 'cancel',
@@ -175,7 +177,8 @@ class DoctorService {
       'id': 3,
       'type': 'QUEUE_UPDATE',
       'title': 'Queue Update',
-      'message': 'Patient Anu Perera (G-004) has checked in and is now waiting.',
+      'message':
+          'Patient Anu Perera (G-004) has checked in and is now waiting.',
       'timestamp': '2026-09-14T09:30:00',
       'is_read': true,
       'icon': 'queue',
@@ -184,14 +187,15 @@ class DoctorService {
       'id': 4,
       'type': 'ADMIN_ANNOUNCEMENT',
       'title': 'Admin Announcement',
-      'message': 'OPD session extended by 1 hour today. Please accommodate all waiting patients.',
+      'message':
+          'OPD session extended by 1 hour today. Please accommodate all waiting patients.',
       'timestamp': '2026-09-14T07:00:00',
       'is_read': true,
       'icon': 'announcement',
     },
   ];
 
-  static Map<String, dynamic> _mockAvailability = {
+  static final Map<String, dynamic> _mockAvailability = {
     'is_available': true,
     'working_days': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
     'working_hours_start': '08:00 AM',
@@ -255,8 +259,11 @@ class DoctorService {
       debugPrint('DoctorService.getPreviousAppointments fallback: $e');
     }
     var list = List<Map<String, dynamic>>.from(_mockPreviousAppointments);
-    if (filterStatus != null && filterStatus.isNotEmpty && filterStatus != 'ALL') {
-      list = list.where((a) => a['consultation_status'] == filterStatus).toList();
+    if (filterStatus != null &&
+        filterStatus.isNotEmpty &&
+        filterStatus != 'ALL') {
+      list =
+          list.where((a) => a['consultation_status'] == filterStatus).toList();
     }
     return list;
   }
@@ -438,12 +445,10 @@ class DoctorService {
       'current_patient_name': currentPatient.isNotEmpty
           ? currentPatient['patient_name'] ?? '--'
           : '--',
-      'next_patient_name': nextPatient.isNotEmpty
-          ? nextPatient['patient_name'] ?? '--'
-          : '--',
-      'next_queue_number': nextPatient.isNotEmpty
-          ? nextPatient['queue_number'] ?? '--'
-          : '--',
+      'next_patient_name':
+          nextPatient.isNotEmpty ? nextPatient['patient_name'] ?? '--' : '--',
+      'next_queue_number':
+          nextPatient.isNotEmpty ? nextPatient['queue_number'] ?? '--' : '--',
       'is_available': availability['is_available'] ?? true,
       'clinic': availability['clinic'] ?? 'General OPD',
     };
@@ -453,7 +458,8 @@ class DoctorService {
   // Helpers
   // ─────────────────────────────────────────────────────────────────────
 
-  static int getUnreadNotificationCount(List<Map<String, dynamic>> notifications) {
+  static int getUnreadNotificationCount(
+      List<Map<String, dynamic>> notifications) {
     return notifications.where((n) => n['is_read'] == false).length;
   }
 
