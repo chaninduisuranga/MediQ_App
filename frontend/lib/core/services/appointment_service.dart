@@ -55,10 +55,18 @@ class AppointmentService {
       'icon': 'clinic',
       'color': 0xFF7C3AED,
     },
+    {
+      'key': 'DISPENSARY_ROOM',
+      'name': 'Dispensary',
+      'subtitle': 'Medicine collection',
+      'icon': 'clinic',
+      'color': 0xFF2563EB,
+    },
   ];
 
   /// Get current queue count for a room on a given date (default today)
-  static Future<Map<String, dynamic>> getQueueStatus(String roomKey, {String? date}) async {
+  static Future<Map<String, dynamic>> getQueueStatus(String roomKey,
+      {String? date}) async {
     try {
       final query = date != null && date.isNotEmpty ? '?date=$date' : '';
       final response = await http.get(
@@ -69,7 +77,10 @@ class AppointmentService {
       if (response.statusCode == 200 && data['success'] == true) {
         return {'success': true, 'data': data['data']};
       }
-      return {'success': false, 'message': data['error'] ?? 'Failed to get queue'};
+      return {
+        'success': false,
+        'message': data['error'] ?? 'Failed to get queue'
+      };
     } catch (e) {
       return {'success': false, 'message': 'Cannot connect to server'};
     }
@@ -98,9 +109,16 @@ class AppointmentService {
       final data = jsonDecode(response.body);
       if ((response.statusCode == 200 || response.statusCode == 201) &&
           data['success'] == true) {
-        return {'success': true, 'message': data['message'], 'data': data['data']};
+        return {
+          'success': true,
+          'message': data['message'],
+          'data': data['data']
+        };
       }
-      return {'success': false, 'message': data['error'] ?? 'Failed to book appointment'};
+      return {
+        'success': false,
+        'message': data['error'] ?? 'Failed to book appointment'
+      };
     } catch (e) {
       return {'success': false, 'message': 'Cannot connect to server'};
     }
@@ -121,7 +139,10 @@ class AppointmentService {
       if (response.statusCode == 200 && data['success'] == true) {
         return {'success': true, 'data': data['data'] ?? []};
       }
-      return {'success': false, 'message': data['error'] ?? 'Failed to get appointments'};
+      return {
+        'success': false,
+        'message': data['error'] ?? 'Failed to get appointments'
+      };
     } catch (e) {
       return {'success': false, 'message': 'Cannot connect to server'};
     }
