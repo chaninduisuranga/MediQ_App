@@ -165,8 +165,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               onTap: () {
                 Navigator.pop(context);
-                AuthService.logout();
-                Navigator.pushReplacementNamed(context, '/login');
+                AuthService.performLogout(context);
               },
             ),
             const SizedBox(height: 16),

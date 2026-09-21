@@ -796,6 +796,26 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 14),
+
+                  // Logout Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      onPressed: () => AuthService.performLogout(context),
+                      icon: const Icon(Icons.logout_rounded, color: AppTheme.errorRed, size: 20),
+                      label: Text(
+                        LanguageService.tr('menu_logout'),
+                        style: const TextStyle(color: AppTheme.errorRed, fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 24),
                 ],
               ),

@@ -601,11 +601,34 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
           ),
           const SizedBox(height: 24),
 
-          const Text('Choose OPD Room',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Choose OPD Room',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF0F172A))),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2563EB).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF2563EB).withValues(alpha: 0.2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.event_note_rounded, size: 14, color: Color(0xFF2563EB)),
+                    const SizedBox(width: 4),
+                    Text(
+                      _formatDate(_selectedDate),
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
-          Text('Available rooms & live queue counts for ${_formatDate(_selectedDate)}',
-              style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+          const Text('Available rooms & live queue counts registered for the selected date',
+              style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
           const SizedBox(height: 14),
 
           // Room Cards (2-Column 3D Glass Grid)
@@ -616,7 +639,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
               crossAxisCount: 2,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              childAspectRatio: 1.05,
+              childAspectRatio: 0.94,
             ),
             itemCount: AppointmentService.opdRooms.length,
             itemBuilder: (context, index) {
@@ -850,6 +873,25 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
     );
   }
 
+  String? _getRoomIconAsset(String key) {
+    switch (key) {
+      case 'DRESSING_ROOM':
+        return 'assets/images/opd_room_dressing.png';
+      case 'INJECTION_ROOM':
+        return 'assets/images/opd_room_injection.png';
+      case 'ANIMAL_BITE_ROOM':
+        return 'assets/images/opd_room_bite.png';
+      case 'BLEEDING_ROOM':
+        return 'assets/images/opd_room_bleeding.png';
+      case 'OPD_CLINIC_ROOM':
+        return 'assets/images/opd_room_clinic.png';
+      case 'DISPENSARY_ROOM':
+        return 'assets/images/opd_room_dispensary.png';
+      default:
+        return null;
+    }
+  }
+
   Widget _buildRoomCard({
     required String key,
     required String name,
@@ -858,6 +900,8 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
     required int queueCount,
     required bool isSelected,
   }) {
+    final assetPath = _getRoomIconAsset(key);
+
     return GestureDetector(
       onTap: () {
         setState(() => _selectedRoomKey = key);
@@ -871,25 +915,37 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          color: isSelected ? color.withValues(alpha: 0.08) : Colors.white,
+          gradient: isSelected
+              ? LinearGradient(
+                  colors: [
+                    const Color(0xFF2563EB).withValues(alpha: 0.08),
+                    color.withValues(alpha: 0.12),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                )
+              : null,
+          color: isSelected ? null : Colors.white,
           boxShadow: [
             BoxShadow(
-              color: isSelected ? color.withValues(alpha: 0.28) : color.withValues(alpha: 0.10),
-              blurRadius: isSelected ? 16 : 10,
+              color: isSelected
+                  ? const Color(0xFF2563EB).withValues(alpha: 0.28)
+                  : color.withValues(alpha: 0.12),
+              blurRadius: isSelected ? 14 : 8,
               spreadRadius: isSelected ? 1 : 0,
-              offset: const Offset(0, 6),
+              offset: const Offset(0, 4),
             ),
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 5,
+              blurRadius: 4,
               offset: const Offset(0, 2),
             ),
           ],
           border: Border.all(
-            color: isSelected ? color : color.withValues(alpha: 0.2),
+            color: isSelected ? const Color(0xFF2563EB) : color.withValues(alpha: 0.25),
             width: isSelected ? 2.5 : 1.5,
           ),
         ),
@@ -897,61 +953,49 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: isSelected
-                          ? [color, color.withValues(alpha: 0.8)]
-                          : [color.withValues(alpha: 0.15), color.withValues(alpha: 0.05)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+            // Centered Fitted 3D Icon
+            Center(
+              child: Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? const Color(0xFF2563EB).withValues(alpha: 0.10)
+                      : color.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isSelected ? const Color(0xFF2563EB) : color.withValues(alpha: 0.3),
+                    width: 1.5,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isSelected
+                          ? const Color(0xFF2563EB).withValues(alpha: 0.25)
+                          : color.withValues(alpha: 0.10),
+                      blurRadius: isSelected ? 8 : 5,
+                      offset: const Offset(0, 2),
                     ),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: color.withValues(alpha: 0.3)),
-                  ),
-                  child: Icon(
-                    _getRoomIcon(key),
-                    color: isSelected ? Colors.white : color,
-                    size: 22,
-                  ),
+                  ],
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: isSelected ? color : color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (isSelected)
-                        const Padding(
-                          padding: EdgeInsets.only(right: 3),
-                          child: Icon(Icons.check_circle_rounded, color: Colors.white, size: 12),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: assetPath != null
+                      ? Image.asset(
+                          assetPath,
+                          fit: BoxFit.cover,
+                          errorBuilder: (ctx, err, stack) => Icon(
+                            _getRoomIcon(key),
+                            color: isSelected ? const Color(0xFF2563EB) : color,
+                            size: 24,
+                          ),
+                        )
+                      : Icon(
+                          _getRoomIcon(key),
+                          color: isSelected ? const Color(0xFF2563EB) : color,
+                          size: 24,
                         ),
-                      _isLoadingQueues
-                          ? const SizedBox(
-                              width: 10,
-                              height: 10,
-                              child: CircularProgressIndicator(strokeWidth: 1.5, color: Colors.grey),
-                            )
-                          : Text(
-                              '$queueCount in q',
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: isSelected ? Colors.white : color,
-                              ),
-                            ),
-                    ],
-                  ),
                 ),
-              ],
+              ),
             ),
             
             Column(
@@ -960,22 +1004,49 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                 Text(
                   name,
                   style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: isSelected ? color : const Color(0xFF0F172A),
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.2,
+                    color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF0F172A),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
+                const SizedBox(height: 1),
                 Text(
                   subtitle,
                   style: const TextStyle(
                     fontSize: 11,
+                    fontWeight: FontWeight.w600,
                     color: Color(0xFF64748B),
+                    height: 1.2,
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.10),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: color.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.how_to_reg_rounded, size: 12, color: color),
+                      const SizedBox(width: 3),
+                      Text(
+                        'Registered: $queueCount',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          color: color,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
