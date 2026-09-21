@@ -8,7 +8,7 @@ class AuthService {
   static String get baseUrl {
     if (kIsWeb) return 'http://127.0.0.1:8085/api/v1';
     if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://192.168.8.129:8085/api/v1';
+      return 'http://10.0.2.2:8085/api/v1';
     }
     return 'http://127.0.0.1:8085/api/v1';
   }
