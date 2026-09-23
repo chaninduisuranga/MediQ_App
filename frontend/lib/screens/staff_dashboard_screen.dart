@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../core/services/appointment_service.dart';
 import '../core/services/queue_service.dart';
 import '../core/theme/theme.dart';
+import '../routes/routes.dart';
 import '../widgets/staff_bottom_nav_bar.dart';
+import '../widgets/staff_drawer.dart';
 
 class StaffDashboardScreen extends StatefulWidget {
   const StaffDashboardScreen({super.key});
@@ -12,6 +14,45 @@ class StaffDashboardScreen extends StatefulWidget {
 }
 
 class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
+  static const List<Map<String, dynamic>> _staffOpdRooms = [
+    {
+      'key': 'GENERAL_OPD',
+      'name': 'General OPD',
+      'subtitle': 'General Medical OPD Consultation',
+      'color': 0xFF0284C7,
+    },
+    {
+      'key': 'DRESSING_ROOM',
+      'name': 'Dressing Room',
+      'subtitle': 'Wound Care & Bandaging',
+      'color': 0xFF0077B6,
+    },
+    {
+      'key': 'INJECTION_ROOM',
+      'name': 'Injection Room',
+      'subtitle': 'IV & IM Injections',
+      'color': 0xFF00A896,
+    },
+    {
+      'key': 'ANIMAL_BITE_ROOM',
+      'name': 'Animal Bite Room',
+      'subtitle': 'Bite Wounds & ARV Treatment',
+      'color': 0xFFD97706,
+    },
+    {
+      'key': 'BLEEDING_ROOM',
+      'name': 'Bleeding Room',
+      'subtitle': 'Hemorrhage & Bleeding Control',
+      'color': 0xFFE11D48,
+    },
+    {
+      'key': 'DISPENSARY_ROOM',
+      'name': 'Dispensary',
+      'subtitle': 'Medicine collection',
+      'color': 0xFF2563EB,
+    },
+  ];
+
   String _selectedRoomKey = 'GENERAL_OPD';
   bool _isLoading = true;
   // ignore: prefer_final_fields
@@ -181,9 +222,10 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
         AppointmentService.getRoomDisplayName(_selectedRoomKey);
 
     return Scaffold(
+      drawer: const StaffDrawer(currentRoute: AppRoutes.staffDashboard),
       appBar: AppBar(
         title: const Text(
-          'Staff Management Dashboard',
+          'Staff Dashboard',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         actions: [
@@ -318,7 +360,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                     isExpanded: true,
                     icon: const Icon(Icons.keyboard_arrow_down_rounded,
                         color: AppTheme.primarySkyBlue),
-                    items: AppointmentService.opdRooms.map((room) {
+                    items: _staffOpdRooms.map((room) {
                       return DropdownMenuItem<String>(
                         value: room['key'] as String,
                         child: Row(
@@ -353,6 +395,82 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                   ),
                 ),
               ),
+
+              // Doctor Patient Allocation Banner (Specific to General OPD)
+              if (_selectedRoomKey == 'GENERAL_OPD') ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                    boxShadow: [
+                      BoxShadow(
+                        color:
+                            const Color(0xFF10B981).withValues(alpha: 0.08),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color:
+                              const Color(0xFF10B981).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.medical_services_rounded,
+                            color: Color(0xFF059669), size: 28),
+                      ),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Doctor Allocation',
+                              style: TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.darkText,
+                              ),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Manage patient allocation among available OPD doctors.',
+                              style: TextStyle(
+                                  fontSize: 11.5, color: AppTheme.mutedText),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF10B981),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                        ),
+                        onPressed: () => Navigator.pushNamed(
+                            context, AppRoutes.doctorAllocation),
+                        child: const Text(
+                          'MANAGE',
+                          style: TextStyle(
+                              fontWeight: FontWeight.bold, fontSize: 11.5),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
 
               const SizedBox(height: 24),
 

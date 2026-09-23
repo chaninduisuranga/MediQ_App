@@ -16,6 +16,10 @@ import '../screens/qr_scanner_screen.dart';
 import '../screens/check_in_screen.dart';
 import '../screens/staff_profile_screen.dart';
 import '../screens/queue_history_screen.dart';
+import '../screens/doctor_allocation_screen.dart';
+import '../screens/staff_edit_profile_screen.dart';
+import '../screens/staff_notifications_screen.dart';
+import '../screens/staff_change_password_screen.dart';
 
 import '../screens/admin_dashboard_screen.dart';
 import '../screens/admin_user_management_screen.dart';
@@ -57,6 +61,10 @@ class AppRoutes {
   static const String checkIn = '/check-in';
   static const String staffProfile = '/staff-profile';
   static const String queueHistory = '/queue-history';
+  static const String doctorAllocation = '/doctor-allocation';
+  static const String staffEditProfile = '/staff-edit-profile';
+  static const String staffNotifications = '/staff-notifications';
+  static const String staffChangePassword = '/staff-change-password';
 
   // Doctor Module Routes
   static const String doctorDashboard = '/doctor-dashboard';
@@ -94,6 +102,10 @@ class AppRoutes {
         checkIn: (context) => const CheckInScreen(),
         staffProfile: (context) => const StaffProfileScreen(),
         queueHistory: (context) => const QueueHistoryScreen(),
+        doctorAllocation: (context) => const DoctorAllocationScreen(),
+        staffEditProfile: (context) => const StaffEditProfileScreen(),
+        staffNotifications: (context) => const StaffNotificationsScreen(),
+        staffChangePassword: (context) => const StaffChangePasswordScreen(),
         
         // Doctor Module Route Implementations
         doctorDashboard: (context) => const DoctorDashboardScreen(),

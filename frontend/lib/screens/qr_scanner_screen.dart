@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../core/services/appointment_service.dart';
 import '../core/services/queue_service.dart';
 import '../core/theme/theme.dart';
+import '../routes/routes.dart';
 import '../widgets/staff_bottom_nav_bar.dart';
+import '../widgets/staff_drawer.dart';
 
 class QrScannerScreen extends StatefulWidget {
   const QrScannerScreen({super.key});
@@ -129,6 +131,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
+      drawer: const StaffDrawer(currentRoute: AppRoutes.qrScanner),
       appBar: AppBar(
         iconTheme: const IconThemeData(color: Colors.white),
         backgroundColor: Colors.transparent,
