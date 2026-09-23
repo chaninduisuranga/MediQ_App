@@ -74,6 +74,13 @@ paths:
           description: Search by name, NIC, phone, or user ID.
           schema:
             type: string
+        - name: role
+          in: query
+          required: false
+          description: Filter by managed user role. Patient accounts are never returned.
+          schema:
+            type: string
+            enum: [DOCTOR, STAFF, ADMIN]
         - name: page
           in: query
           required: false
@@ -449,7 +456,7 @@ components:
           type: string
         role:
           type: string
-          enum: [PATIENT, DOCTOR, STAFF, ADMIN]
+          enum: [DOCTOR, STAFF, ADMIN]
         status:
           type: string
           enum: [ACTIVE, INACTIVE, SUSPENDED]
@@ -485,7 +492,7 @@ components:
       properties:
         role:
           type: string
-          enum: [PATIENT, DOCTOR, STAFF, ADMIN]
+          enum: [DOCTOR, STAFF, ADMIN]
         status:
           type: string
           enum: [ACTIVE, INACTIVE, SUSPENDED]

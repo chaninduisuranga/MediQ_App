@@ -40,7 +40,7 @@ type AdminUserListResponse struct {
 }
 
 type AdminUpdateUserRequest struct {
-	Role   models.UserRole   `json:"role" binding:"omitempty,oneof=PATIENT DOCTOR STAFF ADMIN"`
+	Role   models.UserRole   `json:"role" binding:"omitempty,oneof=DOCTOR STAFF ADMIN"`
 	Status models.UserStatus `json:"status" binding:"omitempty,oneof=ACTIVE INACTIVE SUSPENDED"`
 }
 
@@ -56,12 +56,20 @@ func (h *AdminUserHandler) ListUsers(c *gin.Context) {
 		limit = 100
 	}
 	search := strings.TrimSpace(c.Query("search"))
+	roleFilter := models.UserRole(strings.ToUpper(strings.TrimSpace(c.Query("role"))))
+	if roleFilter != "" && roleFilter != models.RoleDoctor && roleFilter != models.RoleStaff && roleFilter != models.RoleAdmin {
+		utils.SendError(c, http.StatusBadRequest, "Invalid user role filter")
+		return
+	}
 
-	query := database.DB.Model(&models.User{})
+	query := database.DB.Model(&models.User{}).Where("role <> ?", models.RolePatient)
+	if roleFilter != "" {
+		query = query.Where("role = ?", roleFilter)
+	}
 	if search != "" {
-		query = query.Where("full_name ILIKE ? OR nic ILIKE ? OR phone ILIKE ?", "%"+search+"%", "%"+search+"%", "%"+search+"%")
+		query = query.Where("(full_name ILIKE ? OR nic ILIKE ? OR phone ILIKE ?)", "%"+search+"%", "%"+search+"%", "%"+search+"%")
 		if userID, err := strconv.ParseUint(search, 10, 64); err == nil {
-			query = database.DB.Model(&models.User{}).Where("full_name ILIKE ? OR nic ILIKE ? OR phone ILIKE ? OR id = ?", "%"+search+"%", "%"+search+"%", "%"+search+"%", userID)
+			query = query.Where("id = ? OR full_name ILIKE ? OR nic ILIKE ? OR phone ILIKE ?", userID, "%"+search+"%", "%"+search+"%", "%"+search+"%")
 		}
 	}
 
@@ -120,6 +128,10 @@ func (h *AdminUserHandler) UpdateUser(c *gin.Context) {
 			return
 		}
 		utils.SendError(c, http.StatusInternalServerError, "Failed to load user: "+err.Error())
+		return
+	}
+	if user.Role == models.RolePatient {
+		utils.SendError(c, http.StatusForbidden, "Patient accounts are not managed from this screen")
 		return
 	}
 

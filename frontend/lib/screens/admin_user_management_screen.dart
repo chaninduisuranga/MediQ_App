@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../core/models/admin_user_model.dart';
 import '../core/services/admin_service.dart';
 import '../core/theme/theme.dart';
+import '../widgets/admin_bottom_nav_bar.dart';
 
 class AdminUserManagementScreen extends StatefulWidget {
   const AdminUserManagementScreen({super.key});
@@ -21,6 +22,7 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
   bool _isLoading = true;
   String? _errorMessage;
   int _total = 0;
+  String? _selectedRole;
 
   @override
   void initState() {
@@ -40,7 +42,10 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
       _isLoading = true;
       _errorMessage = null;
     });
-    final result = await AdminService.getUsers(search: _searchController.text);
+    final result = await AdminService.getUsers(
+      search: _searchController.text,
+      role: _selectedRole ?? '',
+    );
     if (!mounted) return;
     setState(() {
       _isLoading = false;
@@ -73,7 +78,22 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('User Management'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.manage_accounts_rounded,
+                  color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 10),
+            const Text('User Management'),
+          ],
+        ),
         actions: [
           IconButton(
             onPressed: _loadUsers,
@@ -87,6 +107,8 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
+            _buildIntroBanner(),
+            const SizedBox(height: 18),
             TextField(
               controller: _searchController,
               onChanged: _onSearchChanged,
@@ -96,6 +118,8 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                 prefixIcon: Icon(Icons.search_rounded),
               ),
             ),
+            const SizedBox(height: 12),
+            _buildRoleFilters(),
             const SizedBox(height: 16),
             Text('$_total users',
                 style: const TextStyle(color: AppTheme.mutedText)),
@@ -114,12 +138,109 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
           ],
         ),
       ),
+      bottomNavigationBar: const AdminBottomNavBar(currentIndex: 0),
+    );
+  }
+
+  Widget _buildIntroBanner() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF0284C7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryBlue.withValues(alpha: 0.22),
+            blurRadius: 16,
+            offset: const Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+            ),
+            child: const Icon(Icons.people_alt_rounded,
+                color: Colors.white, size: 25),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Manage system access',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800)),
+                SizedBox(height: 4),
+                Text('Doctors, staff, and administrator accounts',
+                    style: TextStyle(color: Color(0xFFBAE6FD), fontSize: 12)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoleFilters() {
+    const roles = [
+      ('DOCTOR', 'Doctor'),
+      ('STAFF', 'Staff'),
+      ('ADMIN', 'Admin'),
+    ];
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: roles.map((role) {
+        final isSelected = _selectedRole == role.$1;
+        return FilterChip(
+          label: Text(role.$2),
+          selected: isSelected,
+          onSelected: (selected) {
+            setState(() {
+              _selectedRole = selected ? role.$1 : null;
+            });
+            _loadUsers();
+          },
+          selectedColor: AppTheme.primaryBlue,
+          backgroundColor: Colors.white,
+          side: BorderSide(
+            color: isSelected ? AppTheme.primaryBlue : const Color(0xFFBAE6FD),
+          ),
+          labelStyle: TextStyle(
+            color: isSelected ? Colors.white : AppTheme.primaryBlue,
+            fontWeight: FontWeight.w700,
+          ),
+          checkmarkColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+        );
+      }).toList(),
     );
   }
 
   Widget _buildUserCard(AdminUser user) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: const Color(0xFFBAE6FD).withValues(alpha: 0.8)),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -128,15 +249,19 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
             Row(
               children: [
                 CircleAvatar(
-                  backgroundColor: AppTheme.primaryTeal.withValues(alpha: 0.12),
+                  backgroundColor: const Color(0xFFE0F2FE),
                   child: Text('${user.id}',
-                      style: const TextStyle(color: AppTheme.primaryTeal)),
+                      style: const TextStyle(
+                          color: AppTheme.primaryBlue,
+                          fontWeight: FontWeight.w800)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(user.fullName,
                       style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: AppTheme.darkText)),
                 ),
                 _buildStatusBadge(user.status),
               ],
@@ -151,9 +276,11 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     initialValue: user.role,
-                    decoration:
-                        const InputDecoration(labelText: 'Role', isDense: true),
-                    items: const ['PATIENT', 'DOCTOR', 'STAFF', 'ADMIN']
+                    decoration: const InputDecoration(
+                        labelText: 'Role',
+                        isDense: true,
+                        prefixIcon: Icon(Icons.badge_outlined, size: 18)),
+                    items: const ['DOCTOR', 'STAFF', 'ADMIN']
                         .map((role) =>
                             DropdownMenuItem(value: role, child: Text(role)))
                         .toList(),
@@ -169,7 +296,9 @@ class _AdminUserManagementScreenState extends State<AdminUserManagementScreen> {
                   child: DropdownButtonFormField<String>(
                     initialValue: user.status,
                     decoration: const InputDecoration(
-                        labelText: 'Status', isDense: true),
+                        labelText: 'Status',
+                        isDense: true,
+                        prefixIcon: Icon(Icons.toggle_on_outlined, size: 18)),
                     items: const ['ACTIVE', 'INACTIVE', 'SUSPENDED']
                         .map((status) => DropdownMenuItem(
                             value: status, child: Text(status)))

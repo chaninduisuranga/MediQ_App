@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/services/admin_service.dart';
 import '../core/services/auth_service.dart';
 import '../core/theme/theme.dart';
+import '../widgets/admin_bottom_nav_bar.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -74,6 +75,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.white.withValues(alpha: 0.96),
         automaticallyImplyLeading: false,
         leading: Builder(
           builder: (context) {
@@ -98,7 +100,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             const SizedBox(width: 10),
             const Text(
               'MediQ Admin Portal',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+              style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 19,
+                  color: AppTheme.darkText),
             ),
           ],
         ),
@@ -111,7 +116,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             UserAccountsDrawerHeader(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [AppTheme.primaryBlue, AppTheme.primaryTeal],
+                  colors: [
+                    Color(0xFF0F172A),
+                    Color(0xFF1E3A8A),
+                    Color(0xFF0284C7),
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -182,7 +191,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 3D Glassmorphism Welcome Card (Adapted for Admin)
+              // Home-style admin welcome card
               _build3DGlassmorphicWelcomeCard(
                 fullName: fullName,
                 nic: nic,
@@ -194,15 +203,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               const SizedBox(height: 20),
 
               // ADMIN DASHBOARD SECTION
-              const Text(
-                'OPD ADMIN DASHBOARD',
-                style: TextStyle(
-                  fontSize: 19,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.darkText,
-                  letterSpacing: 0.3,
-                ),
-              ),
+              _buildSectionHeading(
+                  'OPD ADMIN DASHBOARD', Icons.dashboard_rounded),
               const SizedBox(height: 14),
 
               if (_isLoading)
@@ -215,15 +217,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               const SizedBox(height: 24),
 
               // OPD Services Grid (Same as Home)
-              const Text(
-                'OPD Services',
-                style: TextStyle(
-                  fontSize: 19,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.darkText,
-                  letterSpacing: 0.3,
-                ),
-              ),
+              _buildSectionHeading('OPD SERVICES', Icons.apps_rounded),
               const SizedBox(height: 14),
 
               GridView.count(
@@ -279,6 +273,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         ),
       ),
+      bottomNavigationBar: const AdminBottomNavBar(currentIndex: 0),
     );
   }
 
@@ -397,6 +392,28 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  Widget _buildSectionHeading(String title, IconData icon) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE0F2FE),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: AppTheme.primaryBlue, size: 18),
+        ),
+        const SizedBox(width: 10),
+        Text(title,
+            style: const TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.darkText,
+                letterSpacing: 0.4)),
+      ],
+    );
+  }
+
   Widget _buildStatCard(String title, String value, Color color) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -436,10 +453,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
           gradient: const LinearGradient(
-            colors: [
-              Color(0xFF6B7280), // Gray for admin
-              Color(0xFF374151),
-            ],
+            colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF0284C7)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -580,9 +594,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.darkText)),
+                    color: AppTheme.darkText),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis),
             const SizedBox(height: 4),
             Text(subtitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style:
                     const TextStyle(fontSize: 12, color: AppTheme.mutedText)),
           ],
