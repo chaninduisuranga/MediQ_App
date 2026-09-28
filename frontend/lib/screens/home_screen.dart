@@ -1636,7 +1636,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ambientBottomColor: const Color(0xFF0D9488),
                                 iconData: Icons.calendar_month_rounded,
                                 imagePath: 'assets/images/book_appointment.png',
-                                onTap: _openBookAppointment,
+                                onTap: null,
                               ),
                               // 2. OPD Live Queue Card (Sapphire to Royal Blue)
                               _buildHeroBannerCard(
@@ -1654,7 +1654,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ambientBottomColor: const Color(0xFF1D4ED8),
                                 iconData: Icons.confirmation_number_rounded,
                                 imagePath: 'assets/images/opd_live_queue.png',
-                                onTap: _showChooseOPDRoomSheet,
+                                onTap: null,
                               ),
                               // 3. Medical Records Card (Deep Ocean to Cerulean Blue)
                               _buildHeroBannerCard(
@@ -1672,7 +1672,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ambientBottomColor: const Color(0xFF0284C7),
                                 iconData: Icons.folder_shared_rounded,
                                 imagePath: 'assets/images/medical_records.png',
-                                onTap: _openMedicalRecords,
+                                onTap: null,
                               ),
                               // 4. Pill & Vitals Tracker Card (Midnight Blue to Electric Sky Blue)
                               _buildHeroBannerCard(
@@ -1690,7 +1690,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ambientBottomColor: const Color(0xFF2563EB),
                                 iconData: Icons.favorite_rounded,
                                 imagePath: 'assets/images/pill_tracker.png',
-                                onTap: () => Navigator.pushNamed(context, '/health-vitals'),
+                                onTap: null,
                               ),
                             ],
                           ),
@@ -1913,7 +1913,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required Color ambientBottomColor,
     required IconData iconData,
     String? imagePath,
-    required VoidCallback onTap,
+    VoidCallback? onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
@@ -2274,6 +2274,25 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  String? _getRoomIconAsset(String key) {
+    switch (key) {
+      case 'DRESSING_ROOM':
+        return 'assets/images/opd_room_dressing.png';
+      case 'INJECTION_ROOM':
+        return 'assets/images/opd_room_injection.png';
+      case 'ANIMAL_BITE_ROOM':
+        return 'assets/images/opd_room_bite.png';
+      case 'BLEEDING_ROOM':
+        return 'assets/images/opd_room_bleeding.png';
+      case 'OPD_CLINIC_ROOM':
+        return 'assets/images/opd_room_clinic.png';
+      case 'DISPENSARY_ROOM':
+        return 'assets/images/opd_room_dispensary.png';
+      default:
+        return null;
+    }
+  }
+
   void _showAppointmentQrModal(Map<String, dynamic> appt) {
     final roomKey = appt['room'] as String? ?? '';
     final roomName = AppointmentService.getRoomDisplayName(roomKey);
@@ -2325,12 +2344,30 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       color: roomColor.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(_getRoomIcon(roomKey), color: roomColor, size: 22),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: _getRoomIconAsset(roomKey) != null
+                          ? Image.asset(
+                              _getRoomIconAsset(roomKey)!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (ctx, err, stack) => Icon(
+                                _getRoomIcon(roomKey),
+                                color: roomColor,
+                                size: 22,
+                              ),
+                            )
+                          : Icon(
+                              _getRoomIcon(roomKey),
+                              color: roomColor,
+                              size: 22,
+                            ),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -2482,7 +2519,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: roomColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(_getRoomIcon(roomKey), color: roomColor, size: 24),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: _getRoomIconAsset(roomKey) != null
+                    ? Image.asset(
+                        _getRoomIconAsset(roomKey)!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (ctx, err, stack) => Icon(
+                          _getRoomIcon(roomKey),
+                          color: roomColor,
+                          size: 24,
+                        ),
+                      )
+                    : Icon(
+                        _getRoomIcon(roomKey),
+                        color: roomColor,
+                        size: 24,
+                      ),
+              ),
             ),
             const SizedBox(width: 12),
 
