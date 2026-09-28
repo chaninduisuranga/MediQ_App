@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../core/services/appointment_service.dart';
 import '../core/services/queue_service.dart';
 import '../core/theme/theme.dart';
+import '../routes/routes.dart';
 import '../widgets/staff_bottom_nav_bar.dart';
+import '../widgets/staff_drawer.dart';
 
 class QueueHistoryScreen extends StatefulWidget {
   const QueueHistoryScreen({super.key});
@@ -57,6 +59,7 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const StaffDrawer(currentRoute: AppRoutes.queueHistory),
       appBar: AppBar(
         title: const Text(
           'Queue Activity History',

@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../core/services/appointment_service.dart';
 import '../core/services/queue_service.dart';
 import '../core/theme/theme.dart';
+import '../routes/routes.dart';
 import '../widgets/staff_bottom_nav_bar.dart';
+import '../widgets/staff_drawer.dart';
 
 class CheckInScreen extends StatefulWidget {
   final int? initialAppointmentId;
@@ -132,6 +134,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
     final isCompleted = status == 'COMPLETED';
 
     return Scaffold(
+      drawer: const StaffDrawer(currentRoute: AppRoutes.checkIn),
       appBar: AppBar(
         title: const Text(
           'Patient Check-In Counter',

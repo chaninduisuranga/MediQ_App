@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../core/services/appointment_service.dart';
 import '../core/services/queue_service.dart';
 import '../core/theme/theme.dart';
+import '../routes/routes.dart';
 import '../widgets/staff_bottom_nav_bar.dart';
+import '../widgets/staff_drawer.dart';
 
 class OpdQueueScreen extends StatefulWidget {
   final String? initialRoomKey;
@@ -14,6 +16,45 @@ class OpdQueueScreen extends StatefulWidget {
 }
 
 class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProviderStateMixin {
+  static const List<Map<String, dynamic>> _staffOpdRooms = [
+    {
+      'key': 'GENERAL_OPD',
+      'name': 'General OPD',
+      'subtitle': 'General Medical OPD Consultation',
+      'color': 0xFF0284C7,
+    },
+    {
+      'key': 'DRESSING_ROOM',
+      'name': 'Dressing Room',
+      'subtitle': 'Wound Care & Bandaging',
+      'color': 0xFF0077B6,
+    },
+    {
+      'key': 'INJECTION_ROOM',
+      'name': 'Injection Room',
+      'subtitle': 'IV & IM Injections',
+      'color': 0xFF00A896,
+    },
+    {
+      'key': 'ANIMAL_BITE_ROOM',
+      'name': 'Animal Bite Room',
+      'subtitle': 'Bite Wounds & ARV Treatment',
+      'color': 0xFFD97706,
+    },
+    {
+      'key': 'BLEEDING_ROOM',
+      'name': 'Bleeding Room',
+      'subtitle': 'Hemorrhage & Bleeding Control',
+      'color': 0xFFE11D48,
+    },
+    {
+      'key': 'DISPENSARY_ROOM',
+      'name': 'Dispensary',
+      'subtitle': 'Medicine collection',
+      'color': 0xFF2563EB,
+    },
+  ];
+
   late String _selectedRoomKey;
   late TabController _tabController;
   bool _isCallingNext = false;
@@ -377,11 +418,22 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
     final roomColor = Color(AppointmentService.getRoomColor(_selectedRoomKey));
 
     return Scaffold(
+      drawer: const StaffDrawer(currentRoute: AppRoutes.opdQueue),
       appBar: AppBar(
         title: Text(
           '$roomDisplayName Queue',
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
+        actions: [
+          if (_selectedRoomKey == 'GENERAL_OPD')
+            IconButton(
+              icon: const Icon(Icons.medical_services_rounded,
+                  color: Color(0xFF059669)),
+              tooltip: 'Doctor Allocation',
+              onPressed: () =>
+                  Navigator.pushNamed(context, AppRoutes.doctorAllocation),
+            ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: AppTheme.primarySkyBlue,
@@ -441,7 +493,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                               child: DropdownButton<String>(
                                 value: _selectedRoomKey,
                                 isExpanded: true,
-                                items: AppointmentService.opdRooms.map((r) {
+                                items: _staffOpdRooms.map((r) {
                                   return DropdownMenuItem<String>(
                                     value: r['key'] as String,
                                     child: Text(
@@ -464,6 +516,44 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                       ],
                     ),
                   ),
+
+                  // Doctor Allocation Quick-Action Card for General OPD
+                  if (_selectedRoomKey == 'GENERAL_OPD')
+                    Container(
+                      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.medical_services_rounded, color: Color(0xFF059669), size: 20),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'Doctor Allocation',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF065F46),
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              foregroundColor: const Color(0xFF059669),
+                            ),
+                            onPressed: () => Navigator.pushNamed(context, AppRoutes.doctorAllocation),
+                            child: const Text('Manage &rarr;', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                    ),
 
                   // Room Stats Summary Strip
                   Container(
