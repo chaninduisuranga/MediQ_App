@@ -44,12 +44,14 @@ class AdminService {
 
   static Future<Map<String, dynamic>> getUsers({
     String search = '',
+    String role = '',
     int page = 1,
     int limit = 20,
   }) async {
     try {
       final query = Uri(queryParameters: {
         if (search.trim().isNotEmpty) 'search': search.trim(),
+        if (role.isNotEmpty) 'role': role,
         'page': '$page',
         'limit': '$limit',
       }).query;
