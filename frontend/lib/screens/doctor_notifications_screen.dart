@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/services/doctor_service.dart';
 import '../core/theme/theme.dart';
-import '../widgets/doctor_bottom_nav_bar.dart';
 
 class DoctorNotificationsScreen extends StatefulWidget {
   const DoctorNotificationsScreen({super.key});
@@ -48,7 +47,7 @@ class _DoctorNotificationsScreenState
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: AppTheme.primarySkyBlue))
+              child: CircularProgressIndicator(color: AppTheme.doctorPrimaryColor))
           : _notifications.isEmpty
               ? _buildEmpty()
               : RefreshIndicator(
@@ -60,7 +59,6 @@ class _DoctorNotificationsScreenState
                         _buildNotificationCard(_notifications[i]),
                   ),
                 ),
-      bottomNavigationBar: const DoctorBottomNavBar(currentIndex: 4),
     );
   }
 
@@ -86,7 +84,7 @@ class _DoctorNotificationsScreenState
         break;
       case 'ADMIN_ANNOUNCEMENT':
         iconData = Icons.campaign_rounded;
-        iconColor = AppTheme.primarySkyBlue;
+        iconColor = AppTheme.doctorPrimaryColor;
         break;
       default:
         iconData = Icons.notifications_rounded;
@@ -109,13 +107,13 @@ class _DoctorNotificationsScreenState
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isRead ? Colors.white : AppTheme.primarySkyBlue.withValues(alpha: 0.05),
+          color: isRead ? Colors.white : AppTheme.doctorPrimaryColor.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-              color: isRead ? Colors.grey.shade200 : AppTheme.primarySkyBlue.withValues(alpha: 0.3)),
+              color: isRead ? Colors.grey.shade200 : AppTheme.doctorPrimaryColor.withValues(alpha: 0.3)),
           boxShadow: isRead ? [] : [
             BoxShadow(
-              color: AppTheme.primarySkyBlue.withValues(alpha: 0.05),
+              color: AppTheme.doctorPrimaryColor.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -155,7 +153,7 @@ class _DoctorNotificationsScreenState
                           width: 8,
                           height: 8,
                           decoration: const BoxDecoration(
-                            color: AppTheme.primarySkyBlue,
+                            color: AppTheme.doctorPrimaryColor,
                             shape: BoxShape.circle,
                           ),
                         ),
