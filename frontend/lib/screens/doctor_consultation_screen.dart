@@ -17,9 +17,59 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
   bool _isSaving = false;
   bool _started = false;
 
+  // DB-fetched values for the Appointment Details card
+  String _dbTime = 'Loading...';
+  String _dbDate = 'Loading...';
+  String _dbNotes = '';
+
+  // DB-fetched values for the Patient Details card
+  String _dbBloodGroup = 'Loading...';
+  String _dbAllergies = 'Loading...';
+  String _dbMedicalConditions = 'Loading...';
+  String _dbAddress = 'Loading...';
+
+  bool _isFetchingDb = true;
+  bool _isInit = false;
+
   Map<String, dynamic> get _appt =>
       (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?)
           ?? {};
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInit) {
+      _isInit = true;
+      _fetchFromDB();
+    }
+  }
+
+  Future<void> _fetchFromDB() async {
+    final appt = _appt;
+    // Use the real appointment ID passed from the Queue screen.
+    // The ID is the primary key of the opd_appointments table row.
+    final apptId = (appt['id'] as int?) ?? 0;
+
+    final details = await DoctorService.getConsultationDetails(apptId);
+
+    if (mounted) {
+      setState(() {
+        _isFetchingDb = false;
+        _dbTime = details['time']!;
+        _dbDate = details['date']!;
+        _dbNotes = details['notes'] == 'Not provided' ? '' : details['notes']!;
+        _dbBloodGroup = details['blood_group']!;
+        _dbAllergies = details['allergies']!;
+        _dbMedicalConditions = details['medical_conditions']!;
+        _dbAddress = details['address']!;
+
+        // Pre-fill the editable notes field with DB notes
+        if (_dbNotes.isNotEmpty && _notesController.text.isEmpty) {
+          _notesController.text = _dbNotes;
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -36,7 +86,7 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Consultation started.'),
-          backgroundColor: AppTheme.primarySkyBlue,
+          backgroundColor: AppTheme.doctorPrimaryColor,
         ),
       );
     }
@@ -46,11 +96,24 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
     final id = (_appt['id'] as int?) ?? 0;
     setState(() => _isSaving = true);
     await DoctorService.updateAppointmentStatus(id, 'COMPLETED');
+    
+    // Automatically move 'Next Patient' to 'Currently In Consultation'
+    final appointments = await DoctorService.getTodayAppointments();
+    final waitingList = appointments.where((a) =>
+        a['queue_status'] == 'CHECKED_IN' ||
+        a['appointment_status'] == 'WAITING').toList();
+        
+    if (waitingList.isNotEmpty) {
+      final nextPatientId = (waitingList.first['id'] as int?) ?? 0;
+      await DoctorService.updateAppointmentStatus(nextPatientId, 'IN_CONSULTATION');
+    }
+    
     if (mounted) setState(() => _isSaving = false);
     if (!mounted) return;
+    
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Consultation completed successfully.'),
+        content: Text('Consultation completed. Next patient called automatically.'),
         backgroundColor: Color(0xFF10B981),
       ),
     );
@@ -78,7 +141,7 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
                   width: 18,
                   height: 18,
                   child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppTheme.primarySkyBlue),
+                      strokeWidth: 2, color: AppTheme.doctorPrimaryColor),
                 ),
               ),
             ),
@@ -98,11 +161,11 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                gradient: AppTheme.primaryGradient,
+                gradient: AppTheme.doctorAppBarGradient,
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
-                    color: AppTheme.primarySkyBlue.withValues(alpha: 0.3),
+                    color: AppTheme.doctorPrimaryColor.withValues(alpha: 0.3),
                     blurRadius: 12,
                     offset: const Offset(0, 4),
                   ),
@@ -163,55 +226,86 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
               title: 'Appointment Details',
               icon: Icons.calendar_today_rounded,
               children: [
-                _infoRow('Queue #', appt['queue_number'] ?? '--'),
-                _infoRow('Time', appt['appointment_time'] ?? '--'),
-                _infoRow('Date', appt['appointment_date'] ?? '--'),
-                if ((appt['notes'] ?? '').toString().isNotEmpty)
-                  _infoRow('Notes', appt['notes'] ?? ''),
-                _infoRow('Allergies', appt['allergies'] ?? 'None'),
-                _infoRow('Conditions', appt['medical_conditions'] ?? 'None'),
+                _infoRow('Time', _isFetchingDb ? 'Loading...' : _dbTime),
+                _infoRow('Date', _isFetchingDb ? 'Loading...' : _dbDate),
+                _infoRow('Notes', _isFetchingDb ? 'Loading...' : (_dbNotes.isEmpty ? 'Not provided' : _dbNotes)),
               ],
             ),
 
             const SizedBox(height: 16),
 
-            // ── Consultation Notes ──
+            // ── Patient Details (Expandable) ──
             Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: Colors.grey.shade200),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Row(
+              child: Theme(
+                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  title: const Row(
                     children: [
-                      Icon(Icons.note_alt_rounded,
-                          size: 18, color: AppTheme.primarySkyBlue),
+                      Icon(Icons.person_search_rounded, size: 18, color: AppTheme.doctorPrimaryColor),
                       SizedBox(width: 8),
-                      Text(
-                        'Consultation Notes',
-                        style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.darkText),
-                      ),
+                      Text('Patient Details', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkText)),
                     ],
                   ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _notesController,
-                    maxLines: 5,
-                    decoration: const InputDecoration(
-                      hintText:
-                          'Enter diagnosis, treatment plan, prescriptions, follow-up instructions...',
-                      alignLabelWithHint: true,
+                  childrenPadding: const EdgeInsets.only(left: 18, right: 18, bottom: 18),
+                  children: [
+                    const Divider(height: 10),
+                    const SizedBox(height: 10),
+                    _infoRow('Blood Group', _isFetchingDb ? '...' : _dbBloodGroup),
+                    _infoRow('Allergies', _isFetchingDb ? '...' : _dbAllergies),
+                    _infoRow('Conditions', _isFetchingDb ? '...' : _dbMedicalConditions),
+                    _infoRow('Address', _isFetchingDb ? '...' : _dbAddress),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── Consultation Notes ──
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.note_alt_rounded,
+                            size: 18, color: AppTheme.doctorPrimaryColor),
+                        SizedBox(width: 8),
+                        Text(
+                          'Consultation Notes',
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.darkText),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _notesController,
+                      maxLines: 5,
+                      decoration: const InputDecoration(
+                        hintText:
+                            'Enter diagnosis, treatment plan, prescriptions, follow-up instructions...',
+                        alignLabelWithHint: true,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
 
@@ -238,7 +332,7 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
                 ),
               ),
 
-            if (isInConsultation) ...[
+            if (isInConsultation)
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -257,34 +351,6 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
                   onPressed: _isSaving ? null : _completeConsultation,
                 ),
               ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.save_outlined),
-                  label: const Text('Save Notes'),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Notes saved.'),
-                        backgroundColor: AppTheme.primarySkyBlue,
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.arrow_back_rounded),
-                label: const Text('Return to Queue'),
-                onPressed: () =>
-                    Navigator.pushReplacementNamed(context, '/doctor-queue'),
-              ),
-            ),
 
             const SizedBox(height: 20),
           ],
@@ -322,7 +388,7 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
                     child: Container(
                       height: 2,
                       color: isActive
-                          ? AppTheme.primarySkyBlue
+                          ? AppTheme.doctorPrimaryColor
                           : Colors.grey.shade300,
                     ),
                   ),
@@ -334,7 +400,7 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
                       decoration: BoxDecoration(
                         color: isActive
                             ? (isCurrent
-                                ? AppTheme.primarySkyBlue
+                                ? AppTheme.doctorPrimaryColor
                                 : const Color(0xFF10B981))
                             : Colors.grey.shade200,
                         shape: BoxShape.circle,
@@ -391,7 +457,7 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: AppTheme.primarySkyBlue),
+              Icon(icon, size: 18, color: AppTheme.doctorPrimaryColor),
               const SizedBox(width: 8),
               Text(title,
                   style: const TextStyle(

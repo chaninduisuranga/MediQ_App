@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:postgres/postgres.dart';
 import 'auth_service.dart';
 
 /// Service for all Doctor-specific API calls.
@@ -511,5 +512,155 @@ class DoctorService {
       default:
         return status;
     }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Consultation Details (real DB fetch for Doctor Consultation Screen)
+  // ─────────────────────────────────────────────────────────────────────
+
+  /// Fetches the real appointment details (time, date, notes) from
+  /// [opd_appointments] and the patient's medical profile (blood_group,
+  /// allergies, medical_conditions, address) from [users] for the given
+  /// [appointmentId].
+  ///
+  /// Returns a map with keys:
+  ///   'time', 'date', 'notes',
+  ///   'blood_group', 'allergies', 'medical_conditions', 'address'
+  ///
+  /// Any NULL / empty DB value is replaced with 'Not provided'.
+  static Future<Map<String, String>> getConsultationDetails(
+      int appointmentId) async {
+    const notProvided = 'Not provided';
+
+    // Defaults — shown if anything fails
+    final defaults = <String, String>{
+      'time': notProvided,
+      'date': notProvided,
+      'notes': notProvided,
+      'blood_group': notProvided,
+      'allergies': notProvided,
+      'medical_conditions': notProvided,
+      'address': notProvided,
+    };
+
+    if (appointmentId <= 0) return defaults;
+
+    Connection? conn;
+    try {
+      conn = await Connection.open(
+        Endpoint(
+          host: 'aws-0-ap-south-1.pooler.supabase.com',
+          database: 'postgres',
+          username: 'postgres.dvanmlqqgvbltdvwamuk',
+          password: '3141531415supabase',
+          port: 5432,
+        ),
+        settings: const ConnectionSettings(sslMode: SslMode.require),
+      );
+
+      // ── Step 1: fetch appointment row ──────────────────────────────
+      final apptRes = await conn.execute(
+        Sql.named(
+          'SELECT "time", date, notes, patient_id '
+          'FROM opd_appointments '
+          'WHERE id = @id '
+          'LIMIT 1',
+        ),
+        parameters: {'id': appointmentId},
+      );
+
+      int? patientId;
+      String time = notProvided;
+      String date = notProvided;
+      String notes = notProvided;
+
+      if (apptRes.isNotEmpty) {
+        final row = apptRes.first;
+
+        final rawTime = row[0];
+        final rawDate = row[1];
+        final rawNotes = row[2];
+        patientId = row[3] as int?;
+
+        time = (rawTime != null && rawTime.toString().trim().isNotEmpty)
+            ? rawTime.toString().trim()
+            : notProvided;
+        date = (rawDate != null && rawDate.toString().trim().isNotEmpty)
+            ? rawDate.toString().trim()
+            : notProvided;
+        notes = (rawNotes != null && rawNotes.toString().trim().isNotEmpty)
+            ? rawNotes.toString().trim()
+            : notProvided;
+      }
+
+      // ── Step 2: fetch patient row ──────────────────────────────────
+      String bloodGroup = notProvided;
+      String allergies = notProvided;
+      String medicalConditions = notProvided;
+      String address = notProvided;
+
+      if (patientId != null) {
+        // Try with medical_conditions column first; fall back if it
+        // doesn't exist in this DB schema.
+        late Result userRes;
+        bool hasMedicalConditions = true;
+        try {
+          userRes = await conn.execute(
+            Sql.named(
+              'SELECT blood_group, allergies, medical_conditions, address '
+              'FROM users '
+              'WHERE id = @id '
+              'LIMIT 1',
+            ),
+            parameters: {'id': patientId},
+          );
+        } catch (_) {
+          hasMedicalConditions = false;
+          userRes = await conn.execute(
+            Sql.named(
+              'SELECT blood_group, allergies, address '
+              'FROM users '
+              'WHERE id = @id '
+              'LIMIT 1',
+            ),
+            parameters: {'id': patientId},
+          );
+        }
+
+        if (userRes.isNotEmpty) {
+          final uRow = userRes.first;
+          bloodGroup = _val(uRow[0]);
+          allergies = _val(uRow[1]);
+          if (hasMedicalConditions) {
+            medicalConditions = _val(uRow[2]);
+            address = _val(uRow[3]);
+          } else {
+            address = _val(uRow[2]);
+          }
+        }
+      }
+
+      return {
+        'time': time,
+        'date': date,
+        'notes': notes,
+        'blood_group': bloodGroup,
+        'allergies': allergies,
+        'medical_conditions': medicalConditions,
+        'address': address,
+      };
+    } catch (e) {
+      debugPrint('DoctorService.getConsultationDetails error: $e');
+      return defaults;
+    } finally {
+      await conn?.close();
+    }
+  }
+
+  /// Returns the string value or 'Not provided' for null/empty.
+  static String _val(dynamic raw) {
+    if (raw == null) return 'Not provided';
+    final s = raw.toString().trim();
+    return s.isEmpty ? 'Not provided' : s;
   }
 }

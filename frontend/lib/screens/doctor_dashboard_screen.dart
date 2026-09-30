@@ -4,6 +4,7 @@ import '../core/services/doctor_service.dart';
 import '../core/theme/theme.dart';
 import '../widgets/doctor_bottom_nav_bar.dart';
 
+
 class DoctorDashboardScreen extends StatefulWidget {
   const DoctorDashboardScreen({super.key});
 
@@ -62,7 +63,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               floating: false,
               pinned: true,
               automaticallyImplyLeading: false,
-              backgroundColor: AppTheme.primarySkyBlue,
+              backgroundColor: AppTheme.doctorPrimaryColor,
               actions: [
                 IconButton(
                   icon: const Icon(Icons.refresh_rounded, color: Colors.white),
@@ -70,7 +71,8 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                   onPressed: _fetchStats,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+                  icon: const Icon(Icons.notifications_active_rounded,
+                      color: Colors.redAccent),
                   tooltip: 'Notifications',
                   onPressed: () =>
                       Navigator.pushNamed(context, '/doctor-notifications'),
@@ -79,7 +81,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
               flexibleSpace: FlexibleSpaceBar(
                 background: Container(
                   decoration: BoxDecoration(
-                    gradient: AppTheme.primaryGradient,
+                    gradient: AppTheme.doctorAppBarGradient,
                   ),
                   padding: const EdgeInsets.fromLTRB(20, 48, 20, 16),
                   child: Column(
@@ -216,16 +218,16 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                             height: 16,
                             child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: AppTheme.primarySkyBlue),
+                                color: AppTheme.doctorPrimaryColor),
                           ),
                       ],
                     ),
                     const SizedBox(height: 14),
 
-                    // Stat Cards Grid — responsive 2-col
+                    // Stat Cards Grid — responsive 2-col or 4-col
                     LayoutBuilder(
                       builder: (ctx, constraints) {
-                        final crossAxisCount = constraints.maxWidth > 500 ? 3 : 2;
+                        final crossAxisCount = constraints.maxWidth > 500 ? 4 : 2;
                         return GridView.count(
                           crossAxisCount: crossAxisCount,
                           shrinkWrap: true,
@@ -238,19 +240,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                               title: "Today's Appointments",
                               value: '${_stats['total_today'] ?? 0}',
                               icon: Icons.calendar_today_rounded,
-                              color: AppTheme.primarySkyBlue,
-                            ),
-                            _buildStatCard(
-                              title: 'Waiting Patients',
-                              value: '${_stats['waiting'] ?? 0}',
-                              icon: Icons.hourglass_top_rounded,
-                              color: const Color(0xFFF59E0B),
-                            ),
-                            _buildStatCard(
-                              title: 'In Consultation',
-                              value: '${_stats['in_consultation'] ?? 0}',
-                              icon: Icons.medical_services_rounded,
-                              color: const Color(0xFF8B5CF6),
+                              color: AppTheme.doctorPrimaryColor,
                             ),
                             _buildStatCard(
                               title: 'Completed',
@@ -262,7 +252,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                               title: 'Current Queue',
                               value: _stats['current_queue_number'] ?? '--',
                               icon: Icons.confirmation_number_rounded,
-                              color: AppTheme.primaryBlue,
+                              color: AppTheme.doctorPrimaryColor,
                             ),
                             _buildStatCard(
                               title: 'Next Patient',
@@ -283,7 +273,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                         label: 'Currently Consulting',
                         queueNum: _stats['current_queue_number'] ?? '--',
                         name: _stats['current_patient_name'] ?? '--',
-                        color: AppTheme.primarySkyBlue,
+                        color: AppTheme.doctorPrimaryColor,
                         icon: Icons.person_pin_circle_rounded,
                       ),
                     if ((_stats['next_patient_name'] ?? '--') != '--')
@@ -311,7 +301,7 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                       title: "Today's Appointments",
                       subtitle: 'View all appointments scheduled for today',
                       icon: Icons.calendar_today_rounded,
-                      color: AppTheme.primarySkyBlue,
+                      color: AppTheme.doctorPrimaryColor,
                       onTap: () => Navigator.pushNamed(
                           context, '/doctor-appointments'),
                     ),
@@ -323,14 +313,6 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                       color: const Color(0xFF8B5CF6),
                       onTap: () =>
                           Navigator.pushNamed(context, '/doctor-queue'),
-                    ),
-                    const SizedBox(height: 10),
-                    _buildNavTile(
-                      title: 'Call Next Patient',
-                      subtitle: 'Directly call the next waiting patient',
-                      icon: Icons.campaign_rounded,
-                      color: const Color(0xFFF59E0B),
-                      onTap: _showCallNextDialog,
                     ),
                     const SizedBox(height: 10),
                     _buildNavTile(
@@ -369,129 +351,6 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
         ),
       ),
       bottomNavigationBar: const DoctorBottomNavBar(currentIndex: 0),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────
-  // Call Next Patient — quick dashboard action
-  // ─────────────────────────────────────────────────────────────────────
-  void _showCallNextDialog() async {
-    final appointments = await DoctorService.getTodayAppointments();
-    final waiting = appointments
-        .where((a) =>
-            a['queue_status'] == 'CHECKED_IN' ||
-            a['appointment_status'] == 'WAITING')
-        .toList();
-
-    if (!mounted) return;
-
-    if (waiting.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No patients currently waiting in the queue.'),
-          backgroundColor: AppTheme.mutedText,
-        ),
-      );
-      return;
-    }
-
-    final next = waiting.first;
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.campaign_rounded,
-                color: AppTheme.primarySkyBlue, size: 26),
-            SizedBox(width: 10),
-            Text('Call Next Patient',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Confirm calling this patient for consultation:',
-                style: TextStyle(fontSize: 13, color: AppTheme.mutedText)),
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.lightBg,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color: AppTheme.primarySkyBlue.withValues(alpha: 0.3)),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    next['queue_number'] ?? '--',
-                    style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.primarySkyBlue),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    next['patient_name'] ?? 'Patient',
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.darkText),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    next['appointment_time'] ?? '',
-                    style: const TextStyle(
-                        fontSize: 13, color: AppTheme.mutedText),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child:
-                const Text('Cancel', style: TextStyle(color: AppTheme.mutedText)),
-          ),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.campaign_rounded, size: 18),
-            label: const Text('CALL PATIENT'),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final current = appointments.firstWhere(
-                (a) =>
-                    a['appointment_status'] == 'IN_CONSULTATION' ||
-                    a['queue_status'] == 'IN_PROGRESS',
-                orElse: () => <String, dynamic>{},
-              );
-              final currentId = (current['id'] as int?) ?? 0;
-              final nextId = (next['id'] as int?) ?? 0;
-              await DoctorService.updateAppointmentStatus(
-                  nextId, 'IN_CONSULTATION');
-              if (currentId > 0) {
-                await DoctorService.updateAppointmentStatus(
-                    currentId, 'COMPLETED');
-              }
-              await _fetchStats();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                        'Calling ${next['queue_number']} — ${next['patient_name']}'),
-                    backgroundColor: const Color(0xFF10B981),
-                  ),
-                );
-              }
-            },
-          ),
-        ],
-      ),
     );
   }
 
