@@ -15,7 +15,8 @@ class OpdQueueScreen extends StatefulWidget {
   State<OpdQueueScreen> createState() => _OpdQueueScreenState();
 }
 
-class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProviderStateMixin {
+class _OpdQueueScreenState extends State<OpdQueueScreen>
+    with SingleTickerProviderStateMixin {
   static const List<Map<String, dynamic>> _staffOpdRooms = [
     {
       'key': 'GENERAL_OPD',
@@ -58,7 +59,6 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
   late String _selectedRoomKey;
   late TabController _tabController;
   bool _isCallingNext = false;
-  final TextEditingController _skipNotesController = TextEditingController();
 
   @override
   void initState() {
@@ -84,7 +84,6 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
   @override
   void dispose() {
     _tabController.dispose();
-    _skipNotesController.dispose();
     super.dispose();
   }
 
@@ -97,7 +96,10 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
     );
 
     final waitingList = queue
-        .where((a) => a['status'] == 'CHECKED_IN' || a['status'] == 'PENDING' || a['status'] == 'CONFIRMED')
+        .where((a) =>
+            a['status'] == 'CHECKED_IN' ||
+            a['status'] == 'PENDING' ||
+            a['status'] == 'CONFIRMED')
         .toList();
 
     if (waitingList.isEmpty && currentAppt.isEmpty) {
@@ -110,9 +112,10 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
       return;
     }
 
-    final nextAppt = waitingList.isNotEmpty ? waitingList.first : <String, dynamic>{};
-    final currentId = (currentAppt['id'] as int?) ?? 0;
-    final nextId = (nextAppt['id'] as int?) ?? 0;
+    final nextAppt =
+        waitingList.isNotEmpty ? waitingList.first : <String, dynamic>{};
+    final currentId = int.tryParse(currentAppt['id']?.toString() ?? '') ?? 0;
+    final nextId = int.tryParse(nextAppt['id']?.toString() ?? '') ?? 0;
 
     if (nextId == 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -126,7 +129,8 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
 
     final token = nextAppt['queue_number'] ?? 'N/A';
     final patientName = nextAppt['patient_name'] ?? 'Patient';
-    final roomDisplayName = AppointmentService.getRoomDisplayName(_selectedRoomKey);
+    final roomDisplayName =
+        AppointmentService.getRoomDisplayName(_selectedRoomKey);
 
     showDialog(
       context: context,
@@ -136,7 +140,8 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
           children: [
             Icon(Icons.campaign_rounded, color: Colors.orange, size: 28),
             SizedBox(width: 10),
-            Text('Now Calling', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            Text('Now Calling',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           ],
         ),
         content: Column(
@@ -154,18 +159,27 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                 children: [
                   Text(
                     '$token',
-                    style: TextStyle(fontSize: 42, fontWeight: FontWeight.w900, color: Colors.orange.shade800),
+                    style: TextStyle(
+                        fontSize: 42,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.orange.shade800),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     patientName,
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+                    style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppTheme.darkText),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 6),
                   Text(
                     roomDisplayName,
-                    style: const TextStyle(fontSize: 14, color: AppTheme.mutedText, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.mutedText,
+                        fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
@@ -175,23 +189,44 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.mutedText)),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppTheme.mutedText)),
           ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentGreen),
+            style:
+                ElevatedButton.styleFrom(backgroundColor: AppTheme.accentGreen),
             onPressed: () async {
               Navigator.pop(ctx);
-              setState(() => _isCallingNext = true);
-              final success = await QueueService.callNextPatient(currentId, nextId);
+              if (mounted) setState(() => _isCallingNext = true);
               if (mounted) {
-                setState(() => _isCallingNext = false);
-                if (success) {
+                try {
+                  if (currentId > 0) {
+                    await QueueService.updateStaffPatientStatus(
+                      currentId,
+                      'COMPLETED',
+                    );
+                  }
+                  await QueueService.callStaffPatient(nextId);
+                  if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Calling Token #$token ($patientName) to Room!'),
+                      content:
+                          Text('Calling Token #$token ($patientName) to Room!'),
                       backgroundColor: AppTheme.accentGreen,
                     ),
                   );
+                } catch (error) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content:
+                            Text('Could not call the next patient: $error'),
+                        backgroundColor: AppTheme.errorRed,
+                      ),
+                    );
+                  }
+                } finally {
+                  if (mounted) setState(() => _isCallingNext = false);
                 }
               }
             },
@@ -203,89 +238,71 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
   }
 
   void _showSkipDialog(int patientId, String token, String name) {
-    String selectedReason = 'Patient not present';
-    _skipNotesController.clear();
-
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Row(
-              children: [
-                const Icon(Icons.redo_rounded, color: Colors.grey),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text('Skip Patient #$token', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ),
-              ],
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.redo_rounded, color: Colors.grey),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text('Skip Patient #$token',
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.bold)),
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Skip turn for $name?', style: const TextStyle(fontSize: 14, color: AppTheme.darkText, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 14),
-                const Text('Select Skip Reason:', style: TextStyle(fontSize: 12, color: AppTheme.mutedText, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                DropdownButtonFormField<String>(
-                  initialValue: selectedReason,
-                  decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'Patient not present', child: Text('Patient not present')),
-                    DropdownMenuItem(value: 'Emergency situation', child: Text('Emergency situation')),
-                    DropdownMenuItem(value: 'Other', child: Text('Other')),
-                  ],
-                  onChanged: (val) {
-                    if (val != null) setDialogState(() => selectedReason = val);
-                  },
-                ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _skipNotesController,
-                  decoration: InputDecoration(
-                    hintText: 'Optional notes...',
-                    labelText: 'Notes',
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel', style: TextStyle(color: AppTheme.mutedText)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade700),
-                onPressed: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  Navigator.pop(ctx);
-                  await QueueService.skipPatient(
-                    patientId,
-                    reason: selectedReason,
-                    notes: _skipNotesController.text.trim(),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Skip turn for $name?',
+                style: const TextStyle(
+                    fontSize: 14,
+                    color: AppTheme.darkText,
+                    fontWeight: FontWeight.w600)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppTheme.mutedText)),
+          ),
+          ElevatedButton(
+            style:
+                ElevatedButton.styleFrom(backgroundColor: Colors.grey.shade700),
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              Navigator.pop(ctx);
+              try {
+                await QueueService.updateStaffPatientStatus(
+                  patientId,
+                  'SKIPPED',
+                );
+                if (mounted) {
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Patient #$token marked as Skipped.'),
+                      backgroundColor: Colors.grey.shade700,
+                    ),
                   );
-                  if (mounted) {
-                    setState(() {});
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text('Patient #$token marked as Skipped.'),
-                        backgroundColor: Colors.grey.shade700,
-                      ),
-                    );
-                  }
-                },
-                child: const Text('CONFIRM SKIP'),
-              ),
-            ],
-          );
-        },
+                }
+              } catch (error) {
+                if (mounted) {
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Could not skip patient: $error'),
+                      backgroundColor: AppTheme.errorRed,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('CONFIRM SKIP'),
+          ),
+        ],
       ),
     );
   }
@@ -299,7 +316,8 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
           children: [
             Icon(Icons.replay_rounded, color: AppTheme.primarySkyBlue),
             SizedBox(width: 10),
-            Text('Recall Patient', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('Recall Patient',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           ],
         ),
         content: Text(
@@ -309,21 +327,36 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: AppTheme.mutedText)),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppTheme.mutedText)),
           ),
           ElevatedButton(
             onPressed: () async {
               final messenger = ScaffoldMessenger.of(context);
               Navigator.pop(ctx);
-              await QueueService.recallPatient(patientId);
-              if (mounted) {
-                setState(() {});
-                messenger.showSnackBar(
-                  SnackBar(
-                    content: Text('Patient #$token recalled to waiting list.'),
-                    backgroundColor: AppTheme.primarySkyBlue,
-                  ),
+              try {
+                await QueueService.updateStaffPatientStatus(
+                  patientId,
+                  'RECALL',
                 );
+                if (mounted) {
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content:
+                          Text('Patient #$token recalled to waiting list.'),
+                      backgroundColor: AppTheme.primarySkyBlue,
+                    ),
+                  );
+                }
+              } catch (error) {
+                if (mounted) {
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Could not recall patient: $error'),
+                      backgroundColor: AppTheme.errorRed,
+                    ),
+                  );
+                }
               }
             },
             child: const Text('RECALL PATIENT'),
@@ -333,88 +366,81 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
     );
   }
 
-  void _showPriorityDialog(int patientId, String token, String name, bool currentPriority) {
-    String selectedCategory = 'Elderly';
-
+  void _showPriorityDialog(
+      int patientId, String token, String name, bool currentPriority) {
     showDialog(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            title: Row(
-              children: [
-                const Icon(Icons.priority_high_rounded, color: AppTheme.errorRed),
-                const SizedBox(width: 10),
-                Text(currentPriority ? 'Update Priority' : 'Mark as Priority', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              ],
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.priority_high_rounded, color: AppTheme.errorRed),
+            const SizedBox(width: 10),
+            Text(currentPriority ? 'Update Priority' : 'Mark as Priority',
+                style:
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '${currentPriority ? 'Remove priority from' : 'Mark'} $name (#$token)?',
+              style: const TextStyle(fontSize: 13, color: AppTheme.darkText),
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Set priority category for $name (#$token):', style: const TextStyle(fontSize: 13, color: AppTheme.darkText)),
-                const SizedBox(height: 14),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: ['Elderly', 'Disability', 'Pregnant', 'Emergency', 'Child'].map((cat) {
-                    final isSelected = selectedCategory == cat;
-                    return ChoiceChip(
-                      label: Text(cat),
-                      selected: isSelected,
-                      selectedColor: AppTheme.errorRed,
-                      labelStyle: TextStyle(color: isSelected ? Colors.white : AppTheme.darkText, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal),
-                      onSelected: (selected) {
-                        if (selected) setDialogState(() => selectedCategory = cat);
-                      },
-                    );
-                  }).toList(),
-                ),
-              ],
-            ),
-            actions: [
-              if (currentPriority)
-                TextButton(
-                  onPressed: () async {
-                    Navigator.pop(ctx);
-                    await QueueService.markPriority(patientId, category: '', isPriority: false);
-                    if (mounted) setState(() {});
-                  },
-                  child: const Text('Remove Priority', style: TextStyle(color: AppTheme.mutedText)),
-                ),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel', style: TextStyle(color: AppTheme.mutedText)),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorRed),
-                onPressed: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  Navigator.pop(ctx);
-                  await QueueService.markPriority(patientId, category: selectedCategory, isPriority: true);
-                  if (mounted) {
-                    setState(() {});
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text('Patient #$token marked as Priority ($selectedCategory).'),
-                        backgroundColor: AppTheme.errorRed,
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppTheme.mutedText)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorRed),
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              Navigator.pop(ctx);
+              try {
+                await QueueService.markStaffPatientPriority(
+                  patientId,
+                  isPriority: !currentPriority,
+                );
+                if (mounted) {
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        currentPriority
+                            ? 'Priority removed for patient #$token.'
+                            : 'Patient #$token marked as Priority.',
                       ),
-                    );
-                  }
-                },
-                child: const Text('SET PRIORITY'),
-              ),
-            ],
-          );
-        },
+                      backgroundColor: AppTheme.errorRed,
+                    ),
+                  );
+                }
+              } catch (error) {
+                if (mounted) {
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Could not update priority: $error'),
+                      backgroundColor: AppTheme.errorRed,
+                    ),
+                  );
+                }
+              }
+            },
+            child: Text(currentPriority ? 'REMOVE PRIORITY' : 'SET PRIORITY'),
+          ),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final roomDisplayName = AppointmentService.getRoomDisplayName(_selectedRoomKey);
+    final roomDisplayName =
+        AppointmentService.getRoomDisplayName(_selectedRoomKey);
     final roomColor = Color(AppointmentService.getRoomColor(_selectedRoomKey));
 
     return Scaffold(
@@ -440,14 +466,43 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
           labelColor: AppTheme.primarySkyBlue,
           unselectedLabelColor: AppTheme.mutedText,
           tabs: const [
-            Tab(icon: Icon(Icons.format_list_numbered_rounded), text: 'Active Queue'),
-            Tab(icon: Icon(Icons.history_toggle_off_rounded), text: 'Skipped & Completed'),
+            Tab(
+                icon: Icon(Icons.format_list_numbered_rounded),
+                text: 'Active Queue'),
+            Tab(
+                icon: Icon(Icons.history_toggle_off_rounded),
+                text: 'Skipped & Completed'),
           ],
         ),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: QueueService.getQueueStream(_selectedRoomKey),
+        stream: QueueService.getStaffQueueStream(),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Could not load the Staff queue: ${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: AppTheme.errorRed),
+                    ),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: () => setState(() {}),
+                      child: const Text('RETRY'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
           final queueData = snapshot.data ?? [];
 
           // Stats calculation
@@ -457,15 +512,24 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
           );
 
           final waitingList = queueData
-              .where((a) => a['status'] == 'CHECKED_IN' || a['status'] == 'PENDING' || a['status'] == 'CONFIRMED')
+              .where((a) =>
+                  a['status'] == 'CHECKED_IN' ||
+                  a['status'] == 'PENDING' ||
+                  a['status'] == 'CONFIRMED')
               .toList();
 
           final skippedOrCompletedList = queueData
-              .where((a) => a['status'] == 'SKIPPED' || a['status'] == 'COMPLETED')
+              .where((a) =>
+                  a['status'] == 'SKIPPED' ||
+                  a['status'] == 'COMPLETED' ||
+                  a['status'] == 'NO_SHOW')
               .toList();
 
-          final currentToken = currentPatient.isNotEmpty ? (currentPatient['queue_number'] ?? '--') : '--';
-          final avgWaitTime = waitingList.isNotEmpty ? (waitingList.length * 5) : 10;
+          final currentToken = currentPatient.isNotEmpty
+              ? (currentPatient['queue_number'] ?? '--')
+              : '--';
+          final avgWaitTime =
+              waitingList.isNotEmpty ? (waitingList.length * 5) : 10;
 
           return TabBarView(
             controller: _tabController,
@@ -476,10 +540,14 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                   // Room Switcher Bar
                   Container(
                     color: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 10),
                     child: Row(
                       children: [
-                        const Text('Room: ', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.darkText)),
+                        const Text('Room: ',
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.darkText)),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Container(
@@ -498,7 +566,9 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                                     value: r['key'] as String,
                                     child: Text(
                                       r['name'] as String,
-                                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 14),
                                     ),
                                   );
                                 }).toList(),
@@ -521,15 +591,19 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                   if (_selectedRoomKey == 'GENERAL_OPD')
                     Container(
                       margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF0FDF4),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                        border: Border.all(
+                            color:
+                                const Color(0xFF10B981).withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.medical_services_rounded, color: Color(0xFF059669), size: 20),
+                          const Icon(Icons.medical_services_rounded,
+                              color: Color(0xFF059669), size: 20),
                           const SizedBox(width: 10),
                           const Expanded(
                             child: Text(
@@ -543,13 +617,17 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                           ),
                           TextButton(
                             style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
                               minimumSize: Size.zero,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                               foregroundColor: const Color(0xFF059669),
                             ),
-                            onPressed: () => Navigator.pushNamed(context, AppRoutes.doctorAllocation),
-                            child: const Text('Manage &rarr;', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                            onPressed: () => Navigator.pushNamed(
+                                context, AppRoutes.doctorAllocation),
+                            child: const Text('Manage &rarr;',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.bold, fontSize: 12)),
                           ),
                         ],
                       ),
@@ -557,15 +635,22 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
 
                   // Room Stats Summary Strip
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     color: AppTheme.lightBg,
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildMiniStat('Token', '$currentToken', AppTheme.primarySkyBlue),
-                        _buildMiniStat('Waiting', '${waitingList.length}', AppTheme.primaryBlue),
-                        _buildMiniStat('In Progress', currentPatient.isNotEmpty ? '1' : '0', Colors.orange.shade800),
-                        _buildMiniStat('Avg Wait', '~${avgWaitTime}m', AppTheme.mutedText),
+                        _buildMiniStat(
+                            'Token', '$currentToken', AppTheme.primarySkyBlue),
+                        _buildMiniStat('Waiting', '${waitingList.length}',
+                            AppTheme.primaryBlue),
+                        _buildMiniStat(
+                            'In Progress',
+                            currentPatient.isNotEmpty ? '1' : '0',
+                            Colors.orange.shade800),
+                        _buildMiniStat(
+                            'Avg Wait', '~${avgWaitTime}m', AppTheme.mutedText),
                       ],
                     ),
                   ),
@@ -588,23 +673,34 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                             width: double.infinity,
                             height: 54,
                             child: ElevatedButton.icon(
-                              onPressed: _isCallingNext ? null : () => _handleCallNext(queueData),
+                              onPressed: _isCallingNext
+                                  ? null
+                                  : () => _handleCallNext(queueData),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppTheme.accentGreen,
                                 foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14)),
                                 elevation: 3,
                               ),
                               icon: _isCallingNext
                                   ? const SizedBox(
                                       width: 20,
                                       height: 20,
-                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+                                      child: CircularProgressIndicator(
+                                          color: Colors.white,
+                                          strokeWidth: 2.5),
                                     )
-                                  : const Icon(Icons.campaign_rounded, size: 26),
+                                  : const Icon(Icons.campaign_rounded,
+                                      size: 26),
                               label: Text(
-                                _isCallingNext ? 'CALLING PATIENT...' : 'CALL NEXT PATIENT',
-                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                                _isCallingNext
+                                    ? 'CALLING PATIENT...'
+                                    : 'CALL NEXT PATIENT',
+                                style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.8),
                               ),
                             ),
                           ),
@@ -616,13 +712,18 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                             children: [
                               const Text(
                                 'Waiting Queue List',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+                                style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.darkText),
                               ),
                               const SizedBox(width: 8),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.primarySkyBlue.withValues(alpha: 0.15),
+                                  color: AppTheme.primarySkyBlue
+                                      .withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
@@ -650,16 +751,22 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                               ),
                               child: const Column(
                                 children: [
-                                  Icon(Icons.check_circle_outline_rounded, size: 44, color: AppTheme.accentGreen),
+                                  Icon(Icons.check_circle_outline_rounded,
+                                      size: 44, color: AppTheme.accentGreen),
                                   SizedBox(height: 10),
                                   Text(
                                     'No Patients Waiting',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.darkText),
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: AppTheme.darkText),
                                   ),
                                   SizedBox(height: 4),
                                   Text(
                                     'The queue is currently clear for this room.',
-                                    style: TextStyle(color: AppTheme.mutedText, fontSize: 13),
+                                    style: TextStyle(
+                                        color: AppTheme.mutedText,
+                                        fontSize: 13),
                                   ),
                                 ],
                               ),
@@ -669,15 +776,22 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                               shrinkWrap: true,
                               physics: const NeverScrollableScrollPhysics(),
                               itemCount: waitingList.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 10),
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 10),
                               itemBuilder: (context, index) {
                                 final item = waitingList[index];
-                                final id = (item['id'] as int?) ?? 0;
-                                final token = item['queue_number'] ?? '${index + 1}';
+                                final id = int.tryParse(
+                                        item['id']?.toString() ?? '') ??
+                                    0;
+                                final token =
+                                    item['queue_number'] ?? '${index + 1}';
                                 final name = item['patient_name'] ?? 'Patient';
-                                final status = item['status'] as String? ?? 'PENDING';
-                                final isPriority = (item['priority'] as bool?) ?? false;
-                                final priorityCat = item['priority_category'] as String?;
+                                final status =
+                                    item['status'] as String? ?? 'PENDING';
+                                final isPriority =
+                                    (item['priority'] as bool?) ?? false;
+                                final priorityCat =
+                                    item['priority_category'] as String?;
                                 final isCheckedIn = status == 'CHECKED_IN';
 
                                 return Container(
@@ -687,9 +801,14 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                                     borderRadius: BorderRadius.circular(14),
                                     border: Border.all(
                                       color: isPriority
-                                          ? AppTheme.errorRed.withValues(alpha: 0.5)
-                                          : (isCheckedIn ? AppTheme.accentGreen.withValues(alpha: 0.4) : Colors.grey.shade200),
-                                      width: (isPriority || isCheckedIn) ? 1.5 : 1,
+                                          ? AppTheme.errorRed
+                                              .withValues(alpha: 0.5)
+                                          : (isCheckedIn
+                                              ? AppTheme.accentGreen
+                                                  .withValues(alpha: 0.4)
+                                              : Colors.grey.shade200),
+                                      width:
+                                          (isPriority || isCheckedIn) ? 1.5 : 1,
                                     ),
                                   ),
                                   child: Column(
@@ -697,12 +816,19 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                                       Row(
                                         children: [
                                           Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 10, vertical: 6),
                                             decoration: BoxDecoration(
                                               color: isPriority
-                                                  ? AppTheme.errorRed.withValues(alpha: 0.15)
-                                                  : (isCheckedIn ? AppTheme.accentGreen.withValues(alpha: 0.15) : AppTheme.lightBg),
-                                              borderRadius: BorderRadius.circular(10),
+                                                  ? AppTheme.errorRed
+                                                      .withValues(alpha: 0.15)
+                                                  : (isCheckedIn
+                                                      ? AppTheme.accentGreen
+                                                          .withValues(
+                                                              alpha: 0.15)
+                                                      : AppTheme.lightBg),
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
                                             ),
                                             child: Text(
                                               '$token',
@@ -711,14 +837,17 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                                                 fontSize: 16,
                                                 color: isPriority
                                                     ? AppTheme.errorRed
-                                                    : (isCheckedIn ? AppTheme.accentGreen : AppTheme.darkText),
+                                                    : (isCheckedIn
+                                                        ? AppTheme.accentGreen
+                                                        : AppTheme.darkText),
                                               ),
                                             ),
                                           ),
                                           const SizedBox(width: 12),
                                           Expanded(
                                             child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
                                                 Text(
                                                   name,
@@ -731,36 +860,58 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                                                 const SizedBox(height: 2),
                                                 Text(
                                                   'Pos: #${index + 1} | NIC: ${item['patient_nic'] ?? 'N/A'}',
-                                                  style: const TextStyle(fontSize: 12, color: AppTheme.mutedText),
+                                                  style: const TextStyle(
+                                                      fontSize: 12,
+                                                      color:
+                                                          AppTheme.mutedText),
                                                 ),
                                               ],
                                             ),
                                           ),
                                           if (isPriority)
                                             Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4),
                                               decoration: BoxDecoration(
                                                 color: AppTheme.errorRed,
-                                                borderRadius: BorderRadius.circular(8),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
                                               ),
                                               child: Text(
                                                 'PRIORITY${priorityCat != null ? ' ($priorityCat)' : ''}',
-                                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                                style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 10,
+                                                    fontWeight:
+                                                        FontWeight.bold),
                                               ),
                                             )
                                           else
                                             Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4),
                                               decoration: BoxDecoration(
-                                                color: isCheckedIn ? AppTheme.accentGreen.withValues(alpha: 0.15) : Colors.grey.shade100,
-                                                borderRadius: BorderRadius.circular(8),
+                                                color: isCheckedIn
+                                                    ? AppTheme.accentGreen
+                                                        .withValues(alpha: 0.15)
+                                                    : Colors.grey.shade100,
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
                                               ),
                                               child: Text(
-                                                isCheckedIn ? 'Checked-In' : 'Waiting',
+                                                isCheckedIn
+                                                    ? 'Checked-In'
+                                                    : 'Waiting',
                                                 style: TextStyle(
                                                   fontSize: 11,
                                                   fontWeight: FontWeight.bold,
-                                                  color: isCheckedIn ? AppTheme.accentGreen : AppTheme.mutedText,
+                                                  color: isCheckedIn
+                                                      ? AppTheme.accentGreen
+                                                      : AppTheme.mutedText,
                                                 ),
                                               ),
                                             ),
@@ -771,25 +922,39 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
 
                                       // Action Buttons Row (Priority, Skip, Call)
                                       Row(
-                                        mainAxisAlignment: MainAxisAlignment.end,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.end,
                                         children: [
                                           OutlinedButton.icon(
                                             style: OutlinedButton.styleFrom(
                                               minimumSize: const Size(0, 32),
-                                              padding: const EdgeInsets.symmetric(horizontal: 10),
-                                              side: BorderSide(color: isPriority ? AppTheme.errorRed : AppTheme.mutedText),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 10),
+                                              side: BorderSide(
+                                                  color: isPriority
+                                                      ? AppTheme.errorRed
+                                                      : AppTheme.mutedText),
                                             ),
-                                            onPressed: () => _showPriorityDialog(id, token, name, isPriority),
+                                            onPressed: () =>
+                                                _showPriorityDialog(id, token,
+                                                    name, isPriority),
                                             icon: Icon(
                                               Icons.priority_high_rounded,
                                               size: 14,
-                                              color: isPriority ? AppTheme.errorRed : AppTheme.mutedText,
+                                              color: isPriority
+                                                  ? AppTheme.errorRed
+                                                  : AppTheme.mutedText,
                                             ),
                                             label: Text(
-                                              isPriority ? 'Priority' : 'Set Priority',
+                                              isPriority
+                                                  ? 'Priority'
+                                                  : 'Set Priority',
                                               style: TextStyle(
                                                 fontSize: 11,
-                                                color: isPriority ? AppTheme.errorRed : AppTheme.mutedText,
+                                                color: isPriority
+                                                    ? AppTheme.errorRed
+                                                    : AppTheme.mutedText,
                                               ),
                                             ),
                                           ),
@@ -797,12 +962,21 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                                           OutlinedButton.icon(
                                             style: OutlinedButton.styleFrom(
                                               minimumSize: const Size(0, 32),
-                                              padding: const EdgeInsets.symmetric(horizontal: 10),
-                                              side: BorderSide(color: Colors.grey.shade400),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                      horizontal: 10),
+                                              side: BorderSide(
+                                                  color: Colors.grey.shade400),
                                             ),
-                                            onPressed: () => _showSkipDialog(id, token, name),
-                                            icon: const Icon(Icons.redo_rounded, size: 14, color: AppTheme.mutedText),
-                                            label: const Text('Skip', style: TextStyle(fontSize: 11, color: AppTheme.mutedText)),
+                                            onPressed: () => _showSkipDialog(
+                                                id, token, name),
+                                            icon: const Icon(Icons.redo_rounded,
+                                                size: 14,
+                                                color: AppTheme.mutedText),
+                                            label: const Text('Skip',
+                                                style: TextStyle(
+                                                    fontSize: 11,
+                                                    color: AppTheme.mutedText)),
                                           ),
                                         ],
                                       ),
@@ -825,7 +999,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                 separatorBuilder: (_, __) => const SizedBox(height: 10),
                 itemBuilder: (context, index) {
                   final item = skippedOrCompletedList[index];
-                  final id = (item['id'] as int?) ?? 0;
+                  final id = int.tryParse(item['id']?.toString() ?? '') ?? 0;
                   final token = item['queue_number'] ?? 'N/A';
                   final name = item['patient_name'] ?? 'Patient';
                   final status = item['status'] as String? ?? 'COMPLETED';
@@ -841,9 +1015,12 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                     child: Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: isSkipped ? Colors.grey.shade200 : AppTheme.accentGreen.withValues(alpha: 0.15),
+                            color: isSkipped
+                                ? Colors.grey.shade200
+                                : AppTheme.accentGreen.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
@@ -851,7 +1028,9 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
-                              color: isSkipped ? Colors.grey.shade700 : AppTheme.accentGreen,
+                              color: isSkipped
+                                  ? Colors.grey.shade700
+                                  : AppTheme.accentGreen,
                             ),
                           ),
                         ),
@@ -862,12 +1041,21 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                             children: [
                               Text(
                                 name,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.darkText),
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: AppTheme.darkText),
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                isSkipped ? 'Reason: ${item['skip_reason'] ?? 'Not Present'}' : 'Status: Completed',
-                                style: TextStyle(fontSize: 12, color: isSkipped ? Colors.grey.shade700 : AppTheme.accentGreen),
+                                isSkipped
+                                    ? 'Reason: ${item['skip_reason'] ?? 'Not Present'}'
+                                    : 'Status: Completed',
+                                style: TextStyle(
+                                    fontSize: 12,
+                                    color: isSkipped
+                                        ? Colors.grey.shade700
+                                        : AppTheme.accentGreen),
                               ),
                             ],
                           ),
@@ -880,7 +1068,8 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                           ),
                           onPressed: () => _showRecallDialog(id, token, name),
                           icon: const Icon(Icons.replay_rounded, size: 16),
-                          label: const Text('Recall', style: TextStyle(fontSize: 12)),
+                          label: const Text('Recall',
+                              style: TextStyle(fontSize: 12)),
                         ),
                       ],
                     ),
@@ -898,16 +1087,22 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
   Widget _buildMiniStat(String label, String value, Color color) {
     return Column(
       children: [
-        Text(value, style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: color)),
-        Text(label, style: const TextStyle(fontSize: 11, color: AppTheme.mutedText)),
+        Text(value,
+            style: TextStyle(
+                fontSize: 15, fontWeight: FontWeight.bold, color: color)),
+        Text(label,
+            style: const TextStyle(fontSize: 11, color: AppTheme.mutedText)),
       ],
     );
   }
 
-  Widget _buildCurrentPatientCard(Map<String, dynamic> patient, Color roomColor) {
+  Widget _buildCurrentPatientCard(
+      Map<String, dynamic> patient, Color roomColor) {
     final hasPatient = patient.isNotEmpty;
     final token = hasPatient ? (patient['queue_number'] ?? 'N/A') : '--';
-    final name = hasPatient ? (patient['patient_name'] ?? 'Unknown') : 'No Active Patient';
+    final name = hasPatient
+        ? (patient['patient_name'] ?? 'Unknown')
+        : 'No Active Patient';
     final nic = hasPatient ? (patient['patient_nic'] ?? 'N/A') : 'N/A';
     final phone = hasPatient ? (patient['patient_phone'] ?? 'N/A') : 'N/A';
 
@@ -936,17 +1131,23 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
                   'CURRENTLY SERVING',
-                  style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.5),
                 ),
               ),
-              const Icon(Icons.medical_services_rounded, color: Colors.white70, size: 22),
+              const Icon(Icons.medical_services_rounded,
+                  color: Colors.white70, size: 22),
             ],
           ),
           const SizedBox(height: 16),
@@ -979,11 +1180,13 @@ class _OpdQueueScreenState extends State<OpdQueueScreen> with SingleTickerProvid
                     const SizedBox(height: 4),
                     Text(
                       'NIC: $nic',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                     Text(
                       'Phone: $phone',
-                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                   ],
                 ),

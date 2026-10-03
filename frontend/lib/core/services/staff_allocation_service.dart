@@ -1,14 +1,13 @@
-import 'dart:async';
 import 'queue_service.dart';
 
 class GeneralOpdDoctor {
-  final String id;
-  final String code; // e.g. "Doctor 01"
+  final dynamic id;
+  final String code;
   final String name;
   final String slmcNumber;
   final String room;
-  bool isAvailable;
-  List<Map<String, dynamic>> allocatedPatients;
+  final bool isAvailable;
+  final List<Map<String, dynamic>> allocatedPatients;
 
   GeneralOpdDoctor({
     required this.id,
@@ -16,7 +15,7 @@ class GeneralOpdDoctor {
     required this.name,
     required this.slmcNumber,
     required this.room,
-    this.isAvailable = true,
+    required this.isAvailable,
     List<Map<String, dynamic>>? allocatedPatients,
   }) : allocatedPatients = allocatedPatients ?? [];
 
@@ -25,184 +24,209 @@ class GeneralOpdDoctor {
   String get assignedTokensText {
     if (allocatedPatients.isEmpty) return 'None';
     final tokens = allocatedPatients
-        .map((p) => (p['queue_number'] ?? '').toString())
-        .where((t) => t.isNotEmpty)
+        .map((patient) => (patient['queue_number'] ?? '').toString())
+        .where((token) => token.isNotEmpty)
         .toList();
-    if (tokens.isEmpty) return 'None';
-    return tokens.join(', ');
+    return tokens.isEmpty ? 'None' : tokens.join(', ');
   }
 }
 
 class StaffAllocationService {
-  static final List<GeneralOpdDoctor> _doctors = [
-    GeneralOpdDoctor(
-      id: 'DOC-G01',
-      code: 'Doctor 01',
-      name: 'Dr. Suneth Perera',
-      slmcNumber: 'SLMC-29841',
-      room: 'General OPD — Room 01',
-      isAvailable: true,
-    ),
-    GeneralOpdDoctor(
-      id: 'DOC-G02',
-      code: 'Doctor 02',
-      name: 'Dr. Nimali Jayawardena',
-      slmcNumber: 'SLMC-31204',
-      room: 'General OPD — Room 02',
-      isAvailable: true,
-    ),
-    GeneralOpdDoctor(
-      id: 'DOC-G03',
-      code: 'Doctor 03',
-      name: 'Dr. Kasun Bandara',
-      slmcNumber: 'SLMC-34512',
-      room: 'General OPD — Room 03',
-      isAvailable: true,
-    ),
-    GeneralOpdDoctor(
-      id: 'DOC-G04',
-      code: 'Doctor 04',
-      name: 'Dr. Chamari Silva',
-      slmcNumber: 'SLMC-38902',
-      room: 'General OPD — Room 04',
-      isAvailable: true,
-    ),
-  ];
-
-  static final Set<dynamic> _allocatedPatientIds = {};
-  static final StreamController<List<GeneralOpdDoctor>> _allocationController =
-      StreamController<List<GeneralOpdDoctor>>.broadcast();
-
-  static Stream<List<GeneralOpdDoctor>> get doctorsStream =>
-      _allocationController.stream;
+  static List<GeneralOpdDoctor> _doctors = [];
+  static List<Map<String, dynamic>> _waitingPatients = [];
+  static List<Map<String, dynamic>> _unallocatedWaitingPatients = [];
 
   static List<GeneralOpdDoctor> get doctors => List.unmodifiable(_doctors);
 
   static int get availableDoctorsCount =>
-      _doctors.where((d) => d.isAvailable).length;
+      _doctors.where((doctor) => doctor.isAvailable).length;
 
-  static int get totalAllocatedCount {
-    return _doctors.fold<int>(0, (sum, d) => sum + d.allocatedCount);
+  static int get totalAllocatedCount =>
+      _doctors.fold<int>(0, (sum, doctor) => sum + doctor.allocatedCount);
+
+  static int get waitingCount => _waitingPatients.length;
+
+  static int get unallocatedWaitingCount =>
+      _unallocatedWaitingPatients.length;
+
+  static Future<void> refreshData() async {
+    final results = await Future.wait([
+      QueueService.getStaffDoctors(),
+      QueueService.getStaffQueue(),
+    ]);
+    final doctorData = results[0];
+    final queue = results[1];
+    final doctorsById = <String, GeneralOpdDoctor>{};
+
+    _doctors = doctorData.asMap().entries.map((entry) {
+      final index = entry.key;
+      final data = entry.value;
+      final id = data['id'] ?? data['doctor_id'];
+      if (id == null) {
+        throw const FormatException('Staff doctor response is missing its ID.');
+      }
+      final doctor = GeneralOpdDoctor(
+        id: id,
+        code: (data['code'] ?? data['doctor_code'] ?? 'Doctor ${index + 1}')
+            .toString(),
+        name: (data['name'] ?? data['doctor_name'] ?? data['full_name'] ?? '')
+            .toString(),
+        slmcNumber:
+            (data['slmc_number'] ?? data['slmc_no'] ?? '').toString(),
+        room: (data['room'] ?? data['assigned_room'] ?? '').toString(),
+        isAvailable: _availabilityFrom(data),
+        allocatedPatients: _patientsFromDoctor(data),
+      );
+      doctorsById[id.toString()] = doctor;
+      return doctor;
+    }).toList();
+
+    final allocatedPatientIds = <String>{};
+    for (final doctor in _doctors) {
+      for (final patient in doctor.allocatedPatients) {
+        final id = patient['id'];
+        if (id != null) allocatedPatientIds.add(id.toString());
+      }
+    }
+
+    _waitingPatients = queue.where(_isWaiting).toList();
+    for (final patient in _waitingPatients) {
+      final assignedDoctor =
+          patient['doctor'] ?? patient['allocated_doctor'];
+      final assignedDoctorId = patient['doctor_id'] ??
+          patient['allocated_doctor_id'] ??
+          patient['assigned_doctor_id'] ??
+          (assignedDoctor is Map
+              ? assignedDoctor['id'] ?? assignedDoctor['doctor_id']
+              : null);
+      if (assignedDoctorId == null) continue;
+      final doctor = doctorsById[assignedDoctorId.toString()];
+      final patientId = patient['id'];
+      if (doctor != null &&
+          patientId != null &&
+          allocatedPatientIds.add(patientId.toString())) {
+        doctor.allocatedPatients.add(patient);
+      }
+    }
+    _unallocatedWaitingPatients = _waitingPatients.where((patient) {
+      final patientId = patient['id'];
+      final assignedDoctorId = patient['doctor_id'] ??
+          patient['allocated_doctor_id'] ??
+          patient['assigned_doctor_id'] ??
+          ((patient['doctor'] ?? patient['allocated_doctor']) is Map
+              ? (patient['doctor'] ?? patient['allocated_doctor'])['id'] ??
+                  (patient['doctor'] ?? patient['allocated_doctor'])
+                      ['doctor_id']
+              : null);
+      return assignedDoctorId == null &&
+          (patientId == null ||
+              !allocatedPatientIds.contains(patientId.toString()));
+    }).toList();
   }
 
-  static void setDoctorAvailability(String doctorId, bool isAvailable) {
-    final doc = _doctors.firstWhere(
-      (d) => d.id == doctorId,
-      orElse: () => _doctors.first,
-    );
-    doc.isAvailable = isAvailable;
-    _allocationController.add(_doctors);
+  static bool _availabilityFrom(Map<String, dynamic> data) {
+    final value = data['is_available'] ?? data['available'];
+    if (value is bool) return value;
+    if (value != null) {
+      return value.toString().toUpperCase() == 'AVAILABLE' ||
+          value.toString().toLowerCase() == 'true';
+    }
+    return true;
   }
 
-  /// Get all waiting patients in GENERAL_OPD queue
+  static List<Map<String, dynamic>> _patientsFromDoctor(
+    Map<String, dynamic> data,
+  ) {
+    final patients =
+        data['allocated_patients'] ??
+        data['allocated_queue'] ??
+        data['patients'] ??
+        data['queue'];
+    if (patients is! List) return [];
+    return patients
+        .whereType<Map>()
+        .map((patient) => Map<String, dynamic>.from(patient))
+        .toList();
+  }
+
+  static bool _isWaiting(Map<String, dynamic> patient) {
+    final status = patient['status'];
+    return status == 'CHECKED_IN' ||
+        status == 'PENDING' ||
+        status == 'CONFIRMED';
+  }
+
   static Future<List<Map<String, dynamic>>> getTotalWaitingPatients() async {
-    final queue = await QueueService.getQueueByRoom('GENERAL_OPD');
-    return queue.where((patient) {
-      final status = patient['status'];
-      return status == 'CHECKED_IN' ||
-          status == 'PENDING' ||
-          status == 'CONFIRMED';
-    }).toList();
+    await refreshData();
+    return List.unmodifiable(_waitingPatients);
   }
 
-  /// Get waiting patients for GENERAL_OPD who have NOT been allocated to any doctor yet
-  static Future<List<Map<String, dynamic>>> getUnallocatedWaitingPatients() async {
-    final queue = await QueueService.getQueueByRoom('GENERAL_OPD');
-    return queue.where((patient) {
-      final id = patient['id'];
-      final status = patient['status'];
-      final isWaiting = status == 'CHECKED_IN' ||
-          status == 'PENDING' ||
-          status == 'CONFIRMED';
-      return isWaiting && !_allocatedPatientIds.contains(id);
-    }).toList();
+  static Future<List<Map<String, dynamic>>>
+      getUnallocatedWaitingPatients() async {
+    await refreshData();
+    return List.unmodifiable(_unallocatedWaitingPatients);
   }
 
-  /// Batch allocation:
-  /// Allocates up to 5 patients per available doctor.
-  /// If all 4 doctors available and >=20 waiting, allocates 5 to each (20 total).
-  /// If fewer available, distributes waiting patients up to 5 per available doctor.
-  /// Unavailable doctors receive 0 patients.
   static Future<Map<String, dynamic>> allocateNextBatch() async {
-    final availableDocs = _doctors.where((d) => d.isAvailable).toList();
-    if (availableDocs.isEmpty) {
+    await refreshData();
+    final availableDoctors =
+        _doctors.where((doctor) => doctor.isAvailable).toList();
+    if (availableDoctors.isEmpty) {
       return {
         'success': false,
-        'message': 'No doctors are currently marked as available/on-duty.',
+        'message': 'No doctors are currently available for allocation.',
+        'allocatedCount': 0,
+      };
+    }
+    if (_unallocatedWaitingPatients.isEmpty) {
+      return {
+        'success': false,
+        'message': 'No unallocated waiting patients found.',
         'allocatedCount': 0,
       };
     }
 
-    final waiting = await getUnallocatedWaitingPatients();
-    if (waiting.isEmpty) {
-      return {
-        'success': false,
-        'message': 'No unallocated waiting patients found in General OPD queue.',
-        'allocatedCount': 0,
-      };
-    }
-
-    int allocatedTotal = 0;
-    int waitingIndex = 0;
-    const maxPerDoctor = 5;
-
-    // Distribute up to 5 patients per available doctor
-    for (final doc in availableDocs) {
-      int countForThisDoc = 0;
-      while (countForThisDoc < maxPerDoctor && waitingIndex < waiting.length) {
-        final patient = Map<String, dynamic>.from(waiting[waitingIndex]);
-        patient['allocated_doctor_id'] = doc.id;
-        patient['allocated_doctor_name'] = doc.name;
-        patient['allocated_doctor_code'] = doc.code;
-        patient['allocation_time'] = DateTime.now().toIso8601String();
-
-        doc.allocatedPatients.add(patient);
-        _allocatedPatientIds.add(patient['id']);
-
-        waitingIndex++;
-        countForThisDoc++;
-        allocatedTotal++;
+    int allocatedCount = 0;
+    final failures = <String>[];
+    final patientsByDoctor = <GeneralOpdDoctor, int>{};
+    var doctorIndex = 0;
+    for (final patient in _unallocatedWaitingPatients) {
+      GeneralOpdDoctor? doctor;
+      for (var attempt = 0; attempt < availableDoctors.length; attempt++) {
+        final candidate =
+            availableDoctors[(doctorIndex + attempt) % availableDoctors.length];
+        if ((patientsByDoctor[candidate] ?? 0) < 5) {
+          doctor = candidate;
+          doctorIndex =
+              (availableDoctors.indexOf(candidate) + 1) % availableDoctors.length;
+          break;
+        }
       }
-      if (waitingIndex >= waiting.length) break;
+      if (doctor == null) break;
+
+      final patientId = int.tryParse(patient['id']?.toString() ?? '');
+      if (patientId == null) {
+        failures.add('A waiting patient has an invalid ID.');
+        continue;
+      }
+      try {
+        await QueueService.allocateStaffPatient(patientId, doctor.id);
+        doctor.allocatedPatients.add(patient);
+        patientsByDoctor[doctor] = (patientsByDoctor[doctor] ?? 0) + 1;
+        allocatedCount++;
+      } catch (error) {
+        failures.add(error.toString());
+      }
     }
 
-    _allocationController.add(_doctors);
-
+    final message = failures.isEmpty
+        ? 'Successfully allocated $allocatedCount patient(s).'
+        : 'Allocated $allocatedCount patient(s); ${failures.length} allocation(s) failed: ${failures.first}';
     return {
-      'success': true,
-      'message':
-          'Successfully allocated $allocatedTotal patient(s) across ${availableDocs.length} available doctor(s).',
-      'allocatedCount': allocatedTotal,
+      'success': failures.isEmpty && allocatedCount > 0,
+      'message': message,
+      'allocatedCount': allocatedCount,
+      'failedCount': failures.length,
     };
-  }
-
-  static GeneralOpdDoctor? getDoctorById(String doctorId) {
-    try {
-      return _doctors.firstWhere((d) => d.id == doctorId);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  static void clearDoctorAllocation(String doctorId) {
-    final doc = getDoctorById(doctorId);
-    if (doc != null) {
-      for (final p in doc.allocatedPatients) {
-        _allocatedPatientIds.remove(p['id']);
-      }
-      doc.allocatedPatients.clear();
-      _allocationController.add(_doctors);
-    }
-  }
-
-  static void resetAllAllocations() {
-    for (final doc in _doctors) {
-      for (final p in doc.allocatedPatients) {
-        _allocatedPatientIds.remove(p['id']);
-      }
-      doc.allocatedPatients.clear();
-    }
-    _allocatedPatientIds.clear();
-    _allocationController.add(_doctors);
   }
 }
