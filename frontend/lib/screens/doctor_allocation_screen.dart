@@ -435,6 +435,10 @@ class _DoctorAllocationScreenState extends State<DoctorAllocationScreen> {
     return Scaffold(
       drawer: const StaffDrawer(currentRoute: AppRoutes.doctorAllocation),
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
           'Doctor Allocation',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),

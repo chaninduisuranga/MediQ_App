@@ -102,6 +102,19 @@ class QueueService {
 
   static Uri _staffUri(String path) => Uri.parse('$baseUrl$path');
 
+  /// Returns assignment details for the authenticated Staff member.
+  static Future<Map<String, dynamic>> getStaffProfile() async {
+    final response = await _sendStaffRequest(
+      'GET',
+      _staffUri('/staff/profile'),
+    );
+    final data = _staffResponseData(response);
+    if (data is! Map) {
+      throw const FormatException('Staff profile response was not an object.');
+    }
+    return Map<String, dynamic>.from(data);
+  }
+
   /// Returns the queue assigned to the authenticated Staff member.
   static Future<List<Map<String, dynamic>>> getStaffQueue() async {
     final response =

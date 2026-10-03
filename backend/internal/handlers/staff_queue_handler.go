@@ -29,6 +29,43 @@ func (h *StaffQueueHandler) ensureDatabase(c *gin.Context) bool {
 	return true
 }
 
+// GetProfile returns the authenticated Staff member's assignment details.
+func (h *StaffQueueHandler) GetProfile(c *gin.Context) {
+	if !h.ensureDatabase(c) {
+		return
+	}
+
+	userIDVal, exists := c.Get("userID")
+	if !exists {
+		utils.SendError(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	userID, ok := userIDVal.(uint)
+	if !ok {
+		utils.SendError(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var assignment models.AdminStaffAssignment
+	if err := database.DB.
+		Select([]string{"assigned_room", "function", "is_available"}).
+		Where("user_id = ?", userID).
+		First(&assignment).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			utils.SendError(c, http.StatusNotFound, "Staff assignment not found")
+			return
+		}
+		utils.SendError(c, http.StatusInternalServerError, "Failed to load Staff assignment")
+		return
+	}
+
+	utils.SendSuccess(c, http.StatusOK, "Staff profile retrieved", gin.H{
+		"assigned_room": assignment.AssignedRoom,
+		"function":      assignment.Function,
+		"is_available":  assignment.IsAvailable,
+	})
+}
+
 func (h *StaffQueueHandler) getAssignedRoom(c *gin.Context) (models.OPDRoom, error) {
 	userIDVal, exists := c.Get("userID")
 	if !exists {

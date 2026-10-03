@@ -107,6 +107,10 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
     return Scaffold(
       drawer: const StaffDrawer(currentRoute: AppRoutes.staffNotifications),
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
           'Notifications & Alerts',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),

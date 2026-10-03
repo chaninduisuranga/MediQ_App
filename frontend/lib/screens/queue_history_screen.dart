@@ -70,6 +70,10 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
     return Scaffold(
       drawer: const StaffDrawer(currentRoute: AppRoutes.queueHistory),
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
           'Queue Activity History',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
