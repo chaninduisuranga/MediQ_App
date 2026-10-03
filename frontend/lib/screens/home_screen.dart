@@ -41,6 +41,11 @@ class _HomeScreenState extends State<HomeScreen> {
   // Search controller
   final TextEditingController _searchController = TextEditingController();
 
+  // Hero Banner Carousel State
+  late final PageController _bannerPageController;
+  Timer? _bannerTimer;
+  int _currentBannerIndex = 0;
+
   // Notifications State
   List<AppNotification> _notifications = [];
 
@@ -49,12 +54,30 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _bannerPageController = PageController();
+    _startBannerAutoSlide();
     AuthService.loadSavedProfilePhoto();
     _fetchNextAppointment();
   }
 
+  void _startBannerAutoSlide() {
+    _bannerTimer?.cancel();
+    _bannerTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      if (_bannerPageController.hasClients) {
+        final nextPage = (_currentBannerIndex + 1) % 4;
+        _bannerPageController.animateToPage(
+          nextPage,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeInOutCubic,
+        );
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _bannerTimer?.cancel();
+    _bannerPageController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -1354,8 +1377,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: InkWell(
                       onTap: () {
                         Navigator.pop(context);
-                        AuthService.logout();
-                        Navigator.pushReplacementNamed(context, '/login');
+                        AuthService.performLogout(context);
                       },
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
@@ -1585,219 +1607,113 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 22),
 
-                    // HERO BANNER CARD ("Book Appointment") - Creative 3D Glassmorphic Design
-                    GestureDetector(
-                      onTap: _openBookAppointment,
-                      child: Container(
-                        width: double.infinity,
-                        clipBehavior: Clip.antiAlias,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(28),
-                          gradient: const LinearGradient(
-                            colors: [
-                              Color(0xFF0F172A),
-                              Color(0xFF1E3A8A),
-                              Color(0xFF0284C7),
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF0284C7).withValues(alpha: 0.35),
-                              blurRadius: 22,
-                              spreadRadius: 2,
-                              offset: const Offset(0, 10),
-                            ),
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.25),
-                            width: 1.5,
-                          ),
-                        ),
-                        child: Stack(
-                          children: [
-                            // Background Ambient Decorative Glows
-                            Positioned(
-                              top: -30,
-                              right: -20,
-                              child: Container(
-                                width: 140,
-                                height: 140,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: const Color(0xFF38BDF8).withValues(alpha: 0.25),
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              bottom: -40,
-                              left: -30,
-                              child: Container(
-                                width: 130,
-                                height: 130,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: const Color(0xFF0D9488).withValues(alpha: 0.3),
-                                ),
-                              ),
-                            ),
-
-                            // Foreground Banner Content
-                            Padding(
-                              padding: const EdgeInsets.all(22),
-                              child: Row(
-                                children: [
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        // Badge Tag
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white.withValues(alpha: 0.15),
-                                            borderRadius: BorderRadius.circular(20),
-                                            border: Border.all(
-                                              color: Colors.white.withValues(alpha: 0.3),
-                                            ),
-                                          ),
-                                          child: const Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(
-                                                Icons.stars_rounded,
-                                                color: Color(0xFF38BDF8),
-                                                size: 13,
-                                              ),
-                                              SizedBox(width: 5),
-                                              Text(
-                                                "INSTANT OPD TOKEN",
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 9.5,
-                                                  fontWeight: FontWeight.w900,
-                                                  letterSpacing: 0.6,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-
-                                        const Text(
-                                          "Book Appointment",
-                                          style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w900,
-                                            color: Colors.white,
-                                            letterSpacing: 0.2,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          "Consult with trusted OPD doctors without waiting in long queues.",
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.white.withValues(alpha: 0.85),
-                                            height: 1.35,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 16),
-
-                                        // Action Button
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(24),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.black.withValues(alpha: 0.12),
-                                                blurRadius: 10,
-                                                offset: const Offset(0, 4),
-                                              ),
-                                            ],
-                                          ),
-                                          child: const Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(
-                                                "Book Now",
-                                                style: TextStyle(
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w900,
-                                                  color: Color(0xFF1E3A8A),
-                                                ),
-                                              ),
-                                              SizedBox(width: 8),
-                                              Icon(
-                                                Icons.arrow_forward_rounded,
-                                                size: 16,
-                                                color: Color(0xFF1E3A8A),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 14),
-
-                                  // Right 3D Medical Graphic with Glowing Glass Sphere
-                                  Container(
-                                    width: 100,
-                                    height: 100,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Colors.white.withValues(alpha: 0.25),
-                                          Colors.white.withValues(alpha: 0.05),
-                                        ],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      ),
-                                      border: Border.all(
-                                        color: Colors.white.withValues(alpha: 0.4),
-                                        width: 1.5,
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
-                                          blurRadius: 20,
-                                          spreadRadius: 3,
-                                        ),
-                                      ],
-                                    ),
-                                    child: Center(
-                                      child: ClipRRect(
-                                        borderRadius: BorderRadius.circular(45),
-                                        child: Image.asset(
-                                          'assets/images/book_appointment.png',
-                                          width: 85,
-                                          height: 85,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) => const Icon(
-                                            Icons.calendar_month_rounded,
-                                            size: 48,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+                    // HERO BANNER CAROUSEL SLIDESHOW
+                    Column(
+                      children: [
+                        SizedBox(
+                          height: 205,
+                          child: PageView(
+                            controller: _bannerPageController,
+                            onPageChanged: (index) {
+                              setState(() {
+                                _currentBannerIndex = index;
+                              });
+                            },
+                            children: [
+                              // 1. Book Appointment Card (Navy to Ocean Blue)
+                              _buildHeroBannerCard(
+                                badgeText: "INSTANT OPD TOKEN",
+                                title: "Book Appointment",
+                                subtitle: "Consult with trusted OPD doctors without waiting in long queues.",
+                                buttonText: "Book Now",
+                                gradientColors: const [
+                                  Color(0xFF0F172A),
+                                  Color(0xFF1E3A8A),
+                                  Color(0xFF0284C7),
                                 ],
+                                glowColor: const Color(0xFF0284C7),
+                                ambientTopColor: const Color(0xFF38BDF8),
+                                ambientBottomColor: const Color(0xFF0D9488),
+                                iconData: Icons.calendar_month_rounded,
+                                imagePath: 'assets/images/book_appointment.png',
+                                onTap: null,
                               ),
-                            ),
-                          ],
+                              // 2. OPD Live Queue Card (Sapphire to Royal Blue)
+                              _buildHeroBannerCard(
+                                badgeText: "LIVE QUEUE TRACKER",
+                                title: "OPD Live Queue",
+                                subtitle: "Track your token queue number live & stay updated on your wait time.",
+                                buttonText: "Check Queue",
+                                gradientColors: const [
+                                  Color(0xFF0B192C),
+                                  Color(0xFF1E40AF),
+                                  Color(0xFF2563EB),
+                                ],
+                                glowColor: const Color(0xFF2563EB),
+                                ambientTopColor: const Color(0xFF60A5FA),
+                                ambientBottomColor: const Color(0xFF1D4ED8),
+                                iconData: Icons.confirmation_number_rounded,
+                                imagePath: 'assets/images/opd_live_queue.png',
+                                onTap: null,
+                              ),
+                              // 3. Medical Records Card (Deep Ocean to Cerulean Blue)
+                              _buildHeroBannerCard(
+                                badgeText: "DIGITAL HEALTH RECORD",
+                                title: "Medical Records",
+                                subtitle: "Store & access all your lab reports, prescriptions & doctor notes securely.",
+                                buttonText: "View Records",
+                                gradientColors: const [
+                                  Color(0xFF0F2C3A),
+                                  Color(0xFF0369A1),
+                                  Color(0xFF0891B2),
+                                ],
+                                glowColor: const Color(0xFF0891B2),
+                                ambientTopColor: const Color(0xFF22D3EE),
+                                ambientBottomColor: const Color(0xFF0284C7),
+                                iconData: Icons.folder_shared_rounded,
+                                imagePath: 'assets/images/medical_records.png',
+                                onTap: null,
+                              ),
+                              // 4. Pill & Vitals Tracker Card (Midnight Blue to Electric Sky Blue)
+                              _buildHeroBannerCard(
+                                badgeText: "DAILY VITALS & PILLS",
+                                title: "Pills & Vitals Tracker",
+                                subtitle: "Set medicine pill timings, check your BMI & track blood sugar levels easily.",
+                                buttonText: "Track Health",
+                                gradientColors: const [
+                                  Color(0xFF172554),
+                                  Color(0xFF1D4ED8),
+                                  Color(0xFF38BDF8),
+                                ],
+                                glowColor: const Color(0xFF38BDF8),
+                                ambientTopColor: const Color(0xFF7DD3FC),
+                                ambientBottomColor: const Color(0xFF2563EB),
+                                iconData: Icons.favorite_rounded,
+                                imagePath: 'assets/images/pill_tracker.png',
+                                onTap: null,
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 10),
+                        // Sleek Page Indicator Dots
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: List.generate(4, (index) {
+                            final isActive = _currentBannerIndex == index;
+                            return AnimatedContainer(
+                              duration: const Duration(milliseconds: 300),
+                              margin: const EdgeInsets.symmetric(horizontal: 4),
+                              width: isActive ? 22 : 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                color: isActive ? const Color(0xFF2563EB) : const Color(0xFFCBD5E1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            );
+                          }),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 24),
 
@@ -1812,21 +1728,27 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // 6 Services Grid matching Reference UI
+                    // 6 Services Grid matching Reference UI with Cohesive MediQ Blue Theme Tints
                     Row(
                       children: [
                         Expanded(
                           child: _buildServiceCardItem(
-                            icon: Icons.confirmation_number_outlined,
+                            imagePath: 'assets/images/opd_live_queue.png',
+                            icon: Icons.confirmation_number_rounded,
+                            iconColor: const Color(0xFF2563EB),
+                            iconBgColor: const Color(0xFFEFF6FF),
                             title: "OPD Live Queue",
                             subtitle: "Live token queue",
                             onTap: _showChooseOPDRoomSheet,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: _buildServiceCardItem(
-                            icon: Icons.event_note_outlined,
+                            imagePath: 'assets/images/book_appointment.png',
+                            icon: Icons.event_available_rounded,
+                            iconColor: const Color(0xFF1D4ED8),
+                            iconBgColor: const Color(0xFFDBEAFE),
                             title: "Book Appointment",
                             subtitle: "Book doctor slot",
                             onTap: _openBookAppointment,
@@ -1834,21 +1756,27 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
                           child: _buildServiceCardItem(
-                            icon: Icons.medical_services_outlined,
+                            imagePath: 'assets/images/medical_records.png',
+                            icon: Icons.folder_shared_rounded,
+                            iconColor: const Color(0xFF0284C7),
+                            iconBgColor: const Color(0xFFF0F9FF),
                             title: "Medical Records",
                             subtitle: "Lab & OPD records",
                             onTap: _openMedicalRecords,
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: _buildServiceCardItem(
-                            icon: Icons.medication_outlined,
+                            imagePath: 'assets/images/pill_tracker.png',
+                            icon: Icons.medication_rounded,
+                            iconColor: const Color(0xFF0891B2),
+                            iconBgColor: const Color(0xFFECFEFF),
                             title: "Pill Tracker",
                             subtitle: "Get your meds",
                             onTap: () => Navigator.pushNamed(context, '/pill-tracker'),
@@ -1856,21 +1784,27 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     Row(
                       children: [
                         Expanded(
                           child: _buildServiceCardItem(
-                            icon: Icons.psychology_outlined,
+                            imagePath: 'assets/images/symptom_checker.png',
+                            icon: Icons.psychology_rounded,
+                            iconColor: const Color(0xFF4F46E5),
+                            iconBgColor: const Color(0xFFEEF2FF),
                             title: "Symptom Checker",
                             subtitle: "AI health triage",
                             onTap: () => Navigator.pushNamed(context, '/symptom-checker'),
                           ),
                         ),
-                        const SizedBox(width: 10),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: _buildServiceCardItem(
-                            icon: Icons.monitor_weight_outlined,
+                            imagePath: 'assets/images/health_vitals.png',
+                            icon: Icons.monitor_weight_rounded,
+                            iconColor: const Color(0xFF2563EB),
+                            iconBgColor: const Color(0xFFEFF6FF),
                             title: "Health Vitals",
                             subtitle: "Full body checkup",
                             onTap: () => Navigator.pushNamed(context, '/health-vitals'),
@@ -1967,49 +1901,326 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // SERVICE CARD ITEM (Soft White Card, Sky Blue Icon Circle, Dark Title)
-  Widget _buildServiceCardItem({
-    required IconData icon,
+  // HERO BANNER CARD (3D Glassmorphic Design)
+  Widget _buildHeroBannerCard({
+    required String badgeText,
     required String title,
     required String subtitle,
+    required String buttonText,
+    required List<Color> gradientColors,
+    required Color glowColor,
+    required Color ambientTopColor,
+    required Color ambientBottomColor,
+    required IconData iconData,
+    String? imagePath,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(28),
+          gradient: LinearGradient(
+            colors: gradientColors,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: glowColor.withValues(alpha: 0.35),
+              blurRadius: 22,
+              spreadRadius: 2,
+              offset: const Offset(0, 10),
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.25),
+            width: 1.5,
+          ),
+        ),
+        child: Stack(
+          children: [
+            // Background Ambient Decorative Glows
+            Positioned(
+              top: -30,
+              right: -20,
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: ambientTopColor.withValues(alpha: 0.25),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: -40,
+              left: -30,
+              child: Container(
+                width: 130,
+                height: 130,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: ambientBottomColor.withValues(alpha: 0.3),
+                ),
+              ),
+            ),
+
+            // Foreground Banner Content
+            Padding(
+              padding: const EdgeInsets.all(22),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Badge Tag
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.stars_rounded,
+                                color: ambientTopColor,
+                                size: 13,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                badgeText,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.6,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
+                        Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            letterSpacing: 0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withValues(alpha: 0.85),
+                            height: 1.35,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Action Button
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(24),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.12),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                buttonText,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w900,
+                                  color: gradientColors.length > 1 ? gradientColors[1] : gradientColors[0],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(
+                                Icons.arrow_forward_rounded,
+                                size: 16,
+                                color: gradientColors.length > 1 ? gradientColors[1] : gradientColors[0],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+
+                  // Right 3D Medical Graphic with Glowing Glass Sphere
+                  Container(
+                    width: 95,
+                    height: 95,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withValues(alpha: 0.25),
+                          Colors.white.withValues(alpha: 0.05),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.4),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: ambientTopColor.withValues(alpha: 0.4),
+                          blurRadius: 20,
+                          spreadRadius: 3,
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: imagePath != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(45),
+                              child: Image.asset(
+                                imagePath,
+                                width: 80,
+                                height: 80,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Icon(
+                                  iconData,
+                                  size: 46,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            )
+                          : Icon(
+                              iconData,
+                              size: 46,
+                              color: Colors.white,
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // SERVICE CARD ITEM (Compact White Card, Full-Width Header Graphic Badge, Bold Titles)
+  Widget _buildServiceCardItem({
+    IconData? icon,
+    String? imagePath,
+    required String title,
+    required String subtitle,
+    Color iconColor = const Color(0xFF2563EB),
+    Color iconBgColor = const Color(0xFFEFF6FF),
     String? badgeText,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: const Color(0xFFF1F5F9)),
           boxShadow: [
             BoxShadow(
+              color: iconColor.withValues(alpha: 0.08),
+              blurRadius: 10,
+              spreadRadius: 1,
+              offset: const Offset(0, 4),
+            ),
+            BoxShadow(
               color: Colors.black.withValues(alpha: 0.02),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              blurRadius: 4,
+              offset: const Offset(0, 1),
             ),
           ],
         ),
         child: Column(
           children: [
-            // Icon container with light sky blue background shape
+            // Icon or Image badge container matching full width of card
             Container(
-              width: 48,
-              height: 48,
+              width: double.infinity,
+              height: imagePath != null ? 65 : 52,
               decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(16),
+                color: iconBgColor,
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(
+                  color: iconColor.withValues(alpha: 0.2),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  if (imagePath != null)
+                    BoxShadow(
+                      color: iconColor.withValues(alpha: 0.12),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                ],
               ),
-              child: Icon(icon, color: const Color(0xFF2563EB), size: 24),
+              child: Center(
+                child: imagePath != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image.asset(
+                          imagePath,
+                          width: double.infinity,
+                          height: 65,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Icon(
+                            icon ?? Icons.confirmation_number_rounded,
+                            color: iconColor,
+                            size: 26,
+                          ),
+                        ),
+                      )
+                    : Icon(
+                        icon ?? Icons.confirmation_number_rounded,
+                        color: iconColor,
+                        size: 26,
+                      ),
+              ),
             ),
             const SizedBox(height: 10),
             Text(
               title,
               style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
+                fontSize: 13.5,
+                fontWeight: FontWeight.w800,
                 color: Color(0xFF0F172A),
+                letterSpacing: 0.1,
               ),
               textAlign: TextAlign.center,
               maxLines: 1,
@@ -2019,7 +2230,8 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               subtitle,
               style: const TextStyle(
-                fontSize: 10,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w600,
                 color: Color(0xFF64748B),
               ),
               textAlign: TextAlign.center,
@@ -2059,6 +2271,25 @@ class _HomeScreenState extends State<HomeScreen> {
         return Icons.medical_services_rounded;
       default:
         return Icons.meeting_room_rounded;
+    }
+  }
+
+  String? _getRoomIconAsset(String key) {
+    switch (key) {
+      case 'DRESSING_ROOM':
+        return 'assets/images/opd_room_dressing.png';
+      case 'INJECTION_ROOM':
+        return 'assets/images/opd_room_injection.png';
+      case 'ANIMAL_BITE_ROOM':
+        return 'assets/images/opd_room_bite.png';
+      case 'BLEEDING_ROOM':
+        return 'assets/images/opd_room_bleeding.png';
+      case 'OPD_CLINIC_ROOM':
+        return 'assets/images/opd_room_clinic.png';
+      case 'DISPENSARY_ROOM':
+        return 'assets/images/opd_room_dispensary.png';
+      default:
+        return null;
     }
   }
 
@@ -2113,12 +2344,30 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
                       color: roomColor.withValues(alpha: 0.12),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(_getRoomIcon(roomKey), color: roomColor, size: 22),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: _getRoomIconAsset(roomKey) != null
+                          ? Image.asset(
+                              _getRoomIconAsset(roomKey)!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (ctx, err, stack) => Icon(
+                                _getRoomIcon(roomKey),
+                                color: roomColor,
+                                size: 22,
+                              ),
+                            )
+                          : Icon(
+                              _getRoomIcon(roomKey),
+                              color: roomColor,
+                              size: 22,
+                            ),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -2270,7 +2519,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: roomColor.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(_getRoomIcon(roomKey), color: roomColor, size: 24),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: _getRoomIconAsset(roomKey) != null
+                    ? Image.asset(
+                        _getRoomIconAsset(roomKey)!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (ctx, err, stack) => Icon(
+                          _getRoomIcon(roomKey),
+                          color: roomColor,
+                          size: 24,
+                        ),
+                      )
+                    : Icon(
+                        _getRoomIcon(roomKey),
+                        color: roomColor,
+                        size: 24,
+                      ),
+              ),
             ),
             const SizedBox(width: 12),
 
@@ -2448,17 +2714,24 @@ class _HomeScreenState extends State<HomeScreen> {
             style: TextStyle(fontSize: 11, color: Color(0xFF64748B)),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 12),
-          ElevatedButton.icon(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF2563EB),
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                elevation: 2,
+                shadowColor: const Color(0xFF2563EB).withValues(alpha: 0.4),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+              ),
+              onPressed: _openBookAppointment,
+              icon: const Icon(Icons.add_rounded, size: 18, color: Colors.white),
+              label: const Text(
+                'Book Appointment Now',
+                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+              ),
             ),
-            onPressed: _openBookAppointment,
-            icon: const Icon(Icons.add_rounded, size: 16, color: Colors.white),
-            label: const Text('Book Appointment Now', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

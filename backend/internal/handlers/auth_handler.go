@@ -24,6 +24,7 @@ func NewAuthHandler(cfg *config.Config) *AuthHandler {
 type PatientSignupRequest struct {
 	FullName              string `json:"full_name" binding:"required"`
 	NIC                   string `json:"nic" binding:"required"`
+	Email                 string `json:"email"`
 	Phone                 string `json:"phone" binding:"required"`
 	Password              string `json:"password" binding:"required,min=6"`
 	Gender                string `json:"gender"`
@@ -40,6 +41,7 @@ type PatientSignupRequest struct {
 
 type UpdateProfileRequest struct {
 	FullName              string `json:"full_name"`
+	Email                 string `json:"email"`
 	Phone                 string `json:"phone"`
 	Gender                string `json:"gender"`
 	DateOfBirth           string `json:"date_of_birth"`
@@ -96,6 +98,7 @@ func (h *AuthHandler) Signup(c *gin.Context) {
 	user := models.User{
 		FullName:              strings.TrimSpace(req.FullName),
 		NIC:                   nic,
+		Email:                 strings.TrimSpace(req.Email),
 		Phone:                 phone,
 		Password:              hashedPassword,
 		Role:                  models.RolePatient,
@@ -211,6 +214,9 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 
 	if req.FullName != "" {
 		user.FullName = strings.TrimSpace(req.FullName)
+	}
+	if req.Email != "" {
+		user.Email = strings.TrimSpace(req.Email)
 	}
 	if req.Phone != "" {
 		user.Phone = strings.TrimSpace(req.Phone)

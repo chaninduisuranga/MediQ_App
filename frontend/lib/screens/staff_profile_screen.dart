@@ -48,9 +48,7 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorRed),
             onPressed: () {
               Navigator.pop(ctx);
-              AuthService.logout();
-              Navigator.pushNamedAndRemoveUntil(
-                  context, '/login', (route) => false);
+              AuthService.performLogout(context);
             },
             child: const Text('Logout'),
           ),
