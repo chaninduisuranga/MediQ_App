@@ -371,31 +371,6 @@ class QueueService {
     },
   ];
 
-  static final List<Map<String, dynamic>> _queueHistory = [
-    {
-      'id': 1,
-      'token': 'G-018',
-      'patient_name': 'Saman Kumara',
-      'action': 'Completed',
-      'status': 'COMPLETED',
-      'room': 'GENERAL_OPD',
-      'timestamp': '09:30 AM',
-      'date': '2026-09-13',
-      'details': 'Consultation finished normally.',
-    },
-    {
-      'id': 2,
-      'token': 'G-019',
-      'patient_name': 'Nimal Perera',
-      'action': 'Called',
-      'status': 'IN_PROGRESS',
-      'room': 'GENERAL_OPD',
-      'timestamp': '09:35 AM',
-      'date': '2026-09-13',
-      'details': 'Called to Room 03',
-    },
-  ];
-
   /// Get room prefix letter for tokens
   static String getTokenPrefix(String roomKey) {
     switch (roomKey) {
@@ -526,12 +501,10 @@ class QueueService {
 
     if (currentId > 0) {
       _updateLocalStatus(currentId, 'COMPLETED');
-      _addHistoryRecord(currentId, 'Completed', 'COMPLETED');
     }
 
     if (nextId > 0) {
       _updateLocalStatus(nextId, 'IN_PROGRESS');
-      _addHistoryRecord(nextId, 'Called', 'IN_PROGRESS');
     }
 
     return remoteOk || true;
@@ -547,14 +520,12 @@ class QueueService {
         _mockQueue[idx]['skip_notes'] = notes;
       }
     }
-    _addHistoryRecord(id, 'Skipped ($reason)', 'SKIPPED');
     return true;
   }
 
   /// Recall a skipped or completed patient back into the active queue
   static Future<bool> recallPatient(int id) async {
     _updateLocalStatus(id, 'CHECKED_IN');
-    _addHistoryRecord(id, 'Recalled to Queue', 'CHECKED_IN');
     return true;
   }
 
@@ -564,23 +535,21 @@ class QueueService {
     if (idx >= 0) {
       _mockQueue[idx]['priority'] = isPriority;
       _mockQueue[idx]['priority_category'] = isPriority ? category : null;
-      _addHistoryRecord(
-        id,
-        isPriority ? 'Marked Priority ($category)' : 'Removed Priority',
-        _mockQueue[idx]['status'] as String? ?? 'CHECKED_IN',
-      );
       return true;
     }
     return false;
   }
 
-  /// Get Queue History filtered by timeframe ('Today', 'This Week', 'This Month') and optional roomKey
+  /// Gets real queue activity history for the authenticated Staff member.
   static Future<List<Map<String, dynamic>>> getQueueHistory({String? filterTime, String? roomKey}) async {
-    List<Map<String, dynamic>> filtered = List.from(_queueHistory);
-    if (roomKey != null && roomKey.isNotEmpty && roomKey != 'ALL') {
-      filtered = filtered.where((h) => h['room'] == roomKey).toList();
-    }
-    return filtered.reversed.toList();
+    final uri = _staffUri('/staff/queue/history').replace(
+      queryParameters: {
+        'filter_time': filterTime ?? 'Today',
+        'room': roomKey ?? 'ALL',
+      },
+    );
+    final response = await _sendStaffRequest('GET', uri);
+    return _staffListFromResponse(response, keys: const ['history', 'items']);
   }
 
   /// Real-time stream listener for appointment status changes by room
@@ -640,21 +609,4 @@ class QueueService {
     }
   }
 
-  static void _addHistoryRecord(int apptId, String action, String status) {
-    final item = _mockQueue.firstWhere((a) => a['id'] == apptId, orElse: () => <String, dynamic>{});
-    final now = DateTime.now();
-    final timeStr = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-
-    _queueHistory.add({
-      'id': _queueHistory.length + 1,
-      'token': item['queue_number'] ?? 'N/A',
-      'patient_name': item['patient_name'] ?? 'Patient',
-      'action': action,
-      'status': status,
-      'room': item['room'] ?? 'GENERAL_OPD',
-      'timestamp': timeStr,
-      'date': '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
-      'details': 'Recorded by Staff',
-    });
-  }
 }

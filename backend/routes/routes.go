@@ -82,6 +82,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			staffQueueHandler := handlers.NewStaffQueueHandler()
 			staff.GET("/queue/list", staffQueueHandler.GetQueueList)
 			staff.GET("/queue/search", staffQueueHandler.SearchQueue)
+			staff.GET("/queue/history", staffQueueHandler.GetQueueHistory)
 			staff.POST("/queue/checkin/:id", staffQueueHandler.CheckIn)
 			staff.POST("/queue/call/:id", staffQueueHandler.CallNext)
 			staff.PATCH("/queue/status/:id", staffQueueHandler.UpdateStatus)
