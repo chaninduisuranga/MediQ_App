@@ -56,6 +56,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     final user = AuthService.currentUser ?? {};
 
     final fullNameController = TextEditingController(text: user['full_name'] ?? '');
+    final emailController = TextEditingController(text: user['email'] ?? '');
     final phoneController = TextEditingController(text: user['phone'] ?? '');
     final addressController = TextEditingController(text: user['address'] ?? '');
     final emergencyNameController = TextEditingController(text: user['emergency_contact_name'] ?? '');
@@ -138,6 +139,22 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                       keyboardType: TextInputType.phone,
                       decoration: InputDecoration(
                         hintText: 'Phone Number',
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFF2563EB), width: 1.5)),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    const Text('Email Address', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF475569))),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        hintText: 'e.g. patient@example.com',
                         filled: true,
                         fillColor: const Color(0xFFF8FAFC),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
@@ -337,6 +354,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
 
                             final res = await AuthService.updateProfile(
                               fullName: fullNameController.text,
+                              email: emailController.text,
                               phone: phoneController.text,
                               gender: selectedGender,
                               dateOfBirth: user['date_of_birth'] ?? '',
@@ -445,6 +463,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
     final user = AuthService.currentUser ?? {};
     final fullName = user['full_name'] ?? 'Patient Name';
     final nic = user['nic'] ?? 'N/A';
+    final email = user['email'] ?? 'N/A';
     final phone = user['phone'] ?? 'N/A';
     final dob = user['date_of_birth'] ?? 'N/A';
     final gender = user['gender'] ?? 'N/A';
@@ -690,6 +709,7 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                     iconGradientColors: [const Color(0xFF0EA5E9), const Color(0xFF38BDF8)],
                     items: [
                       _buildInfoRow(LanguageService.tr('phone'), phone),
+                      _buildInfoRow('Email', (email != null && email.toString().isNotEmpty) ? email.toString() : 'N/A'),
                       _buildInfoRow(LanguageService.tr('address'), address),
                       _buildInfoRow(LanguageService.tr('district'), district),
                     ],
@@ -775,6 +795,26 @@ class _PatientProfileScreenState extends State<PatientProfileScreen> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Logout Button
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        side: BorderSide(color: Colors.grey.shade300, width: 1.5),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      onPressed: () => AuthService.performLogout(context),
+                      icon: const Icon(Icons.logout_rounded, color: AppTheme.errorRed, size: 20),
+                      label: Text(
+                        LanguageService.tr('menu_logout'),
+                        style: const TextStyle(color: AppTheme.errorRed, fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 24),
                 ],

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -141,6 +142,7 @@ class AuthService {
   static Future<Map<String, dynamic>> signupPatient({
     required String fullName,
     required String nic,
+    String email = '',
     required String phone,
     required String password,
     required String gender,
@@ -161,6 +163,7 @@ class AuthService {
         body: jsonEncode({
           'full_name': fullName,
           'nic': nic.trim().toUpperCase(),
+          'email': email,
           'phone': phone,
           'password': password,
           'gender': gender,
@@ -205,6 +208,7 @@ class AuthService {
 
   static Future<Map<String, dynamic>> updateProfile({
     required String fullName,
+    String email = '',
     required String phone,
     required String gender,
     required String dateOfBirth,
@@ -226,6 +230,7 @@ class AuthService {
         },
         body: jsonEncode({
           'full_name': fullName,
+          'email': email,
           'phone': phone,
           'gender': gender,
           'date_of_birth': dateOfBirth,
@@ -300,5 +305,113 @@ class AuthService {
   static void logout() {
     _token = null;
     _currentUser = null;
+    profilePhotoNotifier.value = null;
+  }
+
+  static Future<void> performLogout(BuildContext context) async {
+    final userName = _currentUser?['full_name'] ?? 'User';
+
+    // Show sleek, modern "Logging Out..." loading overlay dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black.withValues(alpha: 0.65),
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          elevation: 20,
+          backgroundColor: Colors.white,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 30),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const SizedBox(
+                      width: 70,
+                      height: 70,
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEF4444)),
+                        strokeWidth: 3.5,
+                      ),
+                    ),
+                    Container(
+                      width: 50,
+                      height: 50,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFEF2F2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.logout_rounded,
+                        color: Color(0xFFEF4444),
+                        size: 24,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 22),
+                const Text(
+                  'Logging Out...',
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF0F172A),
+                    letterSpacing: 0.2,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Securing session data for $userName.',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Color(0xFF64748B),
+                    height: 1.3,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.shield_outlined, size: 14, color: Color(0xFF64748B)),
+                      SizedBox(width: 6),
+                      Text(
+                        'MediQ Secure Logout',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    // Wait for ~1.8 seconds for a polished, smooth user experience
+    await Future.delayed(const Duration(milliseconds: 1800));
+
+    // Completely clear authentication state & session memory
+    logout();
+
+    if (context.mounted) {
+      // Wipe the entire navigation history back-stack and route cleanly to /login
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+    }
   }
 }

@@ -7,13 +7,6 @@ class AppointmentService {
 
   static const List<Map<String, dynamic>> opdRooms = [
     {
-      'key': 'GENERAL_OPD',
-      'name': 'General OPD',
-      'subtitle': 'General Medical OPD Consultation',
-      'icon': 'clinic',
-      'color': 0xFF0284C7,
-    },
-    {
       'key': 'DRESSING_ROOM',
       'name': 'Dressing Room',
       'subtitle': 'Wound Care & Bandaging',
@@ -25,7 +18,7 @@ class AppointmentService {
       'name': 'Injection Room',
       'subtitle': 'IV & IM Injections',
       'icon': 'syringe',
-      'color': 0xFF00A896,
+      'color': 0xFF0284C7,
     },
     {
       'key': 'ANIMAL_BITE_ROOM',
@@ -39,14 +32,7 @@ class AppointmentService {
       'name': 'Bleeding Room',
       'subtitle': 'Hemorrhage & Bleeding Control',
       'icon': 'blood',
-      'color': 0xFFE11D48,
-    },
-    {
-      'key': 'PHARMACY',
-      'name': 'Pharmacy',
-      'subtitle': 'Medication Dispensing & Queue',
-      'icon': 'pill',
-      'color': 0xFF059669,
+      'color': 0xFF4F46E5,
     },
     {
       'key': 'OPD_CLINIC_ROOM',
