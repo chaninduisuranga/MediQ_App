@@ -6,6 +6,7 @@ import '../core/models/admin_doctor_model.dart';
 import '../core/models/admin_staff_model.dart';
 import '../core/services/admin_service.dart';
 import '../core/theme/theme.dart';
+import '../widgets/admin_bottom_nav_bar.dart';
 
 class AdminClinicalStaffManagementScreen extends StatefulWidget {
   const AdminClinicalStaffManagementScreen({super.key});
@@ -152,7 +153,22 @@ class _AdminClinicalStaffManagementScreenState
     final isDoctorTab = _tabs.index == 0;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Doctor & Staff Management'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.medical_services_rounded,
+                  color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 10),
+            const Flexible(child: Text('Clinical Staff Management')),
+          ],
+        ),
         actions: [
           IconButton(
             onPressed: _loadCurrentTab,
@@ -162,10 +178,17 @@ class _AdminClinicalStaffManagementScreenState
         ],
         bottom: TabBar(
           controller: _tabs,
+          indicatorColor: AppTheme.primaryBlue,
+          indicatorWeight: 3,
+          labelColor: AppTheme.primaryBlue,
+          unselectedLabelColor: AppTheme.mutedText,
           tabs: const [Tab(text: 'Doctors'), Tab(text: 'Staff')],
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: AppTheme.primaryBlue,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         onPressed:
             isDoctorTab ? () => _openDoctorForm() : () => _openStaffForm(),
         icon: const Icon(Icons.add_rounded),
@@ -176,6 +199,8 @@ class _AdminClinicalStaffManagementScreenState
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
           children: [
+            _buildIntroBanner(isDoctorTab),
+            const SizedBox(height: 18),
             TextField(
               controller: _searchController,
               onChanged: _onSearchChanged,
@@ -209,6 +234,74 @@ class _AdminClinicalStaffManagementScreenState
               ..._staff.map(_staffCard),
           ],
         ),
+      ),
+      bottomNavigationBar: const AdminBottomNavBar(currentIndex: 0),
+    );
+  }
+
+  Widget _buildIntroBanner(bool isDoctorTab) {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0F172A), Color(0xFF1E3A8A), Color(0xFF0284C7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryBlue.withValues(alpha: 0.24),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+            ),
+            child: Icon(
+              isDoctorTab
+                  ? Icons.medical_services_rounded
+                  : Icons.people_alt_rounded,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isDoctorTab
+                      ? 'Coordinate your doctors'
+                      : 'Coordinate your staff',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  isDoctorTab
+                      ? 'Rooms, availability, and current workload'
+                      : 'Functions, assigned areas, and availability',
+                  style:
+                      const TextStyle(color: Color(0xFFBAE6FD), fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -245,18 +338,35 @@ class _AdminClinicalStaffManagementScreenState
     final statusColor = status == 'ACTIVE' ? Colors.green : Colors.red;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
+      elevation: 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: const Color(0xFFBAE6FD).withValues(alpha: 0.8)),
+      ),
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: CircleAvatar(
-          backgroundColor: AppTheme.primaryTeal.withValues(alpha: 0.12),
-          child: const Icon(Icons.person_rounded, color: AppTheme.primaryTeal),
+          backgroundColor: const Color(0xFFE0F2FE),
+          child: Icon(
+            title.contains('Dr.')
+                ? Icons.medical_services_rounded
+                : Icons.person_rounded,
+            color: AppTheme.primaryBlue,
+          ),
         ),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                fontWeight: FontWeight.bold, color: AppTheme.darkText)),
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 8),
           child: Text(
-              '$subtitle\n$details\nStatus: $status  •  ${availability ? 'Available' : 'Unavailable'}',
-              style: TextStyle(color: statusColor)),
+            '$subtitle\n$details\nStatus: $status  •  ${availability ? 'Available' : 'Unavailable'}',
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: statusColor, height: 1.35),
+          ),
         ),
         isThreeLine: true,
         trailing: IconButton(
@@ -350,6 +460,7 @@ class _DoctorFormState extends State<_DoctorForm> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         title:
             Text(widget.doctor == null ? 'Add doctor profile' : 'Edit doctor'),
         content: SingleChildScrollView(
@@ -455,50 +566,54 @@ class _StaffFormState extends State<_StaffForm> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         title: Text(widget.staff == null ? 'Add staff profile' : 'Edit staff'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-                controller: _userId,
-                keyboardType: TextInputType.number,
-                enabled: widget.staff == null,
-                decoration:
-                    const InputDecoration(labelText: 'Existing staff User ID')),
-            DropdownButtonFormField<String>(
-                initialValue: _function,
-                decoration: const InputDecoration(labelText: 'Staff function'),
-                items: _AdminClinicalStaffManagementScreenState.staffFunctions
-                    .map((item) => DropdownMenuItem(
-                        value: item['key'], child: Text(item['label']!)))
-                    .toList(),
-                onChanged: (value) =>
-                    setState(() => _function = value ?? 'REGISTRATION')),
-            DropdownButtonFormField<String>(
-                initialValue: _room,
-                decoration:
-                    const InputDecoration(labelText: 'Assigned room/service'),
-                items: _AdminClinicalStaffManagementScreenState.rooms
-                    .map((item) => DropdownMenuItem(
-                        value: item['key'], child: Text(item['label']!)))
-                    .toList(),
-                onChanged: (value) => setState(() => _room = value ?? '')),
-            SwitchListTile(
-                value: _available,
-                onChanged: (value) => setState(() => _available = value),
-                title: const Text('Available for work')),
-            if (widget.staff != null)
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                  controller: _userId,
+                  keyboardType: TextInputType.number,
+                  enabled: widget.staff == null,
+                  decoration: const InputDecoration(
+                      labelText: 'Existing staff User ID')),
               DropdownButtonFormField<String>(
-                  initialValue: _status,
+                  initialValue: _function,
                   decoration:
-                      const InputDecoration(labelText: 'Account status'),
-                  items: const ['ACTIVE', 'INACTIVE', 'SUSPENDED']
-                      .map((item) =>
-                          DropdownMenuItem(value: item, child: Text(item)))
+                      const InputDecoration(labelText: 'Staff function'),
+                  items: _AdminClinicalStaffManagementScreenState.staffFunctions
+                      .map((item) => DropdownMenuItem(
+                          value: item['key'], child: Text(item['label']!)))
                       .toList(),
                   onChanged: (value) =>
-                      setState(() => _status = value ?? 'ACTIVE')),
-          ],
+                      setState(() => _function = value ?? 'REGISTRATION')),
+              DropdownButtonFormField<String>(
+                  initialValue: _room,
+                  decoration:
+                      const InputDecoration(labelText: 'Assigned room/service'),
+                  items: _AdminClinicalStaffManagementScreenState.rooms
+                      .map((item) => DropdownMenuItem(
+                          value: item['key'], child: Text(item['label']!)))
+                      .toList(),
+                  onChanged: (value) => setState(() => _room = value ?? '')),
+              SwitchListTile(
+                  value: _available,
+                  onChanged: (value) => setState(() => _available = value),
+                  title: const Text('Available for work')),
+              if (widget.staff != null)
+                DropdownButtonFormField<String>(
+                    initialValue: _status,
+                    decoration:
+                        const InputDecoration(labelText: 'Account status'),
+                    items: const ['ACTIVE', 'INACTIVE', 'SUSPENDED']
+                        .map((item) =>
+                            DropdownMenuItem(value: item, child: Text(item)))
+                        .toList(),
+                    onChanged: (value) =>
+                        setState(() => _status = value ?? 'ACTIVE')),
+            ],
+          ),
         ),
         actions: [
           TextButton(

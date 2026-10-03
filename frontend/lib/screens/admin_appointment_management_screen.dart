@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../core/models/admin_appointment_model.dart';
 import '../core/services/admin_service.dart';
 import '../core/theme/theme.dart';
+import '../widgets/admin_bottom_nav_bar.dart';
 
 class AdminAppointmentManagementScreen extends StatefulWidget {
   const AdminAppointmentManagementScreen({super.key});
@@ -238,6 +239,7 @@ class _AdminAppointmentManagementScreenState
           ],
         ),
       ),
+      bottomNavigationBar: const AdminBottomNavBar(currentIndex: 0),
     );
   }
 

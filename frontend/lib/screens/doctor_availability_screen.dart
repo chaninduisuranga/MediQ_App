@@ -83,7 +83,7 @@ class _DoctorAvailabilityScreenState
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: AppTheme.primarySkyBlue))
+              child: CircularProgressIndicator(color: AppTheme.doctorPrimaryColor))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -95,14 +95,14 @@ class _DoctorAvailabilityScreenState
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
                       gradient: isAvailable
-                          ? AppTheme.primaryGradient
+                          ? AppTheme.doctorAppBarGradient
                           : const LinearGradient(
                               colors: [Color(0xFF64748B), Color(0xFF94A3B8)]),
                       borderRadius: BorderRadius.circular(18),
                       boxShadow: [
                         BoxShadow(
                           color: (isAvailable
-                                  ? AppTheme.primarySkyBlue
+                                  ? AppTheme.doctorPrimaryColor
                                   : Colors.grey)
                               .withValues(alpha: 0.3),
                           blurRadius: 12,
@@ -200,7 +200,7 @@ class _DoctorAvailabilityScreenState
                         const Row(
                           children: [
                             Icon(Icons.calendar_month_rounded,
-                                size: 18, color: AppTheme.primarySkyBlue),
+                                size: 18, color: AppTheme.doctorPrimaryColor),
                             SizedBox(width: 8),
                             Text(
                               'Working Days',
@@ -224,17 +224,17 @@ class _DoctorAvailabilityScreenState
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
                                     color: selected
-                                        ? AppTheme.primarySkyBlue
+                                        ? AppTheme.doctorPrimaryColor
                                         : AppTheme.mutedText),
                               ),
                               selected: selected,
                               onSelected: (_) => _toggleDay(day),
-                              selectedColor: AppTheme.primarySkyBlue
+                              selectedColor: AppTheme.doctorPrimaryColor
                                   .withValues(alpha: 0.12),
-                              checkmarkColor: AppTheme.primarySkyBlue,
+                              checkmarkColor: AppTheme.doctorPrimaryColor,
                               side: BorderSide(
                                   color: selected
-                                      ? AppTheme.primarySkyBlue
+                                      ? AppTheme.doctorPrimaryColor
                                           .withValues(alpha: 0.5)
                                       : Colors.grey.shade300),
                               backgroundColor: Colors.white,
@@ -292,7 +292,7 @@ class _DoctorAvailabilityScreenState
         children: [
           Row(
             children: [
-              Icon(icon, size: 18, color: AppTheme.primarySkyBlue),
+              Icon(icon, size: 18, color: AppTheme.doctorPrimaryColor),
               const SizedBox(width: 8),
               Text(title,
                   style: const TextStyle(
@@ -313,7 +313,7 @@ class _DoctorAvailabilityScreenState
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          Icon(icon, size: 17, color: AppTheme.primarySkyBlue),
+          Icon(icon, size: 17, color: AppTheme.doctorPrimaryColor),
           const SizedBox(width: 10),
           SizedBox(
             width: 110,

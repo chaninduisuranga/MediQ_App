@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import '../core/theme/theme.dart';
 
 /// Doctor module bottom navigation bar.
-/// Follows the same pattern as [StaffBottomNavBar].
+/// Uses [safeIndex] clamping so that non-tab routes (e.g. Notifications)
+/// never trigger the BottomNavigationBar out-of-bounds assertion.
 class DoctorBottomNavBar extends StatelessWidget {
   final int currentIndex;
 
@@ -25,14 +27,17 @@ class DoctorBottomNavBar extends StatelessWidget {
       case 3:
         Navigator.pushReplacementNamed(context, '/doctor-profile');
         break;
-      case 4:
-        Navigator.pushReplacementNamed(context, '/doctor-notifications');
-        break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Guard: clamp to valid range [0, 3] to prevent the Flutter assertion
+    // '0 <= currentIndex && currentIndex < items.length' from firing when
+    // this widget is accidentally rendered with an out-of-bounds index.
+    const int itemCount = 4;
+    final int safeIndex = currentIndex.clamp(0, itemCount - 1);
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -45,10 +50,10 @@ class DoctorBottomNavBar extends StatelessWidget {
         ],
       ),
       child: BottomNavigationBar(
-        currentIndex: currentIndex,
+        currentIndex: safeIndex,
         onTap: (index) => _onTap(context, index),
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF0284C7),
+        selectedItemColor: AppTheme.doctorPrimaryColor,
         unselectedItemColor: const Color(0xFF64748B),
         selectedFontSize: 11,
         unselectedFontSize: 11,
@@ -70,10 +75,6 @@ class DoctorBottomNavBar extends StatelessWidget {
           BottomNavigationBarItem(
             icon: Icon(Icons.person_rounded),
             label: 'Profile',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications_rounded),
-            label: 'Alerts',
           ),
         ],
       ),

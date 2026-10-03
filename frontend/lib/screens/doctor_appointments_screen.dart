@@ -112,7 +112,7 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
             child: _isLoading
                 ? const Center(
                     child: CircularProgressIndicator(
-                        color: AppTheme.primarySkyBlue))
+                        color: AppTheme.doctorPrimaryColor))
                 : filtered.isEmpty
                     ? _buildEmpty()
                     : RefreshIndicator(
@@ -145,7 +145,7 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isActive
-              ? AppTheme.primarySkyBlue.withValues(alpha: 0.4)
+              ? AppTheme.doctorPrimaryColor.withValues(alpha: 0.4)
               : Colors.grey.shade200,
           width: isActive ? 1.5 : 1,
         ),
@@ -269,7 +269,7 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
                 _actionButton(
                   label: 'View Patient',
                   icon: Icons.person_search_rounded,
-                  color: AppTheme.primarySkyBlue,
+                  color: AppTheme.doctorPrimaryColor,
                   onTap: () => Navigator.pushNamed(
                     context,
                     '/doctor-patient-detail',
@@ -293,7 +293,7 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
                   _actionButton(
                     label: 'Continue',
                     icon: Icons.play_circle_rounded,
-                    color: AppTheme.primarySkyBlue,
+                    color: AppTheme.doctorPrimaryColor,
                     onTap: () => Navigator.pushNamed(
                       context,
                       '/doctor-consultation',
@@ -366,7 +366,7 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
       case 'WAITING':
         return const Color(0xFFF59E0B);
       case 'IN_CONSULTATION':
-        return AppTheme.primarySkyBlue;
+        return AppTheme.doctorPrimaryColor;
       case 'COMPLETED':
         return const Color(0xFF10B981);
       case 'CANCELLED':

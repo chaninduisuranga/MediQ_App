@@ -52,7 +52,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
       SnackBar(
         content: Text('$title feature selected.'),
         duration: const Duration(seconds: 2),
-        backgroundColor: AppTheme.primarySkyBlue,
+        backgroundColor: AppTheme.doctorPrimaryColor,
       ),
     );
   }
@@ -99,11 +99,11 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                       CircleAvatar(
                         radius: 46,
                         backgroundColor:
-                            AppTheme.primarySkyBlue.withValues(alpha: 0.15),
+                            AppTheme.doctorPrimaryColor.withValues(alpha: 0.15),
                         child: const Icon(
                           Icons.medical_services_rounded,
                           size: 50,
-                          color: AppTheme.primarySkyBlue,
+                          color: AppTheme.doctorPrimaryColor,
                         ),
                       ),
                       Positioned(
@@ -112,7 +112,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(6),
                           decoration: const BoxDecoration(
-                            color: AppTheme.primarySkyBlue,
+                            color: AppTheme.doctorPrimaryColor,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(Icons.camera_alt,
@@ -244,7 +244,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(icon, size: 20, color: AppTheme.primarySkyBlue),
+          Icon(icon, size: 20, color: AppTheme.doctorPrimaryColor),
           const SizedBox(width: 12),
           SizedBox(
             width: 100,
@@ -284,7 +284,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
           color: AppTheme.lightBg,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, color: AppTheme.primarySkyBlue, size: 22),
+        child: Icon(icon, color: AppTheme.doctorPrimaryColor, size: 22),
       ),
       title: Text(title,
           style: const TextStyle(

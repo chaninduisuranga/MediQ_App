@@ -75,17 +75,17 @@ class _DoctorPreviousAppointmentsScreenState
                       selected: selected,
                       onSelected: (_) => setState(() => _activeFilter = f),
                       selectedColor:
-                          AppTheme.primarySkyBlue.withValues(alpha: 0.15),
-                      checkmarkColor: AppTheme.primarySkyBlue,
+                          AppTheme.doctorPrimaryColor.withValues(alpha: 0.15),
+                      checkmarkColor: AppTheme.doctorPrimaryColor,
                       labelStyle: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: selected
-                              ? AppTheme.primarySkyBlue
+                              ? AppTheme.doctorPrimaryColor
                               : AppTheme.mutedText),
                       side: BorderSide(
                           color: selected
-                              ? AppTheme.primarySkyBlue.withValues(alpha: 0.5)
+                              ? AppTheme.doctorPrimaryColor.withValues(alpha: 0.5)
                               : Colors.grey.shade300),
                       backgroundColor: Colors.white,
                     ),
@@ -101,7 +101,7 @@ class _DoctorPreviousAppointmentsScreenState
             child: _isLoading
                 ? const Center(
                     child: CircularProgressIndicator(
-                        color: AppTheme.primarySkyBlue))
+                        color: AppTheme.doctorPrimaryColor))
                 : filtered.isEmpty
                     ? _buildEmpty()
                     : RefreshIndicator(

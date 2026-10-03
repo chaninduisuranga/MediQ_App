@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../core/services/auth_service.dart';
 import '../core/theme/theme.dart';
+import '../routes/routes.dart';
 import '../widgets/staff_bottom_nav_bar.dart';
+import '../widgets/staff_drawer.dart';
 
 class StaffProfileScreen extends StatefulWidget {
   const StaffProfileScreen({super.key});
@@ -55,19 +57,10 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
     );
   }
 
-  void _showActionSnackbar(String title) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$title feature selected.'),
-        duration: const Duration(seconds: 2),
-        backgroundColor: AppTheme.primarySkyBlue,
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const StaffDrawer(currentRoute: AppRoutes.staffProfile),
       appBar: AppBar(
         title: const Text(
           'Staff Profile',
@@ -248,28 +241,40 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
                     icon: Icons.edit_note_rounded,
                     title: 'Edit Profile',
                     subtitle: 'Update staff contact details & bio',
-                    onTap: () => _showActionSnackbar('Edit Profile'),
+                    onTap: () => Navigator.pushNamed(
+                        context, AppRoutes.staffEditProfile),
                   ),
                   const Divider(height: 1),
                   _buildActionTile(
                     icon: Icons.notifications_none_rounded,
                     title: 'Notifications & Alerts',
                     subtitle: 'Queue broadcast & announcements',
-                    onTap: () => _showActionSnackbar('Notifications'),
+                    onTap: () => Navigator.pushNamed(
+                        context, AppRoutes.staffNotifications),
                   ),
                   const Divider(height: 1),
                   _buildActionTile(
                     icon: Icons.lock_outline_rounded,
                     title: 'Change Password',
                     subtitle: 'Update account security settings',
-                    onTap: () => _showActionSnackbar('Change Password'),
+                    onTap: () => Navigator.pushNamed(
+                        context, AppRoutes.staffChangePassword),
+                  ),
+                  const Divider(height: 1),
+                  _buildActionTile(
+                    icon: Icons.medical_services_rounded,
+                    title: 'Doctor Allocation',
+                    subtitle: 'Batch allocate General OPD patients',
+                    onTap: () => Navigator.pushNamed(
+                        context, AppRoutes.doctorAllocation),
                   ),
                   const Divider(height: 1),
                   _buildActionTile(
                     icon: Icons.history_rounded,
                     title: 'Activity & Queue History',
                     subtitle: 'View past patient turn actions',
-                    onTap: () => Navigator.pushNamed(context, '/queue-history'),
+                    onTap: () =>
+                        Navigator.pushNamed(context, AppRoutes.queueHistory),
                   ),
                 ],
               ),

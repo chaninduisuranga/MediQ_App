@@ -43,11 +43,11 @@ class DoctorPatientDetailScreen extends StatelessWidget {
                         width: 60,
                         height: 60,
                         decoration: BoxDecoration(
-                          color: AppTheme.primarySkyBlue.withValues(alpha: 0.1),
+                          color: AppTheme.doctorPrimaryColor.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.person_rounded,
-                            size: 34, color: AppTheme.primarySkyBlue),
+                            size: 34, color: AppTheme.doctorPrimaryColor),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
@@ -255,7 +255,7 @@ class DoctorPatientDetailScreen extends StatelessWidget {
               children: [
                 if (titleIcon != null)
                   Icon(titleIcon,
-                      size: 18, color: AppTheme.primarySkyBlue),
+                      size: 18, color: AppTheme.doctorPrimaryColor),
                 if (titleIcon != null) const SizedBox(width: 8),
                 Text(
                   title,
@@ -280,7 +280,7 @@ class DoctorPatientDetailScreen extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: AppTheme.primarySkyBlue),
+          Icon(icon, size: 18, color: AppTheme.doctorPrimaryColor),
           const SizedBox(width: 10),
           SizedBox(
             width: 120,

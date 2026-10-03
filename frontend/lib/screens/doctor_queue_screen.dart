@@ -59,7 +59,7 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: AppTheme.primarySkyBlue))
+              child: CircularProgressIndicator(color: AppTheme.doctorPrimaryColor))
           : RefreshIndicator(
               onRefresh: _fetchQueue,
               child: SingleChildScrollView(
@@ -71,7 +71,7 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
                     // ── Current Patient Panel ──
                     _buildSectionTitle('Currently In Consultation',
                         Icons.medical_services_rounded,
-                        AppTheme.primarySkyBlue),
+                        AppTheme.doctorPrimaryColor),
                     const SizedBox(height: 10),
                     current.isNotEmpty
                         ? _buildCurrentPatientCard(current)
@@ -93,13 +93,6 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
                             Icons.event_available_rounded,
                             const Color(0xFF10B981)),
                     const SizedBox(height: 20),
-
-                    // ── Main Action Buttons ──
-                    _buildSectionTitle('Actions',
-                        Icons.touch_app_rounded, AppTheme.darkText),
-                    const SizedBox(height: 12),
-                    _buildActionButtons(current, next),
-                    const SizedBox(height: 24),
 
                     // ── Waiting List ──
                     Row(
@@ -151,84 +144,95 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
   // Current Patient Card
   // ─────────────────────────────────────────────────────────────────────
   Widget _buildCurrentPatientCard(Map<String, dynamic> appt) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: AppTheme.primaryGradient,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: AppTheme.primarySkyBlue.withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: AppTheme.doctorAppBarGradient,
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: [
+              BoxShadow(
+                color: AppTheme.doctorPrimaryColor.withValues(alpha: 0.3),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Text(
-              appt['queue_number'] ?? '--',
-              style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  appt['patient_name'] ?? 'Patient',
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  appt['queue_number'] ?? '--',
                   style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
                       color: Colors.white),
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  '${appt['patient_id'] ?? ''} · ${appt['appointment_time'] ?? ''}',
-                  style: const TextStyle(
-                      color: Colors.white70, fontSize: 12),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  'Age ${appt['patient_age'] ?? '--'} · ${appt['patient_gender'] ?? ''}',
-                  style: const TextStyle(
-                      color: Colors.white60, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-          InkWell(
-            onTap: () => Navigator.pushNamed(
-                context, '/doctor-consultation',
-                arguments: appt),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
               ),
-              child: const Text(
-                'Open',
-                style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.primarySkyBlue),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      appt['patient_name'] ?? 'Patient',
+                      style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${appt['patient_id'] ?? ''} · ${appt['appointment_time'] ?? ''}',
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 12),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'Age ${appt['patient_age'] ?? '--'} · ${appt['patient_gender'] ?? ''}',
+                      style: const TextStyle(
+                          color: Colors.white60, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildQueueActionButton(
+                label: 'Start Consultation',
+                icon: Icons.medical_services_rounded,
+                color: const Color(0xFF10B981),
+                onTap: () => Navigator.pushNamed(
+                  context,
+                  '/doctor-consultation',
+                  arguments: appt,
+                ).then((_) => _fetchQueue()),
               ),
             ),
-          ),
-        ],
-      ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _buildQueueActionButton(
+                label: 'Skip Patient',
+                icon: Icons.skip_next_rounded,
+                color: const Color(0xFFF59E0B),
+                onTap: () => _confirmSkip(appt),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -297,59 +301,6 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
   }
 
   // ─────────────────────────────────────────────────────────────────────
-  // Action Buttons Row
-  // ─────────────────────────────────────────────────────────────────────
-  Widget _buildActionButtons(
-      Map<String, dynamic> current, Map<String, dynamic> next) {
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: [
-        _buildQueueActionButton(
-          label: 'Call Next',
-          icon: Icons.campaign_rounded,
-          color: AppTheme.primarySkyBlue,
-          onTap: next.isNotEmpty ? () => _showCallNextDialog(current, next) : null,
-        ),
-        _buildQueueActionButton(
-          label: 'Start Consultation',
-          icon: Icons.medical_services_rounded,
-          color: const Color(0xFF10B981),
-          onTap: next.isNotEmpty
-              ? () => Navigator.pushNamed(
-                    context,
-                    '/doctor-consultation',
-                    arguments: next.isNotEmpty ? next : current,
-                  ).then((_) => _fetchQueue())
-              : null,
-        ),
-        _buildQueueActionButton(
-          label: 'Skip Patient',
-          icon: Icons.skip_next_rounded,
-          color: const Color(0xFFF59E0B),
-          onTap: next.isNotEmpty
-              ? () => _confirmSkip(next)
-              : null,
-        ),
-        _buildQueueActionButton(
-          label: 'No Show',
-          icon: Icons.person_off_rounded,
-          color: AppTheme.errorRed,
-          onTap: next.isNotEmpty
-              ? () => _markNoShow(next)
-              : null,
-        ),
-        _buildQueueActionButton(
-          label: 'Complete',
-          icon: Icons.check_circle_rounded,
-          color: const Color(0xFF10B981),
-          onTap: current.isNotEmpty
-              ? () => _completeConsultation(current)
-              : null,
-        ),
-      ],
-    );
-  }
 
   Widget _buildQueueActionButton({
     required String label,
@@ -374,7 +325,7 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
                   : color.withValues(alpha: 0.35)),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon,
                 size: 18,
@@ -449,7 +400,7 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
                       style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
-                          color: AppTheme.primarySkyBlue),
+                          color: AppTheme.doctorPrimaryColor),
                     ),
                     const Text(' · ',
                         style: TextStyle(color: AppTheme.mutedText)),
@@ -478,7 +429,7 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
                 style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
-                    color: AppTheme.primarySkyBlue),
+                    color: AppTheme.doctorPrimaryColor),
               ),
             ),
           ),
@@ -490,97 +441,6 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
   // ─────────────────────────────────────────────────────────────────────
   // Dialogs & Actions
   // ─────────────────────────────────────────────────────────────────────
-  void _showCallNextDialog(
-      Map<String, dynamic> current, Map<String, dynamic> next) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.campaign_rounded,
-                color: AppTheme.primarySkyBlue, size: 26),
-            SizedBox(width: 10),
-            Text('Call Next Patient',
-                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Confirm calling this patient for consultation:',
-                style: TextStyle(fontSize: 13, color: AppTheme.mutedText)),
-            const SizedBox(height: 16),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppTheme.lightBg,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color:
-                        AppTheme.primarySkyBlue.withValues(alpha: 0.3)),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    next['queue_number'] ?? '--',
-                    style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.primarySkyBlue),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    next['patient_name'] ?? 'Patient',
-                    style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.darkText),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    next['appointment_time'] ?? '',
-                    style: const TextStyle(
-                        fontSize: 13, color: AppTheme.mutedText),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel',
-                style: TextStyle(color: AppTheme.mutedText)),
-          ),
-          ElevatedButton.icon(
-            icon: const Icon(Icons.campaign_rounded, size: 18),
-            label: const Text('CALL PATIENT'),
-            onPressed: () async {
-              Navigator.pop(ctx);
-              final currentId = (current['id'] as int?) ?? 0;
-              final nextId = (next['id'] as int?) ?? 0;
-              await QueueService.callNextPatient(currentId, nextId);
-              await _fetchQueue();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                        'Calling ${next['queue_number']} — ${next['patient_name']}'),
-                    backgroundColor: const Color(0xFF10B981),
-                  ),
-                );
-              }
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
   void _confirmSkip(Map<String, dynamic> appt) {
     showDialog(
       context: context,
@@ -589,7 +449,7 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
         title: const Text('Skip Patient',
             style: TextStyle(fontWeight: FontWeight.bold)),
         content: Text(
-            'Skip ${appt['patient_name']} (${appt['queue_number']})? They will be moved to the end of the queue.',
+            'Skip ${appt['patient_name']} (${appt['queue_number']})? They will be moved to the Next Patient slot.',
             style: const TextStyle(color: AppTheme.mutedText, fontSize: 14)),
         actions: [
           TextButton(
@@ -602,14 +462,25 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
                 backgroundColor: const Color(0xFFF59E0B)),
             onPressed: () async {
               Navigator.pop(ctx);
-              final id = (appt['id'] as int?) ?? 0;
-              await QueueService.skipPatient(id, reason: 'Doctor Skip');
+              final currentId = (appt['id'] as int?) ?? 0;
+              
+              final appointments = await DoctorService.getTodayAppointments();
+              final waitingList = appointments.where((a) =>
+                  a['queue_status'] == 'CHECKED_IN' ||
+                  a['appointment_status'] == 'WAITING').toList();
+                  
+              if (waitingList.isNotEmpty) {
+                final nextPatientId = (waitingList.first['id'] as int?) ?? 0;
+                await DoctorService.updateAppointmentStatus(nextPatientId, 'IN_CONSULTATION');
+              }
+              
+              await DoctorService.updateAppointmentStatus(currentId, 'WAITING');
+              
               await _fetchQueue();
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(
-                        '${appt['patient_name']} skipped.'),
+                    content: Text('${appt['patient_name']} moved to Next Patient slot.'),
                     backgroundColor: const Color(0xFFF59E0B),
                   ),
                 );
@@ -620,34 +491,6 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
         ],
       ),
     );
-  }
-
-  void _markNoShow(Map<String, dynamic> appt) async {
-    final id = (appt['id'] as int?) ?? 0;
-    await DoctorService.updateAppointmentStatus(id, 'NO_SHOW');
-    await _fetchQueue();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('${appt['patient_name']} marked as No Show.'),
-          backgroundColor: AppTheme.errorRed,
-        ),
-      );
-    }
-  }
-
-  void _completeConsultation(Map<String, dynamic> appt) async {
-    final id = (appt['id'] as int?) ?? 0;
-    await DoctorService.updateAppointmentStatus(id, 'COMPLETED');
-    await _fetchQueue();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Consultation completed successfully.'),
-          backgroundColor: Color(0xFF10B981),
-        ),
-      );
-    }
   }
 
   // ─────────────────────────────────────────────────────────────────────

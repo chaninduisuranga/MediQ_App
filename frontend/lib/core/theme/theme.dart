@@ -19,6 +19,18 @@ class AppTheme {
     end: Alignment.bottomRight,
   );
 
+  // Doctor Specific Colors
+  static const Color doctorPrimaryColor = Color(0xFF2563EB); // Vibrant Blue
+  static LinearGradient doctorAppBarGradient = const LinearGradient(
+    colors: [
+      Color(0xFF0F172A),
+      Color(0xFF1E3A8A),
+      Color(0xFF2563EB),
+    ],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
