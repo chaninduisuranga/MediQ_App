@@ -73,6 +73,23 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			chat.POST("/message", chatHandler.SendMessage)
 			chat.DELETE("/history", chatHandler.ClearHistory)
 		}
+
+		// Staff routes
+		staff := v1.Group("/staff")
+		staff.Use(middleware.AuthMiddleware(cfg))
+		staff.Use(middleware.StaffAuthorizationMiddleware())
+		{
+			staffQueueHandler := handlers.NewStaffQueueHandler()
+			staff.GET("/queue/list", staffQueueHandler.GetQueueList)
+			staff.GET("/queue/search", staffQueueHandler.SearchQueue)
+			staff.POST("/queue/checkin/:id", staffQueueHandler.CheckIn)
+			staff.POST("/queue/call/:id", staffQueueHandler.CallNext)
+			staff.PATCH("/queue/status/:id", staffQueueHandler.UpdateStatus)
+			staff.PATCH("/queue/priority/:id", staffQueueHandler.TogglePriority)
+			staff.GET("/doctors", staffQueueHandler.GetDoctors)
+			staff.POST("/queue/allocate/:id", staffQueueHandler.AllocateDoctor)
+		}
+
 		// Admin routes
 		admin := v1.Group("/admin")
 		admin.Use(middleware.AuthMiddleware(cfg))
