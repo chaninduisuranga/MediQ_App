@@ -39,13 +39,17 @@ class _CheckInScreenState extends State<CheckInScreen> {
     super.didChangeDependencies();
     if (_appointmentData == null) {
       final args = ModalRoute.of(context)?.settings.arguments;
-      if (args is Map<String, dynamic> && args.containsKey('appointmentId')) {
+      if (args is Map<String, dynamic> && args.containsKey('searchQuery')) {
+        final query = args['searchQuery']?.toString();
+        if (query != null && query.isNotEmpty) {
+          _searchController.text = query;
+          _fetchAppointmentDetails();
+        }
+      } else if (args is Map<String, dynamic> &&
+          args.containsKey('appointmentId')) {
         final id = args['appointmentId'] as int?;
         if (id != null && id != _appointmentId) {
-          setState(() {
-            _appointmentId = id;
-            _searchController.text = id.toString();
-          });
+          _searchController.text = id.toString();
           _fetchAppointmentDetails();
         }
       }
@@ -59,13 +63,13 @@ class _CheckInScreenState extends State<CheckInScreen> {
   }
 
   Future<void> _fetchAppointmentDetails() async {
-    final idText = _searchController.text.trim();
-    final id = int.tryParse(idText) ?? _appointmentId;
+    final input = _searchController.text.trim();
 
-    if (id == null || id <= 0) {
+    if (input.isEmpty) {
       setState(() {
-        _errorMessage = 'Please enter a valid numeric Appointment ID';
+        _errorMessage = 'Enter a queue token, NIC, or phone number.';
         _appointmentData = null;
+        _appointmentId = null;
         _checkInSummary = null;
       });
       return;
@@ -77,18 +81,40 @@ class _CheckInScreenState extends State<CheckInScreen> {
       _checkInSummary = null;
     });
 
-    final data = await QueueService.getAppointmentById(id);
-
-    if (mounted) {
+    try {
+      final tokenMatch =
+          RegExp(r'^[A-Za-z]+-?0*(\d+)$').firstMatch(input);
+      final query = tokenMatch?.group(1) ?? input;
+      final matches = await QueueService.searchStaffQueue(query);
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
-        if (data != null) {
-          _appointmentId = id;
-          _appointmentData = data;
+        if (matches.length == 1) {
+          _appointmentData = matches.first;
+          _appointmentId =
+              int.tryParse(matches.first['id']?.toString() ?? '');
+          if (_appointmentId == null) {
+            _appointmentData = null;
+            _errorMessage = 'The Staff search response has an invalid appointment ID.';
+          }
+        } else if (matches.isEmpty) {
+          _appointmentData = null;
+          _appointmentId = null;
+          _errorMessage = 'No matching appointment found in your assigned room.';
         } else {
           _appointmentData = null;
-          _errorMessage = 'Appointment #$id not found in database.';
+          _appointmentId = null;
+          _errorMessage =
+              'Multiple appointments matched. Refine your search using a more specific token, NIC, or phone number.';
         }
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _appointmentData = null;
+        _appointmentId = null;
+        _errorMessage = 'Could not search the Staff queue: $error';
       });
     }
   }
@@ -97,32 +123,52 @@ class _CheckInScreenState extends State<CheckInScreen> {
     if (_appointmentId == null || _appointmentData == null || _isCheckingIn) return;
 
     setState(() => _isCheckingIn = true);
-    final result = await QueueService.checkInPatientWithDetails(_appointmentId!);
-
-    if (mounted) {
+    try {
+      await QueueService.checkInStaffPatient(_appointmentId!);
+      if (!mounted) return;
       setState(() {
         _isCheckingIn = false;
-        if (result['success'] == true) {
-          _appointmentData!['status'] = 'CHECKED_IN';
-          _checkInSummary = result;
-        }
+        _appointmentData!['status'] = 'CONFIRMED';
+        _checkInSummary = {
+          'token': _appointmentData!['queue_number'] ?? 'N/A',
+        };
       });
 
-      if (result['success'] == true) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Patient Token #${result['token']} Checked-In Successfully!'),
-            backgroundColor: AppTheme.accentGreen,
-          ),
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              Text('Patient Token #${_checkInSummary!['token']} checked in successfully.'),
+          backgroundColor: AppTheme.accentGreen,
+        ),
+      );
+
+      try {
+        final queue = await QueueService.getStaffQueue();
+        final updated = queue.where(
+          (item) => item['id'].toString() == _appointmentId.toString(),
         );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Failed to update check-in status. Please try again.'),
-            backgroundColor: AppTheme.errorRed,
-          ),
-        );
+        if (updated.isNotEmpty && mounted) {
+          setState(() => _appointmentData = updated.first);
+        }
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Checked in, but queue refresh failed: $error'),
+              backgroundColor: AppTheme.errorRed,
+            ),
+          );
+        }
       }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isCheckingIn = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not check in patient: $error'),
+          backgroundColor: AppTheme.errorRed,
+        ),
+      );
     }
   }
 
@@ -130,7 +176,8 @@ class _CheckInScreenState extends State<CheckInScreen> {
   Widget build(BuildContext context) {
     final hasData = _appointmentData != null;
     final status = hasData ? (_appointmentData!['status'] as String? ?? 'PENDING') : '';
-    final isAlreadyCheckedIn = status == 'CHECKED_IN';
+    final isAlreadyCheckedIn =
+        status == 'CHECKED_IN' || status == 'CONFIRMED';
     final isCompleted = status == 'COMPLETED';
 
     return Scaffold(
@@ -167,9 +214,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
                       Expanded(
                         child: TextField(
                           controller: _searchController,
-                          keyboardType: TextInputType.number,
+                          keyboardType: TextInputType.text,
                           decoration: InputDecoration(
-                            hintText: 'Enter Appointment ID (e.g. 103)',
+                            hintText: 'Enter token, NIC, or phone number',
                             prefixIcon: const Icon(Icons.search_rounded),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -301,7 +348,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
 
               const SizedBox(height: 20),
 
-              // Post Check-In Generated Summary (Token, Wait Time, Patients Before)
+              // Confirmation after a successful Staff check-in
               if (_checkInSummary != null || isAlreadyCheckedIn)
                 Container(
                   width: double.infinity,
@@ -325,37 +372,13 @@ class _CheckInScreenState extends State<CheckInScreen> {
                         ],
                       ),
                       const SizedBox(height: 14),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: [
-                          Column(
-                            children: [
-                              Text(
-                                '${_appointmentData!['queue_number'] ?? 'G-012'}',
-                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.primarySkyBlue),
-                              ),
-                              const Text('Token Number', style: TextStyle(fontSize: 11, color: AppTheme.mutedText)),
-                            ],
-                          ),
-                          Column(
-                            children: [
-                              Text(
-                                '${_checkInSummary?['estimated_wait_minutes'] ?? 15} min',
-                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.darkText),
-                              ),
-                              const Text('Estimated Wait', style: TextStyle(fontSize: 11, color: AppTheme.mutedText)),
-                            ],
-                          ),
-                          Column(
-                            children: [
-                              Text(
-                                '${_checkInSummary?['waiting_before'] ?? 5}',
-                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppTheme.darkText),
-                              ),
-                              const Text('Patients Before You', style: TextStyle(fontSize: 11, color: AppTheme.mutedText)),
-                            ],
-                          ),
-                        ],
+                      Text(
+                        'Token Number: ${_appointmentData!['queue_number'] ?? 'N/A'}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.primarySkyBlue,
+                        ),
                       ),
                     ],
                   ),

@@ -366,6 +366,65 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
     );
   }
 
+  void _showNoShowDialog(int patientId, String token, String name) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.person_off_rounded, color: AppTheme.errorRed),
+            SizedBox(width: 10),
+            Text('Mark No Show',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: Text(
+          'Mark patient #$token ($name) as not present?',
+          style: const TextStyle(fontSize: 14, color: AppTheme.darkText),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel',
+                style: TextStyle(color: AppTheme.mutedText)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorRed),
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
+              Navigator.pop(ctx);
+              try {
+                await QueueService.updateStaffPatientStatus(
+                  patientId,
+                  'NO_SHOW',
+                );
+                if (mounted) {
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Patient #$token marked as No Show.'),
+                      backgroundColor: AppTheme.errorRed,
+                    ),
+                  );
+                }
+              } catch (error) {
+                if (mounted) {
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Could not mark patient as No Show: $error'),
+                      backgroundColor: AppTheme.errorRed,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('CONFIRM NO SHOW'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showPriorityDialog(
       int patientId, String token, String name, bool currentPriority) {
     showDialog(
@@ -977,6 +1036,30 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
                                                 style: TextStyle(
                                                     fontSize: 11,
                                                     color: AppTheme.mutedText)),
+                                          ),
+                                          PopupMenuButton<String>(
+                                            tooltip: 'More queue actions',
+                                            onSelected: (action) {
+                                              if (action == 'NO_SHOW') {
+                                                _showNoShowDialog(
+                                                    id, token, name);
+                                              }
+                                            },
+                                            itemBuilder: (context) => [
+                                              const PopupMenuItem<String>(
+                                                value: 'NO_SHOW',
+                                                child: Row(
+                                                  children: [
+                                                    Icon(
+                                                      Icons.person_off_rounded,
+                                                      size: 18,
+                                                    ),
+                                                    SizedBox(width: 8),
+                                                    Text('No Show'),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),

@@ -38,28 +38,48 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
     super.dispose();
   }
 
-  Future<void> _processScannedId(int appointmentId) async {
+  Future<void> _processSearchQuery(String query) async {
     setState(() {
       _isSearching = true;
       _scannedPatientData = null;
     });
 
-    final data = await QueueService.getAppointmentById(appointmentId);
-
-    if (mounted) {
+    try {
+      final matches = await QueueService.searchStaffQueue(query);
+      if (!mounted) return;
       setState(() {
         _isSearching = false;
-        _scannedPatientData = data;
+        _scannedPatientData = matches.length == 1 ? matches.first : null;
       });
 
-      if (data == null) {
+      if (matches.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Appointment #$appointmentId not found.'),
+            content: const Text(
+              'No matching appointment found in your assigned room.',
+            ),
+            backgroundColor: AppTheme.errorRed,
+          ),
+        );
+      } else if (matches.length > 1) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Multiple appointments matched. Use a more specific token, NIC, or phone number.',
+            ),
             backgroundColor: AppTheme.errorRed,
           ),
         );
       }
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isSearching = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not search the Staff queue: $error'),
+          backgroundColor: AppTheme.errorRed,
+        ),
+      );
     }
   }
 
@@ -81,17 +101,17 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'Enter the Appointment ID printed on the patient\'s ticket:',
+                'Enter the queue token, NIC, or phone number:',
                 style: TextStyle(fontSize: 13, color: AppTheme.mutedText),
               ),
               const SizedBox(height: 16),
               TextField(
                 controller: _idController,
-                keyboardType: TextInputType.number,
+                keyboardType: TextInputType.text,
                 autofocus: true,
                 decoration: InputDecoration(
-                  hintText: 'e.g. 102',
-                  labelText: 'Appointment ID',
+                  hintText: 'e.g. G-018',
+                  labelText: 'Token, NIC, or phone',
                   prefixIcon: const Icon(Icons.confirmation_number_outlined),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
@@ -105,15 +125,16 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
             ),
             ElevatedButton(
               onPressed: () {
-                final idText = _idController.text.trim();
-                final appointmentId = int.tryParse(idText);
-                if (appointmentId != null && appointmentId > 0) {
+                final query = _idController.text.trim();
+                if (query.isNotEmpty) {
                   Navigator.pop(context);
-                  _processScannedId(appointmentId);
+                  final tokenMatch =
+                      RegExp(r'^[A-Za-z]+-?0*(\d+)$').firstMatch(query);
+                  _processSearchQuery(tokenMatch?.group(1) ?? query);
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Please enter a valid numeric Appointment ID'),
+                      content: Text('Enter a token, NIC, or phone number.'),
                       backgroundColor: AppTheme.errorRed,
                     ),
                   );
@@ -142,7 +163,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
         actions: [
           IconButton(
             icon: const Icon(Icons.keyboard_rounded, color: Colors.white),
-            tooltip: 'Enter ID Manually',
+            tooltip: 'Enter token or patient details',
             onPressed: _showManualEntryDialog,
           ),
         ],
@@ -350,11 +371,14 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
                             child: ElevatedButton.icon(
                               style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentGreen),
                               onPressed: () {
-                                final apptId = _scannedPatientData!['id'];
-                                Navigator.pushNamed(
-                                  context,
-                                  '/check-in',
-                                  arguments: {'appointmentId': apptId},
+                              Navigator.pushNamed(
+                                context,
+                                '/check-in',
+                                  arguments: {
+                                    'searchQuery':
+                                        _scannedPatientData!['queue_number']
+                                            .toString(),
+                                  },
                                 );
                               },
                               icon: const Icon(Icons.how_to_reg_rounded),
