@@ -451,7 +451,7 @@ func renderTicketPage(appt models.OPDAppointment, roomName string) string {
         </div>
     </div>
 </body>
-</html>`, appt.ID, appt.QueueNumber, statusColor, appt.QueueNumber, roomName, appt.AppointmentDate, appt.PatientName, appt.PatientNIC, appt.PatientPhone, appt.Status, notesHTML, appt.CreatedAt.Format("2006-01-02 15:04"))
+</html>`, appt.ID, statusColor, appt.QueueNumber, roomName, appt.AppointmentDate, appt.PatientName, appt.PatientNIC, appt.PatientPhone, appt.Status, notesHTML, appt.CreatedAt.Format("2006-01-02 15:04"))
 }
 
 func renderErrorPage(msg string) string {

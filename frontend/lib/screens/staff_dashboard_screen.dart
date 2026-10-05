@@ -72,9 +72,10 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
   }
 
   Future<void> _fetchQueueStats() async {
-    setState(() => _isLoading = true);
-    final appointments = await QueueService.getQueueByRoom(_selectedRoomKey);
-    if (mounted) {
+    if (mounted) setState(() => _isLoading = true);
+    try {
+      final appointments = await QueueService.getStaffQueue();
+      if (!mounted) return;
       final activePatient = appointments.firstWhere(
         (a) => a['status'] == 'IN_PROGRESS',
         orElse: () => <String, dynamic>{},
@@ -100,15 +101,38 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
         _avgWaitTime = (_waitingCount > 0) ? (_waitingCount * 5) : 10;
         _isLoading = false;
       });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not load the Staff queue: $error'),
+          backgroundColor: AppTheme.errorRed,
+        ),
+      );
     }
   }
 
   void _showQuickCallNextDialog() async {
-    final appointments = await QueueService.getQueueByRoom(_selectedRoomKey);
+    late final List<Map<String, dynamic>> appointments;
+    try {
+      appointments = await QueueService.getStaffQueue();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not load the Staff queue: $error'),
+          backgroundColor: AppTheme.errorRed,
+        ),
+      );
+      return;
+    }
     final waiting = appointments
-        .where((a) => a['status'] == 'CHECKED_IN' || a['status'] == 'PENDING')
+        .where((a) =>
+            a['status'] == 'CHECKED_IN' ||
+            a['status'] == 'PENDING' ||
+            a['status'] == 'CONFIRMED')
         .toList();
-
     if (!mounted) return;
 
     if (waiting.isEmpty) {
@@ -193,20 +217,38 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
               final active = appointments.firstWhere(
                   (a) => a['status'] == 'IN_PROGRESS',
                   orElse: () => <String, dynamic>{});
-              final currentId = (active['id'] as int?) ?? 0;
-              final nextId = (nextAppt['id'] as int?) ?? 0;
+              final currentId =
+                  int.tryParse(active['id']?.toString() ?? '') ?? 0;
+              final nextId =
+                  int.tryParse(nextAppt['id']?.toString() ?? '') ?? 0;
 
-              await QueueService.callNextPatient(currentId, nextId);
-              await _fetchQueueStats();
-
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content:
-                        Text('Calling Token #$token ($patientName) to Room!'),
-                    backgroundColor: AppTheme.accentGreen,
-                  ),
-                );
+              try {
+                if (currentId > 0) {
+                  await QueueService.updateStaffPatientStatus(
+                    currentId,
+                    'COMPLETED',
+                  );
+                }
+                await QueueService.callStaffPatient(nextId);
+                await _fetchQueueStats();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content:
+                          Text('Calling Token #$token ($patientName) to Room!'),
+                      backgroundColor: AppTheme.accentGreen,
+                    ),
+                  );
+                }
+              } catch (error) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Could not call the next patient: $error'),
+                      backgroundColor: AppTheme.errorRed,
+                    ),
+                  );
+                }
               }
             },
             child: const Text('CALL NOW'),

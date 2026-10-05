@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/services/auth_service.dart';
+import '../core/services/queue_service.dart';
 import '../core/theme/theme.dart';
 import '../routes/routes.dart';
 import '../widgets/staff_bottom_nav_bar.dart';
@@ -13,13 +14,58 @@ class StaffProfileScreen extends StatefulWidget {
 }
 
 class _StaffProfileScreenState extends State<StaffProfileScreen> {
-  bool _isOnDuty = true;
-  final String _staffName = 'Chaminda Bandara';
-  final String _staffId = 'STF-8842';
-  final String _role = 'Senior OPD Staff';
-  final String _department = 'Outpatient Department (OPD)';
-  final String _assignedOpd = 'General OPD / Dressing Room';
-  final String _shift = 'Morning Shift (08:00 AM - 04:00 PM)';
+  Map<String, dynamic>? _assignment;
+  bool _isLoadingAssignment = true;
+
+  Map<String, dynamic> get _user => AuthService.currentUser ?? {};
+
+  String _displayValue(Object? value) {
+    final text = value?.toString().trim();
+    return text == null || text.isEmpty ? 'Not available' : text;
+  }
+
+  String get _staffName => _displayValue(_user['full_name']);
+
+  String get _staffId {
+    final id = _user['id'];
+    if (id == null || id.toString().trim().isEmpty) {
+      return 'Not available';
+    }
+    return 'STF-${id.toString().padLeft(4, '0')}';
+  }
+
+  String get _role => _displayValue(_user['role']);
+
+  bool? get _isOnDuty {
+    final value = _assignment?['is_available'];
+    return value is bool ? value : null;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAssignment();
+  }
+
+  Future<void> _loadAssignment() async {
+    try {
+      final assignment = await QueueService.getStaffProfile();
+      if (!mounted) return;
+      setState(() {
+        _assignment = assignment;
+        _isLoadingAssignment = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isLoadingAssignment = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not load Staff assignment: $error'),
+          backgroundColor: AppTheme.errorRed,
+        ),
+      );
+    }
+  }
 
   void _handleLogout() {
     showDialog(
@@ -145,11 +191,12 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 10),
                     decoration: BoxDecoration(
-                      color:
-                          _isOnDuty ? AppTheme.lightBg : Colors.grey.shade100,
+                      color: _isOnDuty == true
+                          ? AppTheme.lightBg
+                          : Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: _isOnDuty
+                        color: _isOnDuty == true
                             ? AppTheme.primarySkyBlue.withValues(alpha: 0.3)
                             : Colors.grey.shade300,
                       ),
@@ -163,65 +210,41 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
                               width: 10,
                               height: 10,
                               decoration: BoxDecoration(
-                                color: _isOnDuty ? Colors.green : Colors.grey,
+                                color: _isOnDuty == true
+                                    ? Colors.green
+                                    : Colors.grey,
                                 shape: BoxShape.circle,
                               ),
                             ),
                             const SizedBox(width: 10),
                             Text(
-                              _isOnDuty ? 'ON DUTY (Active Queue)' : 'OFF DUTY',
+                              _isLoadingAssignment
+                                  ? 'LOADING AVAILABILITY'
+                                  : _isOnDuty == null
+                                      ? 'AVAILABILITY UNAVAILABLE'
+                                      : _isOnDuty!
+                                          ? 'ON DUTY (Active Queue)'
+                                          : 'OFF DUTY',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
-                                color: _isOnDuty
+                                color: _isOnDuty == true
                                     ? AppTheme.primarySkyBlue
                                     : AppTheme.mutedText,
                               ),
                             ),
                           ],
                         ),
-                        Switch(
-                          value: _isOnDuty,
-                          activeThumbColor: AppTheme.primarySkyBlue,
-                          onChanged: (val) {
-                            setState(() => _isOnDuty = val);
-                          },
+                        IgnorePointer(
+                          child: Switch(
+                            value: _isOnDuty ?? false,
+                            activeThumbColor: AppTheme.primarySkyBlue,
+                            onChanged: (_) {},
+                          ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Duty & Shift Info Details
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.grey.shade200),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Staff Assignment & Shift',
-                    style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.bold,
-                        color: AppTheme.darkText),
-                  ),
-                  const Divider(height: 20),
-                  _buildProfileInfoRow(
-                      Icons.domain_rounded, 'Department', _department),
-                  _buildProfileInfoRow(Icons.meeting_room_outlined,
-                      'Assigned OPD', _assignedOpd),
-                  _buildProfileInfoRow(
-                      Icons.schedule_rounded, 'Current Shift', _shift),
                 ],
               ),
             ),
@@ -306,37 +329,6 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
         ),
       ),
       bottomNavigationBar: const StaffBottomNavBar(currentIndex: 4),
-    );
-  }
-
-  Widget _buildProfileInfoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: AppTheme.primarySkyBlue),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 110,
-            child: Text(
-              label,
-              style: const TextStyle(
-                  fontSize: 13,
-                  color: AppTheme.mutedText,
-                  fontWeight: FontWeight.w500),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.darkText),
-            ),
-          ),
-        ],
-      ),
     );
   }
 

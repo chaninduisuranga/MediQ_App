@@ -25,15 +25,24 @@ class _DoctorAllocationScreenState extends State<DoctorAllocationScreen> {
 
   Future<void> _refreshData() async {
     setState(() => _isLoading = true);
-    final waiting =
-        await StaffAllocationService.getUnallocatedWaitingPatients();
-    final totalWaiting = await StaffAllocationService.getTotalWaitingPatients();
-    if (mounted) {
+    try {
+      await StaffAllocationService.refreshData();
+      if (!mounted) return;
       setState(() {
-        _unallocatedWaitingCount = waiting.length;
-        _totalWaitingCount = totalWaiting.length;
+        _unallocatedWaitingCount =
+            StaffAllocationService.unallocatedWaitingCount;
+        _totalWaitingCount = StaffAllocationService.waitingCount;
         _isLoading = false;
       });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not load doctor allocation data: $error'),
+          backgroundColor: AppTheme.errorRed,
+        ),
+      );
     }
   }
 
@@ -101,7 +110,8 @@ class _DoctorAllocationScreenState extends State<DoctorAllocationScreen> {
               child: Column(
                 children: [
                   _buildSummaryRow(
-                      'Available Doctors:', '${availableDocs.length} / 4'),
+                      'Available Doctors:',
+                      '${availableDocs.length} / ${StaffAllocationService.doctors.length}'),
                   _buildSummaryRow(
                       'Waiting Patients:', '$_unallocatedWaitingCount'),
                   _buildSummaryRow('Patients in this Batch:', '$toAllocate'),
@@ -425,6 +435,10 @@ class _DoctorAllocationScreenState extends State<DoctorAllocationScreen> {
     return Scaffold(
       drawer: const StaffDrawer(currentRoute: AppRoutes.doctorAllocation),
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
           'Doctor Allocation',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
@@ -434,33 +448,6 @@ class _DoctorAllocationScreenState extends State<DoctorAllocationScreen> {
             icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Refresh Queue',
             onPressed: _refreshData,
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert_rounded),
-            onSelected: (val) {
-              if (val == 'reset') {
-                StaffAllocationService.resetAllAllocations();
-                _refreshData();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Doctor allocations have been reset.'),
-                    backgroundColor: AppTheme.mutedText,
-                  ),
-                );
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'reset',
-                child: Row(
-                  children: [
-                    Icon(Icons.restart_alt_rounded, size: 18),
-                    SizedBox(width: 8),
-                    Text('Reset Allocations'),
-                  ],
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -518,7 +505,7 @@ class _DoctorAllocationScreenState extends State<DoctorAllocationScreen> {
                         ),
                         _buildOverviewCard(
                           'Available Doctors',
-                          '$availableCount / 4',
+                          '$availableCount / ${doctors.length}',
                           Icons.check_circle_outline_rounded,
                         ),
                         _buildOverviewCard(
@@ -717,12 +704,7 @@ class _DoctorAllocationScreenState extends State<DoctorAllocationScreen> {
                     child: Switch(
                       value: doctor.isAvailable,
                       activeThumbColor: const Color(0xFF10B981),
-                      onChanged: (val) {
-                        setState(() {
-                          StaffAllocationService.setDoctorAvailability(
-                              doctor.id, val);
-                        });
-                      },
+                      onChanged: null,
                     ),
                   ),
                 ],

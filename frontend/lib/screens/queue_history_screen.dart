@@ -27,15 +27,24 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
 
   Future<void> _fetchHistory() async {
     setState(() => _isLoading = true);
-    final list = await QueueService.getQueueHistory(
-      filterTime: _selectedFilterTime,
-      roomKey: _selectedRoomFilter,
-    );
-    if (mounted) {
-      setState(() {
-        _historyList = list;
-        _isLoading = false;
-      });
+    try {
+      final list = await QueueService.getQueueHistory(
+        filterTime: _selectedFilterTime,
+        roomKey: _selectedRoomFilter,
+      );
+      if (mounted) {
+        setState(() {
+          _historyList = list;
+          _isLoading = false;
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load queue history: $error')),
+        );
+      }
     }
   }
 
@@ -61,6 +70,10 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
     return Scaffold(
       drawer: const StaffDrawer(currentRoute: AppRoutes.queueHistory),
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
           'Queue Activity History',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),

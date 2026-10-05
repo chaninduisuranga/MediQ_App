@@ -6,6 +6,200 @@ import 'auth_service.dart';
 class QueueService {
   static String get baseUrl => AuthService.baseUrl;
 
+  static Map<String, String> _staffHeaders({bool hasBody = false}) {
+    final token = AuthService.token;
+    if (token == null || token.isEmpty) {
+      throw StateError('An authenticated Staff session is required.');
+    }
+    return {
+      'Authorization': 'Bearer $token',
+      if (hasBody) 'Content-Type': 'application/json',
+    };
+  }
+
+  static Future<dynamic> _sendStaffRequest(
+    String method,
+    Uri uri, {
+    Map<String, dynamic>? body,
+  }) async {
+    final headers = _staffHeaders(hasBody: body != null);
+    final encodedBody = body == null ? null : jsonEncode(body);
+    final http.Response response;
+    switch (method) {
+      case 'GET':
+        response = await http.get(uri, headers: headers);
+        break;
+      case 'POST':
+        response = await http.post(uri, headers: headers, body: encodedBody);
+        break;
+      case 'PATCH':
+        response = await http.patch(uri, headers: headers, body: encodedBody);
+        break;
+      default:
+        throw ArgumentError.value(method, 'method', 'Unsupported HTTP method');
+    }
+
+    dynamic decoded;
+    if (response.body.isNotEmpty) {
+      decoded = jsonDecode(response.body);
+    }
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      final message = decoded is Map
+          ? decoded['error'] ?? decoded['message']
+          : null;
+      throw Exception(
+        message?.toString() ??
+            'Staff API request failed (${response.statusCode}).',
+      );
+    }
+    if (decoded is Map && decoded['success'] == false) {
+      throw Exception(
+        (decoded['error'] ?? decoded['message'] ?? 'Staff API request failed.')
+            .toString(),
+      );
+    }
+    return decoded;
+  }
+
+  static dynamic _staffResponseData(dynamic response) {
+    if (response is Map && response.containsKey('data')) {
+      return response['data'];
+    }
+    return response;
+  }
+
+  static List<Map<String, dynamic>> _staffListFromResponse(
+    dynamic response, {
+    List<String> keys = const [
+      'queue',
+      'queue_list',
+      'appointments',
+      'patients',
+      'doctors',
+      'staff_doctors',
+      'items',
+    ],
+  }) {
+    dynamic value = _staffResponseData(response);
+    if (value is Map) {
+      for (final key in keys) {
+        if (value[key] is List) {
+          value = value[key];
+          break;
+        }
+      }
+    }
+    if (value is! List) {
+      throw const FormatException('Staff API response did not contain a list.');
+    }
+    return value.map((item) {
+      if (item is! Map) {
+        throw const FormatException('Staff API list item was not an object.');
+      }
+      return Map<String, dynamic>.from(item);
+    }).toList();
+  }
+
+  static Uri _staffUri(String path) => Uri.parse('$baseUrl$path');
+
+  /// Returns assignment details for the authenticated Staff member.
+  static Future<Map<String, dynamic>> getStaffProfile() async {
+    final response = await _sendStaffRequest(
+      'GET',
+      _staffUri('/staff/profile'),
+    );
+    final data = _staffResponseData(response);
+    if (data is! Map) {
+      throw const FormatException('Staff profile response was not an object.');
+    }
+    return Map<String, dynamic>.from(data);
+  }
+
+  /// Returns the queue assigned to the authenticated Staff member.
+  static Future<List<Map<String, dynamic>>> getStaffQueue() async {
+    final response =
+        await _sendStaffRequest('GET', _staffUri('/staff/queue/list'));
+    return _normalizeStaffQueue(_staffListFromResponse(response));
+  }
+
+  static Future<List<Map<String, dynamic>>> searchStaffQueue(String query) async {
+    final uri = _staffUri('/staff/queue/search')
+        .replace(queryParameters: {'q': query});
+    final response = await _sendStaffRequest('GET', uri);
+    return _normalizeStaffQueue(_staffListFromResponse(response));
+  }
+
+  static List<Map<String, dynamic>> _normalizeStaffQueue(
+    List<Map<String, dynamic>> queue,
+  ) {
+    return queue.map((patient) {
+      final normalized = Map<String, dynamic>.from(patient);
+      normalized['priority'] ??= normalized['is_priority'] ?? false;
+      return normalized;
+    }).toList();
+  }
+
+  static Stream<List<Map<String, dynamic>>> getStaffQueueStream() async* {
+    while (true) {
+      yield await getStaffQueue();
+      await Future.delayed(const Duration(seconds: 2));
+    }
+  }
+
+  static Future<void> checkInStaffPatient(int id) async {
+    await _sendStaffRequest(
+      'POST',
+      _staffUri('/staff/queue/checkin/$id'),
+    );
+  }
+
+  static Future<void> callStaffPatient(int id) async {
+    await _sendStaffRequest('POST', _staffUri('/staff/queue/call/$id'));
+  }
+
+  static Future<void> updateStaffPatientStatus(
+    int id,
+    String status,
+  ) async {
+    const allowedStatuses = {'COMPLETED', 'SKIPPED', 'NO_SHOW', 'RECALL'};
+    if (!allowedStatuses.contains(status)) {
+      throw ArgumentError.value(status, 'status', 'Unsupported Staff status');
+    }
+    await _sendStaffRequest(
+      'PATCH',
+      _staffUri('/staff/queue/status/$id'),
+      body: {'status': status},
+    );
+  }
+
+  static Future<void> markStaffPatientPriority(
+    int id, {
+    required bool isPriority,
+  }) async {
+    await _sendStaffRequest(
+      'PATCH',
+      _staffUri('/staff/queue/priority/$id'),
+      body: {'is_priority': isPriority},
+    );
+  }
+
+  static Future<List<Map<String, dynamic>>> getStaffDoctors() async {
+    final response =
+        await _sendStaffRequest('GET', _staffUri('/staff/doctors'));
+    return _staffListFromResponse(response);
+  }
+
+  static Future<void> allocateStaffPatient(
+    int patientId,
+    dynamic doctorId,
+  ) async {
+    await _sendStaffRequest(
+      'POST',
+      _staffUri('/staff/queue/allocate/$patientId'),
+      body: {'doctor_id': doctorId},
+    );
+  }
+
   // Local state storage for offline/fallback operation & extra queue actions
   static final List<Map<String, dynamic>> _mockQueue = [
     {
@@ -190,31 +384,6 @@ class QueueService {
     },
   ];
 
-  static final List<Map<String, dynamic>> _queueHistory = [
-    {
-      'id': 1,
-      'token': 'G-018',
-      'patient_name': 'Saman Kumara',
-      'action': 'Completed',
-      'status': 'COMPLETED',
-      'room': 'GENERAL_OPD',
-      'timestamp': '09:30 AM',
-      'date': '2026-09-13',
-      'details': 'Consultation finished normally.',
-    },
-    {
-      'id': 2,
-      'token': 'G-019',
-      'patient_name': 'Nimal Perera',
-      'action': 'Called',
-      'status': 'IN_PROGRESS',
-      'room': 'GENERAL_OPD',
-      'timestamp': '09:35 AM',
-      'date': '2026-09-13',
-      'details': 'Called to Room 03',
-    },
-  ];
-
   /// Get room prefix letter for tokens
   static String getTokenPrefix(String roomKey) {
     switch (roomKey) {
@@ -345,12 +514,10 @@ class QueueService {
 
     if (currentId > 0) {
       _updateLocalStatus(currentId, 'COMPLETED');
-      _addHistoryRecord(currentId, 'Completed', 'COMPLETED');
     }
 
     if (nextId > 0) {
       _updateLocalStatus(nextId, 'IN_PROGRESS');
-      _addHistoryRecord(nextId, 'Called', 'IN_PROGRESS');
     }
 
     return remoteOk || true;
@@ -366,14 +533,12 @@ class QueueService {
         _mockQueue[idx]['skip_notes'] = notes;
       }
     }
-    _addHistoryRecord(id, 'Skipped ($reason)', 'SKIPPED');
     return true;
   }
 
   /// Recall a skipped or completed patient back into the active queue
   static Future<bool> recallPatient(int id) async {
     _updateLocalStatus(id, 'CHECKED_IN');
-    _addHistoryRecord(id, 'Recalled to Queue', 'CHECKED_IN');
     return true;
   }
 
@@ -383,23 +548,21 @@ class QueueService {
     if (idx >= 0) {
       _mockQueue[idx]['priority'] = isPriority;
       _mockQueue[idx]['priority_category'] = isPriority ? category : null;
-      _addHistoryRecord(
-        id,
-        isPriority ? 'Marked Priority ($category)' : 'Removed Priority',
-        _mockQueue[idx]['status'] as String? ?? 'CHECKED_IN',
-      );
       return true;
     }
     return false;
   }
 
-  /// Get Queue History filtered by timeframe ('Today', 'This Week', 'This Month') and optional roomKey
+  /// Gets real queue activity history for the authenticated Staff member.
   static Future<List<Map<String, dynamic>>> getQueueHistory({String? filterTime, String? roomKey}) async {
-    List<Map<String, dynamic>> filtered = List.from(_queueHistory);
-    if (roomKey != null && roomKey.isNotEmpty && roomKey != 'ALL') {
-      filtered = filtered.where((h) => h['room'] == roomKey).toList();
-    }
-    return filtered.reversed.toList();
+    final uri = _staffUri('/staff/queue/history').replace(
+      queryParameters: {
+        'filter_time': filterTime ?? 'Today',
+        'room': roomKey ?? 'ALL',
+      },
+    );
+    final response = await _sendStaffRequest('GET', uri);
+    return _staffListFromResponse(response, keys: const ['history', 'items']);
   }
 
   /// Real-time stream listener for appointment status changes by room
@@ -459,21 +622,4 @@ class QueueService {
     }
   }
 
-  static void _addHistoryRecord(int apptId, String action, String status) {
-    final item = _mockQueue.firstWhere((a) => a['id'] == apptId, orElse: () => <String, dynamic>{});
-    final now = DateTime.now();
-    final timeStr = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}';
-
-    _queueHistory.add({
-      'id': _queueHistory.length + 1,
-      'token': item['queue_number'] ?? 'N/A',
-      'patient_name': item['patient_name'] ?? 'Patient',
-      'action': action,
-      'status': status,
-      'room': item['room'] ?? 'GENERAL_OPD',
-      'timestamp': timeStr,
-      'date': '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}',
-      'details': 'Recorded by Staff',
-    });
-  }
 }

@@ -17,12 +17,6 @@ class _StaffEditProfileScreenState extends State<StaffEditProfileScreen> {
   late TextEditingController _emailController;
   late TextEditingController _addressController;
 
-  final String _staffId = 'STF-8842';
-  final String _nic = '199000100200';
-  final String _role = 'Senior OPD Staff';
-  final String _department = 'Outpatient Department (OPD)';
-  final String _assignedOpd = 'General OPD / Dressing Room';
-
   bool _isLoading = false;
 
   @override
@@ -30,13 +24,13 @@ class _StaffEditProfileScreenState extends State<StaffEditProfileScreen> {
     super.initState();
     final user = AuthService.currentUser;
     _nameController = TextEditingController(
-        text: user?['full_name'] as String? ?? 'Chaminda Bandara');
+        text: user?['full_name']?.toString() ?? '');
     _phoneController = TextEditingController(
-        text: user?['phone'] as String? ?? '0772223334');
+        text: user?['phone']?.toString() ?? '');
     _emailController = TextEditingController(
-        text: user?['email'] as String? ?? 'staff.opd@mediq.lk');
-    _addressController = TextEditingController(
-        text: user?['address'] as String? ?? 'National Hospital OPD Unit, Colombo 08');
+        text: user?['email']?.toString() ?? '');
+    _addressController =
+        TextEditingController(text: user?['address']?.toString() ?? '');
   }
 
   @override
@@ -57,16 +51,16 @@ class _StaffEditProfileScreenState extends State<StaffEditProfileScreen> {
       final res = await AuthService.updateProfile(
         fullName: _nameController.text.trim(),
         phone: _phoneController.text.trim(),
-        gender: 'Male',
-        dateOfBirth: '1990-05-15',
-        civilStatus: 'Married',
+        gender: '',
+        dateOfBirth: '',
+        civilStatus: '',
         address: _addressController.text.trim(),
-        district: 'Colombo',
-        emergencyContactName: 'Sanduni Bandara',
-        emergencyContactPhone: '0714445566',
-        bloodGroup: 'B+',
-        allergies: 'None',
-        medicalConditions: 'None',
+        district: '',
+        emergencyContactName: '',
+        emergencyContactPhone: '',
+        bloodGroup: '',
+        allergies: '',
+        medicalConditions: '',
       );
 
       if (!mounted) return;
@@ -81,25 +75,22 @@ class _StaffEditProfileScreenState extends State<StaffEditProfileScreen> {
         );
         Navigator.pop(context, true);
       } else {
-        // Fallback for offline/local simulation
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(res['message'] ?? 'Profile updated locally.'),
-            backgroundColor: AppTheme.primarySkyBlue,
+            content: Text(res['message'] ?? 'Failed to update Staff profile.'),
+            backgroundColor: AppTheme.errorRed,
           ),
         );
-        Navigator.pop(context, true);
       }
-    } catch (_) {
+    } catch (error) {
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Profile saved successfully.'),
-          backgroundColor: Color(0xFF10B981),
+        SnackBar(
+          content: Text('Could not update Staff profile: $error'),
+          backgroundColor: AppTheme.errorRed,
         ),
       );
-      Navigator.pop(context, true);
     }
   }
 
@@ -151,44 +142,6 @@ class _StaffEditProfileScreenState extends State<StaffEditProfileScreen> {
               ),
 
               const SizedBox(height: 24),
-
-              // 2. System-Managed Read-Only Info Card
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Row(
-                      children: [
-                        Icon(Icons.lock_outline_rounded,
-                            size: 16, color: AppTheme.mutedText),
-                        SizedBox(width: 6),
-                        Text(
-                          'SYSTEM-MANAGED CREDENTIALS (READ ONLY)',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppTheme.mutedText,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _buildReadOnlyRow('Staff ID', _staffId),
-                    _buildReadOnlyRow('NIC Number', _nic),
-                    _buildReadOnlyRow('Role', _role),
-                    _buildReadOnlyRow('Department', _department),
-                    _buildReadOnlyRow('Assigned OPD', _assignedOpd),
-                  ],
-                ),
-              ),
 
               const SizedBox(height: 24),
 
@@ -286,6 +239,7 @@ class _StaffEditProfileScreenState extends State<StaffEditProfileScreen> {
                     TextFormField(
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
+                      readOnly: true,
                       decoration: const InputDecoration(
                         prefixIcon: Icon(Icons.email_outlined,
                             color: AppTheme.primarySkyBlue),
@@ -381,24 +335,4 @@ class _StaffEditProfileScreenState extends State<StaffEditProfileScreen> {
     );
   }
 
-  Widget _buildReadOnlyRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label,
-              style: const TextStyle(fontSize: 12.5, color: AppTheme.mutedText)),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 12.5,
-              fontWeight: FontWeight.bold,
-              color: AppTheme.darkText,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
