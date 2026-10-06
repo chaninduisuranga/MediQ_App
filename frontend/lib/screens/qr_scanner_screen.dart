@@ -367,9 +367,15 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
                           const SizedBox(height: 16),
                           SizedBox(
                             width: double.infinity,
-                            height: 50,
+                            height: 52,
                             child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentGreen),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primarySkyBlue,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
                               onPressed: () {
                               Navigator.pushNamed(
                                 context,

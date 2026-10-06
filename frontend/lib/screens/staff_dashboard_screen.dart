@@ -447,11 +447,10 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                        color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                        color: AppTheme.primarySkyBlue.withValues(alpha: 0.3)),
                     boxShadow: [
                       BoxShadow(
-                        color:
-                            const Color(0xFF10B981).withValues(alpha: 0.08),
+                        color: AppTheme.primarySkyBlue.withValues(alpha: 0.08),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -463,11 +462,11 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color:
-                              const Color(0xFF10B981).withValues(alpha: 0.12),
+                              AppTheme.primarySkyBlue.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(Icons.medical_services_rounded,
-                            color: Color(0xFF059669), size: 28),
+                            color: AppTheme.primarySkyBlue, size: 28),
                       ),
                       const SizedBox(width: 14),
                       const Expanded(
@@ -493,10 +492,10 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                       ),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF10B981),
+                          backgroundColor: AppTheme.primarySkyBlue,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 8),

@@ -257,7 +257,7 @@ class _StaffChangePasswordScreenState extends State<StaffChangePasswordScreen> {
                 width: double.infinity,
                 height: 52,
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
                       color: AppTheme.primarySkyBlue.withValues(alpha: 0.3),
@@ -271,7 +271,7 @@ class _StaffChangePasswordScreenState extends State<StaffChangePasswordScreen> {
                     backgroundColor: AppTheme.primarySkyBlue,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: _isLoading ? null : _handleChangePassword,
                   child: _isLoading

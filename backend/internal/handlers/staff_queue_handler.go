@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -16,6 +17,8 @@ import (
 )
 
 type StaffQueueHandler struct{}
+
+const staffHighQueueThreshold = 15
 
 func NewStaffQueueHandler() *StaffQueueHandler {
 	return &StaffQueueHandler{}
@@ -356,6 +359,7 @@ func (h *StaffQueueHandler) TogglePriority(c *gin.Context) {
 		return
 	}
 
+	priorityWasSet := appointment.IsPriority
 	appointment.IsPriority = req.IsPriority
 	details := "Priority disabled"
 	if req.IsPriority {
@@ -364,6 +368,13 @@ func (h *StaffQueueHandler) TogglePriority(c *gin.Context) {
 	if err := h.saveStaffQueueAction(c, &appointment, "PRIORITY_UPDATED", &details); err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "Failed to update priority")
 		return
+	}
+	if req.IsPriority && !priorityWasSet {
+		h.createStaffNotification(c, "Priority Patient Alert", fmt.Sprintf(
+			"Priority patient Token #%s has been added to the %s queue.",
+			staffQueueToken(appointment.Room, appointment.QueueNumber),
+			staffRoomName(appointment.Room),
+		), "PRIORITY")
 	}
 	utils.SendSuccess(c, http.StatusOK, "Priority updated", appointment)
 }
@@ -410,7 +421,7 @@ func (h *StaffQueueHandler) AllocateDoctor(c *gin.Context) {
 
 	// Validate doctor
 	var doctor models.Doctor
-	if err := database.DB.First(&doctor, req.DoctorID).Error; err != nil {
+	if err := database.DB.Preload("User").First(&doctor, req.DoctorID).Error; err != nil {
 		utils.SendError(c, http.StatusNotFound, "Doctor not found")
 		return
 	}
@@ -419,11 +430,23 @@ func (h *StaffQueueHandler) AllocateDoctor(c *gin.Context) {
 		return
 	}
 
+	allocationChanged := appointment.AssignedDoctorID == nil ||
+		*appointment.AssignedDoctorID != req.DoctorID
 	appointment.AssignedDoctorID = &req.DoctorID
 	details := fmt.Sprintf("Doctor ID: %d", req.DoctorID)
 	if err := h.saveStaffQueueAction(c, &appointment, "DOCTOR_ALLOCATED", &details); err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "Failed to allocate doctor")
 		return
+	}
+	if allocationChanged {
+		doctorName := strings.TrimSpace(doctor.User.FullName)
+		if doctorName == "" {
+			doctorName = "the allocated doctor"
+		}
+		h.createStaffNotification(c, "Patient Allocation Completed", fmt.Sprintf(
+			"1 waiting patient was allocated to %s.",
+			doctorName,
+		), "ALLOCATION")
 	}
 	utils.SendSuccess(c, http.StatusOK, "Doctor allocated", appointment)
 }
@@ -461,12 +484,127 @@ func (h *StaffQueueHandler) saveStaffQueueAction(c *gin.Context, appointment *mo
 		Details:       details,
 		OccurredAt:    occurredAt,
 	}
-	return database.DB.Transaction(func(tx *gorm.DB) error {
+	if err := database.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Save(appointment).Error; err != nil {
 			return err
 		}
 		return tx.Create(&history).Error
-	})
+	}); err != nil {
+		return err
+	}
+
+	h.maybeCreateHighQueueNotification(c, appointment.Room)
+	return nil
+}
+
+func (h *StaffQueueHandler) maybeCreateHighQueueNotification(c *gin.Context, room models.OPDRoom) {
+	if room != models.RoomOPDClinic {
+		return
+	}
+
+	userID, ok := staffNotificationUserID(c)
+	if !ok {
+		log.Printf("Staff high-queue notification skipped: authenticated user ID unavailable")
+		return
+	}
+
+	loc := time.FixedZone("IST", 5*3600+30*60)
+	now := time.Now().In(loc)
+	today := now.Format("2006-01-02")
+	var waiting int64
+	if err := database.DB.Model(&models.OPDAppointment{}).
+		Where("room = ? AND appointment_date = ? AND status IN ?",
+			models.RoomOPDClinic,
+			today,
+			[]models.AppointmentStatus{models.AppointmentPending, models.AppointmentConfirmed},
+		).
+		Count(&waiting).Error; err != nil {
+		log.Printf("Staff high-queue notification check failed: %v", err)
+		return
+	}
+	if waiting < staffHighQueueThreshold {
+		return
+	}
+
+	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
+	var existing int64
+	if err := database.DB.Model(&models.StaffNotification{}).
+		Where("staff_user_id = ? AND type = ? AND title = ? AND created_at >= ? AND created_at < ?",
+			userID,
+			"QUEUE",
+			"High Queue Alert",
+			startOfDay,
+			startOfDay.AddDate(0, 0, 1),
+		).
+		Count(&existing).Error; err != nil {
+		log.Printf("Staff high-queue notification duplicate check failed: %v", err)
+		return
+	}
+	if existing > 0 {
+		return
+	}
+
+	h.createStaffNotification(c, "High Queue Alert", fmt.Sprintf(
+		"General OPD queue is getting crowded. %d patients are currently waiting.",
+		waiting,
+	), "QUEUE")
+}
+
+func (h *StaffQueueHandler) createStaffNotification(c *gin.Context, title, message, notificationType string) {
+	userID, ok := staffNotificationUserID(c)
+	if !ok {
+		log.Printf("Staff notification %q skipped: authenticated user ID unavailable", title)
+		return
+	}
+
+	notification := models.StaffNotification{
+		StaffUserID: userID,
+		Title:       title,
+		Message:     message,
+		Type:        notificationType,
+		CreatedAt:   time.Now(),
+	}
+	if err := database.DB.Create(&notification).Error; err != nil {
+		log.Printf("Failed to create Staff notification %q for user %d: %v", title, userID, err)
+	}
+}
+
+func staffQueueToken(room models.OPDRoom, queueNumber int) string {
+	prefix := "Q"
+	switch room {
+	case models.RoomOPDClinic:
+		prefix = "G"
+	case models.RoomDressing:
+		prefix = "D"
+	case models.RoomInjection:
+		prefix = "I"
+	case models.RoomAnimalBite:
+		prefix = "A"
+	case models.RoomBleeding:
+		prefix = "B"
+	case models.RoomDispensary:
+		prefix = "P"
+	}
+	return fmt.Sprintf("%s%03d", prefix, queueNumber)
+}
+
+func staffRoomName(room models.OPDRoom) string {
+	switch room {
+	case models.RoomOPDClinic:
+		return "General OPD"
+	case models.RoomDressing:
+		return "Dressing Room"
+	case models.RoomInjection:
+		return "Injection Room"
+	case models.RoomAnimalBite:
+		return "Animal Bite Room"
+	case models.RoomBleeding:
+		return "Bleeding Room"
+	case models.RoomDispensary:
+		return "Dispensary"
+	default:
+		return "OPD"
+	}
 }
 
 func (h *StaffQueueHandler) validateAppointment(c *gin.Context) (models.OPDAppointment, error) {

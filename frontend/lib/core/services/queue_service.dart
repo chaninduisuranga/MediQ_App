@@ -115,6 +115,32 @@ class QueueService {
     return Map<String, dynamic>.from(data);
   }
 
+  /// Returns notifications belonging to the authenticated Staff member.
+  static Future<List<Map<String, dynamic>>> getStaffNotifications() async {
+    final response = await _sendStaffRequest(
+      'GET',
+      _staffUri('/staff/notifications'),
+    );
+    return _staffListFromResponse(
+      response,
+      keys: const ['notifications', 'items'],
+    );
+  }
+
+  static Future<void> markStaffNotificationRead(int id) async {
+    await _sendStaffRequest(
+      'PATCH',
+      _staffUri('/staff/notifications/$id/read'),
+    );
+  }
+
+  static Future<void> markAllStaffNotificationsRead() async {
+    await _sendStaffRequest(
+      'PATCH',
+      _staffUri('/staff/notifications/read-all'),
+    );
+  }
+
   /// Returns the queue assigned to the authenticated Staff member.
   static Future<List<Map<String, dynamic>>> getStaffQueue() async {
     final response =

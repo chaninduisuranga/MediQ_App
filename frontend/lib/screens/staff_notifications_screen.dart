@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
+import '../core/services/queue_service.dart';
 import '../core/theme/theme.dart';
 import '../routes/routes.dart';
 import '../widgets/staff_bottom_nav_bar.dart';
 import '../widgets/staff_drawer.dart';
 
 class StaffAlert {
-  final String id;
+  final int id;
   final String title;
   final String message;
   final String type; // 'QUEUE', 'PRIORITY', 'DELAY', 'ANNOUNCEMENT'
@@ -20,6 +21,23 @@ class StaffAlert {
     required this.timestamp,
     this.isRead = false,
   });
+
+  factory StaffAlert.fromJson(Map<String, dynamic> json) {
+    final id = int.tryParse(json['id']?.toString() ?? '');
+    final timestamp = DateTime.tryParse(json['created_at']?.toString() ?? '');
+    if (id == null || timestamp == null) {
+      throw const FormatException(
+          'Staff notification has an invalid ID or timestamp.');
+    }
+    return StaffAlert(
+      id: id,
+      title: json['title']?.toString() ?? '',
+      message: json['message']?.toString() ?? '',
+      type: (json['type']?.toString() ?? '').toUpperCase(),
+      timestamp: timestamp,
+      isRead: json['is_read'] == true,
+    );
+  }
 }
 
 class StaffNotificationsScreen extends StatefulWidget {
@@ -32,54 +50,17 @@ class StaffNotificationsScreen extends StatefulWidget {
 
 class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
   String _selectedFilter = 'ALL';
+  final List<StaffAlert> _alerts = [];
+  final Set<int> _updatingAlertIds = {};
+  bool _isLoading = true;
+  bool _isMarkingAllRead = false;
+  String? _loadError;
 
-  final List<StaffAlert> _alerts = [
-    StaffAlert(
-      id: '1',
-      title: 'Priority Patient Check-In',
-      message:
-          'Priority Patient Anu Perera (Token #G-021, Elderly) has arrived at General OPD.',
-      type: 'PRIORITY',
-      timestamp: DateTime.now().subtract(const Duration(minutes: 5)),
-      isRead: false,
-    ),
-    StaffAlert(
-      id: '2',
-      title: 'High Queue Volume Alert',
-      message:
-          'General OPD waiting queue has exceeded 20 patients. Batch doctor allocation recommended.',
-      type: 'QUEUE',
-      timestamp: DateTime.now().subtract(const Duration(minutes: 20)),
-      isRead: false,
-    ),
-    StaffAlert(
-      id: '3',
-      title: 'Doctor Shift Update',
-      message:
-          'Dr. Suneth Perera is currently available and on-duty in General OPD — Room 01.',
-      type: 'ANNOUNCEMENT',
-      timestamp: DateTime.now().subtract(const Duration(hours: 1)),
-      isRead: true,
-    ),
-    StaffAlert(
-      id: '4',
-      title: 'Dressing Room Brief Delay',
-      message:
-          'Dressing Room sterilization in progress. Estimated 10-minute queue pause.',
-      type: 'DELAY',
-      timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-      isRead: true,
-    ),
-    StaffAlert(
-      id: '5',
-      title: 'System Announcement',
-      message:
-          'Daily OPD roster hand-over meeting at 03:45 PM in Central Clinical Station.',
-      type: 'ANNOUNCEMENT',
-      timestamp: DateTime.now().subtract(const Duration(hours: 4)),
-      isRead: true,
-    ),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadNotifications();
+  }
 
   int get _unreadCount => _alerts.where((a) => !a.isRead).length;
 
@@ -88,18 +69,75 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
     return _alerts.where((a) => a.type == _selectedFilter).toList();
   }
 
-  void _markAllAsRead() {
+  Future<void> _loadNotifications() async {
+    if (!mounted) return;
     setState(() {
-      for (final a in _alerts) {
-        a.isRead = true;
-      }
+      _isLoading = true;
+      _loadError = null;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('All alerts marked as read.'),
-        backgroundColor: AppTheme.primarySkyBlue,
-      ),
-    );
+    try {
+      final response = await QueueService.getStaffNotifications();
+      final alerts = response.map(StaffAlert.fromJson).toList();
+      if (!mounted) return;
+      setState(() {
+        _alerts
+          ..clear()
+          ..addAll(alerts);
+        _isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _loadError = error.toString();
+      });
+    }
+  }
+
+  Future<void> _markAsRead(StaffAlert alert) async {
+    if (alert.isRead || _updatingAlertIds.contains(alert.id)) return;
+    setState(() => _updatingAlertIds.add(alert.id));
+    try {
+      await QueueService.markStaffNotificationRead(alert.id);
+      if (!mounted) return;
+      setState(() {
+        alert.isRead = true;
+        _updatingAlertIds.remove(alert.id);
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _updatingAlertIds.remove(alert.id));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not mark notification as read: $error')),
+      );
+    }
+  }
+
+  Future<void> _markAllAsRead() async {
+    if (_unreadCount == 0 || _isMarkingAllRead) return;
+    setState(() => _isMarkingAllRead = true);
+    try {
+      await QueueService.markAllStaffNotificationsRead();
+      if (!mounted) return;
+      setState(() {
+        for (final alert in _alerts) {
+          alert.isRead = true;
+        }
+        _isMarkingAllRead = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('All alerts marked as read.'),
+          backgroundColor: AppTheme.primarySkyBlue,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isMarkingAllRead = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not mark all alerts as read: $error')),
+      );
+    }
   }
 
   @override
@@ -118,7 +156,7 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
         actions: [
           if (_unreadCount > 0)
             TextButton.icon(
-              onPressed: _markAllAsRead,
+              onPressed: _isMarkingAllRead ? null : _markAllAsRead,
               icon: const Icon(Icons.done_all_rounded,
                   size: 16, color: AppTheme.primarySkyBlue),
               label: const Text(
@@ -151,6 +189,10 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
                   _buildFilterChip('DELAY', 'Delays'),
                   const SizedBox(width: 8),
                   _buildFilterChip('ANNOUNCEMENT', 'Announcements'),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('DOCTOR', 'Doctor'),
+                  const SizedBox(width: 8),
+                  _buildFilterChip('ALLOCATION', 'Allocation'),
                 ],
               ),
             ),
@@ -160,40 +202,105 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
 
           // Alerts List
           Expanded(
-            child: _filteredAlerts.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.notifications_off_outlined,
-                            size: 56, color: Colors.grey.shade300),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'No alerts found in this category.',
-                          style: TextStyle(
-                              color: AppTheme.mutedText, fontSize: 14),
-                        ),
-                      ],
-                    ),
-                  )
-                : RefreshIndicator(
-                    onRefresh: () async {
-                      await Future.delayed(const Duration(milliseconds: 500));
-                      setState(() {});
-                    },
-                    child: ListView.separated(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _filteredAlerts.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final alert = _filteredAlerts[index];
-                        return _buildAlertCard(alert);
-                      },
-                    ),
-                  ),
+            child: RefreshIndicator(
+              onRefresh: _loadNotifications,
+              child: _buildAlertsContent(),
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAlertsContent() {
+    if (_isLoading) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: const [
+          SizedBox(
+            height: 320,
+            child: Center(
+              child: CircularProgressIndicator(color: AppTheme.primarySkyBlue),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (_loadError != null) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: 320,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.error_outline_rounded,
+                        size: 48, color: AppTheme.errorRed),
+                    const SizedBox(height: 12),
+                    const Text(
+                      'Could not load notifications.',
+                      style: TextStyle(
+                        color: AppTheme.darkText,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _loadError!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          color: AppTheme.mutedText, fontSize: 12),
+                    ),
+                    const SizedBox(height: 12),
+                    TextButton(
+                      onPressed: _loadNotifications,
+                      child: const Text('Try again'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (_filteredAlerts.isEmpty) {
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(
+            height: 320,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.notifications_off_outlined,
+                      size: 56, color: Colors.grey.shade300),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'No alerts found in this category.',
+                    style: TextStyle(color: AppTheme.mutedText, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return ListView.separated(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      itemCount: _filteredAlerts.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (context, index) => _buildAlertCard(_filteredAlerts[index]),
     );
   }
 
@@ -231,6 +338,18 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
         typeColor = const Color(0xFFF59E0B);
         typeIcon = Icons.timer_off_outlined;
         break;
+      case 'DOCTOR':
+        typeColor = const Color(0xFF8B5CF6);
+        typeIcon = Icons.medical_services_outlined;
+        break;
+      case 'ALLOCATION':
+        typeColor = const Color(0xFF059669);
+        typeIcon = Icons.assignment_turned_in_outlined;
+        break;
+      case 'CLOSURE':
+        typeColor = AppTheme.errorRed;
+        typeIcon = Icons.block_outlined;
+        break;
       default:
         typeColor = const Color(0xFF8B5CF6);
         typeIcon = Icons.campaign_rounded;
@@ -239,9 +358,9 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
     final timeAgo = _formatTimeAgo(alert.timestamp);
 
     return InkWell(
-      onTap: () {
-        setState(() => alert.isRead = true);
-      },
+      onTap: alert.isRead || _updatingAlertIds.contains(alert.id)
+          ? null
+          : () => _markAsRead(alert),
       borderRadius: BorderRadius.circular(16),
       child: Container(
         padding: const EdgeInsets.all(16),

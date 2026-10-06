@@ -80,6 +80,10 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		staff.Use(middleware.StaffAuthorizationMiddleware())
 		{
 			staffQueueHandler := handlers.NewStaffQueueHandler()
+			staffNotificationHandler := handlers.NewStaffNotificationHandler()
+			staff.GET("/notifications", staffNotificationHandler.GetNotifications)
+			staff.PATCH("/notifications/:id/read", staffNotificationHandler.MarkNotificationRead)
+			staff.PATCH("/notifications/read-all", staffNotificationHandler.MarkAllNotificationsRead)
 			staff.GET("/profile", staffQueueHandler.GetProfile)
 			staff.GET("/queue/list", staffQueueHandler.GetQueueList)
 			staff.GET("/queue/search", staffQueueHandler.SearchQueue)
