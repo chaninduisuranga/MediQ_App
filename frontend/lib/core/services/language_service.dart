@@ -53,6 +53,38 @@ class LanguageService {
       'menu_language': 'Language / භාෂාව / மொழி',
       'select_language': 'Select Language',
 
+      // Navigation Bar
+      'nav_home': 'Home',
+      'nav_appointments': 'Appointments',
+      'nav_records': 'Records',
+      'nav_profile': 'Profile',
+
+      // Home Screen Sections & Banners
+      'our_services': 'Our Services',
+      'hero_banner_1_badge': 'SMART OPD BOOKING',
+      'hero_banner_1_title': 'Book OPD Appointment',
+      'hero_banner_1_sub': 'Reserve your OPD queue ticket token online without waiting in long hospital queues.',
+      'hero_banner_1_btn': 'Book Token Now',
+      'hero_banner_2_badge': 'LIVE QUEUE TRACKER',
+      'hero_banner_2_title': 'OPD Live Queue',
+      'hero_banner_2_sub': 'Track your token queue number live & stay updated on your wait time.',
+      'hero_banner_2_btn': 'Check Queue',
+      'hero_banner_3_badge': 'DIGITAL HEALTH RECORD',
+      'hero_banner_3_title': 'Medical Records',
+      'hero_banner_3_sub': 'Store & access all your lab reports, prescriptions & doctor notes securely.',
+      'hero_banner_3_btn': 'View Records',
+      'hero_banner_4_badge': 'DAILY VITALS & PILLS',
+      'hero_banner_4_title': 'Pills & Vitals Tracker',
+      'hero_banner_4_sub': 'Set medicine pill timings, check your BMI & track blood sugar levels easily.',
+      'hero_banner_4_btn': 'Track Health',
+
+      'opd_live_queue_sub_card': 'Live token queue',
+      'book_appointment_sub_card': 'Book doctor slot',
+      'medical_records_sub_card': 'Lab & OPD records',
+      'pill_tracker_sub_card': 'Get your meds',
+      'symptom_checker_sub_card': 'AI health triage',
+      'health_vitals_sub_card': 'BMI & blood sugar',
+
       // Home Screen
       'smart_opd_guide': 'Smart OPD Guide',
       'smart_opd_subtitle': 'Select your symptom to find your hospital room & queue instructions.',
@@ -167,6 +199,38 @@ class LanguageService {
       'menu_language': 'භාෂාව / Language / மொழி',
       'select_language': 'භාෂාව තෝරන්න (Select Language)',
 
+      // Navigation Bar
+      'nav_home': 'මුල් පිටුව',
+      'nav_appointments': 'වෙන් කිරීම්',
+      'nav_records': 'වාර්තා',
+      'nav_profile': 'ගිණුම',
+
+      // Home Screen Sections & Banners
+      'our_services': 'අපගේ සේවාවන්',
+      'hero_banner_1_badge': 'ස්මාර්ට් OPD වෙන්කිරීම්',
+      'hero_banner_1_title': 'OPD වෙලාවක් වෙන් කරගන්න',
+      'hero_banner_1_sub': 'දීර්ඝ පෝලිම්වල නොසිට ඔබගේ OPD ටෝකනය ඔන්ලයින් මඟින් ලබාගන්න.',
+      'hero_banner_1_btn': 'දැන්ම ටෝකනයක් ගන්න',
+      'hero_banner_2_badge': 'සජීවී පෝලිම් පද්ධතිය',
+      'hero_banner_2_title': 'OPD සජීවී පෝලිම',
+      'hero_banner_2_sub': 'ඔබේ ටෝකන් අංකය සහ පෝලිමේ තත්ත්වය සජීවීව බලාගන්න.',
+      'hero_banner_2_btn': 'පෝලිම පරීක්ෂා කරන්න',
+      'hero_banner_3_badge': 'ඩිජිටල් වෛද්‍ය වාර්තා',
+      'hero_banner_3_title': 'වෛද්‍ය වාර්තා',
+      'hero_banner_3_sub': 'ඔබගේ ඖෂධ වට්ටෝරු, පරීක්ෂණ වාර්තා ආරක්ෂිතව තබාගන්න.',
+      'hero_banner_3_btn': 'වාර්තා බලන්න',
+      'hero_banner_4_badge': 'දෛනික සෞඛ්‍ය & බෙහෙත්',
+      'hero_banner_4_title': 'බෙහෙත් & සෞඛ්‍ය පරීක්ෂාව',
+      'hero_banner_4_sub': 'බෙහෙත් බොන වේලාවන්, BMI සහ රුධිර සීනි මට්ටම සටහන් කරගන්න.',
+      'hero_banner_4_btn': 'සෞඛ්‍ය තත්ත්වය බලන්න',
+
+      'opd_live_queue_sub_card': 'සජීවී ටෝකන් පෝලිම',
+      'book_appointment_sub_card': 'වෛද්‍යවරයෙකු වෙන්කරගන්න',
+      'medical_records_sub_card': 'පරීක්ෂණ & OPD වාර්තා',
+      'pill_tracker_sub_card': 'දෛනික බෙහෙත් මතක්කිරීම්',
+      'symptom_checker_sub_card': 'රෝග ලක්ෂණ පරීක්ෂාව',
+      'health_vitals_sub_card': 'බර සහ සීනි මට්ටම',
+
       // Home Screen
       'smart_opd_guide': 'ස්මාර්ට් OPD මඟපෙන්වන්නා',
       'smart_opd_subtitle': 'ඔබේ රෝග ලක්ෂණය තෝරා අදාළ රෝහල් කාමරය සහ උපදෙස් ලබා ගන්න.',
@@ -280,6 +344,38 @@ class LanguageService {
       'menu_logout': 'வெளியேறு (Logout)',
       'menu_language': 'மொழி / Language / භාෂාව',
       'select_language': 'மொழியைத் தேர்ந்தெடுக்கவும்',
+
+      // Navigation Bar
+      'nav_home': 'முகப்பு',
+      'nav_appointments': 'முன்பதிவு',
+      'nav_records': 'பதிவுகள்',
+      'nav_profile': 'சுயவிவரம்',
+
+      // Home Screen Sections & Banners
+      'our_services': 'எங்கள் சேவைகள்',
+      'hero_banner_1_badge': 'ஸ்மார்ட் OPD முன்பதிவு',
+      'hero_banner_1_title': 'OPD முன்பதிவு செய்ய',
+      'hero_banner_1_sub': 'நீண்ட வரிசையில் காத்திருக்காமல் உங்கள் OPD டோக்கனைப் பெறுங்கள்.',
+      'hero_banner_1_btn': 'டோக்கன் பெறவும்',
+      'hero_banner_2_badge': 'நேரலை வரிசை நிலை',
+      'hero_banner_2_title': 'நேரலை வரிசை',
+      'hero_banner_2_sub': 'உங்கள் டோக்கன் எண் மற்றும் காத்திருக்கும் நேரத்தை நேரலையாகக் காணவும்.',
+      'hero_banner_2_btn': 'வரிசையை சரிபார்க்கவும்',
+      'hero_banner_3_badge': 'டிஜிட்டல் மருத்துவப் பதிவு',
+      'hero_banner_3_title': 'மருத்துவப் பதிவுகள்',
+      'hero_banner_3_sub': 'உங்கள் மருத்துவ அறிக்கைகள் மற்றும் பரிந்துரைகளைப் பாதுகாப்பாகச் சேமிக்கவும்.',
+      'hero_banner_3_btn': 'பதிவுகளைப் பார்க்கவும்',
+      'hero_banner_4_badge': 'தினசரி ஆரோக்கியம் & மாத்திரைகள்',
+      'hero_banner_4_title': 'மாத்திரை & சுகாதாரக் கண்காணிப்பு',
+      'hero_banner_4_sub': 'மருந்து நேரங்களை அமைத்து உங்கள் BMI மற்றும் இரத்த சர்க்கரையை கண்காணிக்கவும்.',
+      'hero_banner_4_btn': 'ஆரோக்கியத்தைக் கண்காணிக்கவும்',
+
+      'opd_live_queue_sub_card': 'நேரலை டோக்கன் வரிசை',
+      'book_appointment_sub_card': 'மருத்துவ முன்பதிவு',
+      'medical_records_sub_card': 'பரிசோதனை பதிவுகள்',
+      'pill_tracker_sub_card': 'மருந்து நினைவூட்டல்',
+      'symptom_checker_sub_card': 'அறிகுறி பரிசோதனை',
+      'health_vitals_sub_card': 'எடை மற்றும் சர்க்கரை',
 
       // Home Screen
       'smart_opd_guide': 'ஸ்மார்ட் OPD வழிகாட்டி',

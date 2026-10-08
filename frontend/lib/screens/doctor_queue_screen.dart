@@ -1,6 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../core/services/doctor_service.dart';
-import '../core/services/queue_service.dart';
 import '../core/theme/theme.dart';
 import '../widgets/doctor_bottom_nav_bar.dart';
 
@@ -14,11 +14,16 @@ class DoctorQueueScreen extends StatefulWidget {
 class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
   bool _isLoading = true;
   List<Map<String, dynamic>> _appointments = [];
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _fetchQueue();
+    // Real-time polling every 3 seconds
+    _refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) _fetchQueue(silent: true);
+    });
   }
 
   Future<void> _fetchQueue() async {

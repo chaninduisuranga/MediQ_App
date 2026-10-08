@@ -100,16 +100,36 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		staff.Use(middleware.StaffAuthorizationMiddleware())
 		{
 			staffQueueHandler := handlers.NewStaffQueueHandler()
+			staffNotificationHandler := handlers.NewStaffNotificationHandler()
+			staff.GET("/notifications", staffNotificationHandler.GetNotifications)
+			staff.DELETE("/notifications/clear-all", staffNotificationHandler.ClearAllNotifications)
+			staff.DELETE("/notifications/:id", staffNotificationHandler.DeleteNotification)
+			staff.PATCH("/notifications/:id/read", staffNotificationHandler.MarkNotificationRead)
+			staff.PATCH("/notifications/read-all", staffNotificationHandler.MarkAllNotificationsRead)
 			staff.GET("/profile", staffQueueHandler.GetProfile)
 			staff.GET("/queue/list", staffQueueHandler.GetQueueList)
 			staff.GET("/queue/search", staffQueueHandler.SearchQueue)
+			staff.GET("/queue/qr-lookup/:id", staffQueueHandler.LookupQrAppointment)
 			staff.GET("/queue/history", staffQueueHandler.GetQueueHistory)
+			staff.DELETE("/queue/history/:id", staffQueueHandler.DeleteQueueHistory)
 			staff.POST("/queue/checkin/:id", staffQueueHandler.CheckIn)
+			staff.POST("/queue/qr-checkin/:id", staffQueueHandler.CheckInQrAppointment)
 			staff.POST("/queue/call/:id", staffQueueHandler.CallNext)
 			staff.PATCH("/queue/status/:id", staffQueueHandler.UpdateStatus)
 			staff.PATCH("/queue/priority/:id", staffQueueHandler.TogglePriority)
 			staff.GET("/doctors", staffQueueHandler.GetDoctors)
 			staff.POST("/queue/allocate/:id", staffQueueHandler.AllocateDoctor)
+		}
+
+		// Doctor routes
+		doctor := v1.Group("/doctor")
+		doctor.Use(middleware.AuthMiddleware(cfg))
+		doctor.Use(middleware.DoctorAuthorizationMiddleware())
+		{
+			doctorHandler := handlers.NewDoctorHandler()
+			doctor.GET("/queue/today", doctorHandler.GetTodayQueue)
+			doctor.GET("/queue/stats", doctorHandler.GetQueueStats)
+			doctor.PATCH("/queue/:id/status", doctorHandler.UpdateAppointmentStatus)
 		}
 
 		// Admin routes
@@ -140,6 +160,14 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 
 			adminQueueHandler := handlers.NewAdminQueueHandler()
 			admin.GET("/queues", adminQueueHandler.GetQueues)
+
+			// ── AI Chatbot FAQ management ──────────────────────────────────────────
+			chatFAQHandler := handlers.NewChatFAQHandler()
+			admin.GET("/chat-faqs", chatFAQHandler.ListFAQs)
+			admin.POST("/chat-faqs", chatFAQHandler.CreateFAQ)
+			admin.PATCH("/chat-faqs/:id", chatFAQHandler.UpdateFAQ)
+			admin.DELETE("/chat-faqs/:id", chatFAQHandler.DeleteFAQ)
+			admin.POST("/chat-faqs/seed", chatFAQHandler.SeedDefaultFAQs)
 		}
 	}
 

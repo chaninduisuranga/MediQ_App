@@ -314,7 +314,7 @@ class _StaffProfileScreenState extends State<StaffProfileScreen> {
                   foregroundColor: AppTheme.errorRed,
                   side: const BorderSide(color: AppTheme.errorRed, width: 1.5),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: _handleLogout,
                 icon:

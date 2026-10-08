@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/services/queue_service.dart';
 import '../core/services/staff_allocation_service.dart';
 import '../core/theme/theme.dart';
 import '../routes/routes.dart';
@@ -20,14 +21,22 @@ class _DoctorAllocationScreenState extends State<DoctorAllocationScreen> {
   @override
   void initState() {
     super.initState();
-    _refreshData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final args = ModalRoute.of(context)?.settings.arguments;
+      if (args is Map<String, dynamic> && args['roomKey'] is String) {
+        QueueService.setSelectedStaffRoomKey(args['roomKey'] as String);
+      }
+      _refreshData();
+    });
   }
 
   Future<void> _refreshData() async {
+    final roomKey = QueueService.selectedStaffRoomKey;
     setState(() => _isLoading = true);
     try {
-      await StaffAllocationService.refreshData();
-      if (!mounted) return;
+      await StaffAllocationService.refreshData(roomKey: roomKey);
+      if (!mounted || roomKey != QueueService.selectedStaffRoomKey) return;
       setState(() {
         _unallocatedWaitingCount =
             StaffAllocationService.unallocatedWaitingCount;
@@ -35,7 +44,7 @@ class _DoctorAllocationScreenState extends State<DoctorAllocationScreen> {
         _isLoading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted || roomKey != QueueService.selectedStaffRoomKey) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -109,8 +118,7 @@ class _DoctorAllocationScreenState extends State<DoctorAllocationScreen> {
               ),
               child: Column(
                 children: [
-                  _buildSummaryRow(
-                      'Available Doctors:',
+                  _buildSummaryRow('Available Doctors:',
                       '${availableDocs.length} / ${StaffAllocationService.doctors.length}'),
                   _buildSummaryRow(
                       'Waiting Patients:', '$_unallocatedWaitingCount'),
@@ -147,7 +155,7 @@ class _DoctorAllocationScreenState extends State<DoctorAllocationScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primarySkyBlue,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('ALLOCATE NOW',
@@ -160,7 +168,9 @@ class _DoctorAllocationScreenState extends State<DoctorAllocationScreen> {
     if (confirmed != true) return;
 
     setState(() => _isLoading = true);
-    final res = await StaffAllocationService.allocateNextBatch();
+    final res = await StaffAllocationService.allocateNextBatch(
+      roomKey: QueueService.selectedStaffRoomKey,
+    );
     await _refreshData();
 
     if (mounted) {
@@ -540,7 +550,7 @@ class _DoctorAllocationScreenState extends State<DoctorAllocationScreen> {
                     backgroundColor: AppTheme.primarySkyBlue,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: _isLoading ? null : _handleAllocateNextBatch,
                   icon: const Icon(Icons.auto_mode_rounded, size: 22),

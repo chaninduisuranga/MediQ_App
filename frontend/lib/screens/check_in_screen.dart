@@ -21,6 +21,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
   Map<String, dynamic>? _appointmentData;
   bool _isLoading = false;
   bool _isCheckingIn = false;
+  bool _routeArgumentsHandled = false;
+  bool _isQrCheckIn = false;
+  String? _qrRoomKey;
   String? _errorMessage;
   Map<String, dynamic>? _checkInSummary;
 
@@ -37,21 +40,31 @@ class _CheckInScreenState extends State<CheckInScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_appointmentData == null) {
-      final args = ModalRoute.of(context)?.settings.arguments;
-      if (args is Map<String, dynamic> && args.containsKey('searchQuery')) {
-        final query = args['searchQuery']?.toString();
-        if (query != null && query.isNotEmpty) {
-          _searchController.text = query;
-          _fetchAppointmentDetails();
-        }
-      } else if (args is Map<String, dynamic> &&
-          args.containsKey('appointmentId')) {
-        final id = args['appointmentId'] as int?;
-        if (id != null && id != _appointmentId) {
-          _searchController.text = id.toString();
-          _fetchAppointmentDetails();
-        }
+    if (_routeArgumentsHandled) return;
+    _routeArgumentsHandled = true;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map<String, dynamic> && args.containsKey('qrAppointmentId')) {
+      final id = args['qrAppointmentId'];
+      final room = args['qrRoomKey'];
+      if (id is int && room is String) {
+        _isQrCheckIn = true;
+        _qrRoomKey = QueueService.canonicalStaffRoomKey(room);
+        _searchController.text = id.toString();
+        _fetchQrAppointment(id, roomKey: _qrRoomKey!);
+      }
+    } else if (args is Map<String, dynamic> &&
+        args.containsKey('searchQuery')) {
+      final query = args['searchQuery']?.toString();
+      if (query != null && query.isNotEmpty) {
+        _searchController.text = query;
+        _fetchAppointmentDetails();
+      }
+    } else if (args is Map<String, dynamic> &&
+        args.containsKey('appointmentId')) {
+      final id = args['appointmentId'] as int?;
+      if (id != null && id != _appointmentId) {
+        _searchController.text = id.toString();
+        _fetchAppointmentDetails();
       }
     }
   }
@@ -82,25 +95,27 @@ class _CheckInScreenState extends State<CheckInScreen> {
     });
 
     try {
-      final tokenMatch =
-          RegExp(r'^[A-Za-z]+-?0*(\d+)$').firstMatch(input);
+      final tokenMatch = RegExp(r'^[A-Za-z]+-?0*(\d+)$').firstMatch(input);
       final query = tokenMatch?.group(1) ?? input;
-      final matches = await QueueService.searchStaffQueue(query);
+      final matches = await QueueService.searchStaffQueue(
+        query,
+        roomKey: QueueService.selectedStaffRoomKey,
+      );
       if (!mounted) return;
       setState(() {
         _isLoading = false;
         if (matches.length == 1) {
           _appointmentData = matches.first;
-          _appointmentId =
-              int.tryParse(matches.first['id']?.toString() ?? '');
+          _appointmentId = int.tryParse(matches.first['id']?.toString() ?? '');
           if (_appointmentId == null) {
             _appointmentData = null;
-            _errorMessage = 'The Staff search response has an invalid appointment ID.';
+            _errorMessage =
+                'The Staff search response has an invalid appointment ID.';
           }
         } else if (matches.isEmpty) {
           _appointmentData = null;
           _appointmentId = null;
-          _errorMessage = 'No matching appointment found in your assigned room.';
+          _errorMessage = 'No matching appointment found in the selected room.';
         } else {
           _appointmentData = null;
           _appointmentId = null;
@@ -119,12 +134,72 @@ class _CheckInScreenState extends State<CheckInScreen> {
     }
   }
 
+  Future<void> _fetchQrAppointment(
+    int appointmentId, {
+    required String roomKey,
+  }) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+      _checkInSummary = null;
+    });
+    try {
+      final appointment = await QueueService.lookupStaffQrAppointment(
+        appointmentId,
+        roomKey: roomKey,
+      );
+      final returnedId = int.tryParse(appointment['id']?.toString() ?? '');
+      if (returnedId != appointmentId) {
+        throw const FormatException(
+          'The Staff lookup returned a different appointment ID.',
+        );
+      }
+      final appointmentRoom = appointment['room']?.toString();
+      if (appointmentRoom == null || appointmentRoom.isEmpty) {
+        throw const FormatException(
+          'The Staff lookup response did not include the appointment room.',
+        );
+      }
+      final actualRoomKey = QueueService.canonicalStaffRoomKey(appointmentRoom);
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _qrRoomKey = actualRoomKey;
+        _appointmentId = appointmentId;
+        _appointmentData = appointment;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _appointmentId = null;
+        _appointmentData = null;
+        _errorMessage = 'Could not look up the scanned appointment: $error';
+      });
+    }
+  }
+
   Future<void> _handleConfirmCheckIn() async {
-    if (_appointmentId == null || _appointmentData == null || _isCheckingIn) return;
+    if (_appointmentId == null || _appointmentData == null || _isCheckingIn) {
+      return;
+    }
 
     setState(() => _isCheckingIn = true);
     try {
-      await QueueService.checkInStaffPatient(_appointmentId!);
+      final roomKey = _isQrCheckIn
+          ? (_qrRoomKey ?? QueueService.selectedStaffRoomKey)
+          : QueueService.selectedStaffRoomKey;
+      if (_isQrCheckIn) {
+        await QueueService.checkInStaffQrPatient(
+          _appointmentId!,
+          roomKey: roomKey,
+        );
+      } else {
+        await QueueService.checkInStaffPatient(
+          _appointmentId!,
+          roomKey: roomKey,
+        );
+      }
       if (!mounted) return;
       setState(() {
         _isCheckingIn = false;
@@ -136,14 +211,14 @@ class _CheckInScreenState extends State<CheckInScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content:
-              Text('Patient Token #${_checkInSummary!['token']} checked in successfully.'),
+          content: Text(
+              'Patient Token #${_checkInSummary!['token']} checked in successfully.'),
           backgroundColor: AppTheme.accentGreen,
         ),
       );
 
       try {
-        final queue = await QueueService.getStaffQueue();
+        final queue = await QueueService.getStaffQueue(roomKey: roomKey);
         final updated = queue.where(
           (item) => item['id'].toString() == _appointmentId.toString(),
         );
@@ -175,10 +250,11 @@ class _CheckInScreenState extends State<CheckInScreen> {
   @override
   Widget build(BuildContext context) {
     final hasData = _appointmentData != null;
-    final status = hasData ? (_appointmentData!['status'] as String? ?? 'PENDING') : '';
-    final isAlreadyCheckedIn =
-        status == 'CHECKED_IN' || status == 'CONFIRMED';
+    final status =
+        hasData ? (_appointmentData!['status'] as String? ?? 'PENDING') : '';
+    final isAlreadyCheckedIn = status == 'CHECKED_IN' || status == 'CONFIRMED';
     final isCompleted = status == 'COMPLETED';
+    final isQrAppointmentIneligible = _isQrCheckIn && status != 'PENDING';
 
     return Scaffold(
       drawer: const StaffDrawer(currentRoute: AppRoutes.checkIn),
@@ -206,7 +282,10 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 children: [
                   const Text(
                     'Lookup Appointment Ticket',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.darkText),
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: AppTheme.darkText),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -218,8 +297,10 @@ class _CheckInScreenState extends State<CheckInScreen> {
                           decoration: InputDecoration(
                             hintText: 'Enter token, NIC, or phone number',
                             prefixIcon: const Icon(Icons.search_rounded),
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 12),
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                           onSubmitted: (_) => _fetchAppointmentDetails(),
                         ),
@@ -228,11 +309,16 @@ class _CheckInScreenState extends State<CheckInScreen> {
                       ElevatedButton(
                         onPressed: _isLoading ? null : _fetchAppointmentDetails,
                         style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(80, 48),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          minimumSize: const Size(80, 52),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                         child: _isLoading
-                            ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                    color: Colors.white, strokeWidth: 2))
                             : const Text('Find'),
                       ),
                     ],
@@ -249,16 +335,21 @@ class _CheckInScreenState extends State<CheckInScreen> {
                 decoration: BoxDecoration(
                   color: AppTheme.errorRed.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppTheme.errorRed.withValues(alpha: 0.3)),
+                  border: Border.all(
+                      color: AppTheme.errorRed.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline_rounded, color: AppTheme.errorRed),
+                    const Icon(Icons.error_outline_rounded,
+                        color: AppTheme.errorRed),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         _errorMessage!,
-                        style: const TextStyle(color: AppTheme.errorRed, fontSize: 13, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                            color: AppTheme.errorRed,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
@@ -297,20 +388,31 @@ class _CheckInScreenState extends State<CheckInScreen> {
                           children: [
                             const Text(
                               'QUEUE TOKEN',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.mutedText, letterSpacing: 0.5),
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.mutedText,
+                                  letterSpacing: 0.5),
                             ),
                             Text(
                               '#${_appointmentData!['queue_number'] ?? 'N/A'}',
-                              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: AppTheme.primarySkyBlue),
+                              style: const TextStyle(
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.w900,
+                                  color: AppTheme.primarySkyBlue),
                             ),
                           ],
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: isAlreadyCheckedIn
                                 ? AppTheme.accentGreen.withValues(alpha: 0.15)
-                                : (isCompleted ? AppTheme.primaryBlue.withValues(alpha: 0.15) : Colors.orange.withValues(alpha: 0.15)),
+                                : (isCompleted
+                                    ? AppTheme.primaryBlue
+                                        .withValues(alpha: 0.15)
+                                    : Colors.orange.withValues(alpha: 0.15)),
                             borderRadius: BorderRadius.circular(14),
                           ),
                           child: Text(
@@ -320,7 +422,9 @@ class _CheckInScreenState extends State<CheckInScreen> {
                               fontWeight: FontWeight.w800,
                               color: isAlreadyCheckedIn
                                   ? AppTheme.accentGreen
-                                  : (isCompleted ? AppTheme.primaryBlue : Colors.orange.shade800),
+                                  : (isCompleted
+                                      ? AppTheme.primaryBlue
+                                      : Colors.orange.shade800),
                             ),
                           ),
                         ),
@@ -330,18 +434,37 @@ class _CheckInScreenState extends State<CheckInScreen> {
                     const Divider(height: 24),
 
                     // Detail rows
-                    _buildDetailRow('Patient Name', _appointmentData!['patient_name'] ?? 'N/A', Icons.person_outline),
-                    _buildDetailRow('NIC Number', _appointmentData!['patient_nic'] ?? 'N/A', Icons.badge_outlined),
-                    _buildDetailRow('Phone Number', _appointmentData!['patient_phone'] ?? 'N/A', Icons.phone_outlined),
+                    _buildDetailRow(
+                        'Patient Name',
+                        _appointmentData!['patient_name'] ?? 'N/A',
+                        Icons.person_outline),
+                    _buildDetailRow(
+                        'NIC Number',
+                        _appointmentData!['patient_nic'] ?? 'N/A',
+                        Icons.badge_outlined),
+                    _buildDetailRow(
+                        'Phone Number',
+                        _appointmentData!['patient_phone'] ?? 'N/A',
+                        Icons.phone_outlined),
                     _buildDetailRow(
                       'OPD Room',
-                      AppointmentService.getRoomDisplayName(_appointmentData!['room'] ?? ''),
+                      AppointmentService.getRoomDisplayName(
+                          _appointmentData!['room'] ?? ''),
                       Icons.meeting_room_outlined,
                     ),
-                    _buildDetailRow('Appointment Date', _appointmentData!['appointment_date'] ?? 'N/A', Icons.calendar_today_outlined),
-                    _buildDetailRow('Appointment Time', _appointmentData!['appointment_time'] ?? 'N/A', Icons.access_time_rounded),
-                    if ((_appointmentData!['notes'] ?? '').toString().isNotEmpty)
-                      _buildDetailRow('Notes', _appointmentData!['notes'], Icons.note_outlined),
+                    _buildDetailRow(
+                        'Appointment Date',
+                        _appointmentData!['appointment_date'] ?? 'N/A',
+                        Icons.calendar_today_outlined),
+                    _buildDetailRow(
+                        'Appointment Time',
+                        _appointmentData!['appointment_time'] ?? 'N/A',
+                        Icons.access_time_rounded),
+                    if ((_appointmentData!['notes'] ?? '')
+                        .toString()
+                        .isNotEmpty)
+                      _buildDetailRow('Notes', _appointmentData!['notes'],
+                          Icons.note_outlined),
                   ],
                 ),
               ),
@@ -356,18 +479,23 @@ class _CheckInScreenState extends State<CheckInScreen> {
                   decoration: BoxDecoration(
                     color: AppTheme.accentGreen.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: AppTheme.accentGreen.withValues(alpha: 0.4)),
+                    border: Border.all(
+                        color: AppTheme.accentGreen.withValues(alpha: 0.4)),
                   ),
                   child: Column(
                     children: [
                       const Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.check_circle_rounded, color: AppTheme.accentGreen, size: 22),
+                          Icon(Icons.check_circle_rounded,
+                              color: AppTheme.accentGreen, size: 22),
                           SizedBox(width: 8),
                           Text(
                             'PATIENT CHECKED IN!',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.accentGreen),
+                            style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.accentGreen),
                           ),
                         ],
                       ),
@@ -389,22 +517,43 @@ class _CheckInScreenState extends State<CheckInScreen> {
               // Confirm & Check In Action Button
               SizedBox(
                 width: double.infinity,
-                height: 54,
+                height: 52,
                 child: ElevatedButton.icon(
-                  onPressed: (isAlreadyCheckedIn || isCompleted || _isCheckingIn) ? null : _handleConfirmCheckIn,
+                  onPressed: (isAlreadyCheckedIn ||
+                          isCompleted ||
+                          isQrAppointmentIneligible ||
+                          _isCheckingIn)
+                      ? null
+                      : _handleConfirmCheckIn,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.accentGreen,
+                    backgroundColor: AppTheme.primarySkyBlue,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   icon: _isCheckingIn
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : Icon(isAlreadyCheckedIn ? Icons.check_circle_rounded : Icons.how_to_reg_rounded, size: 24),
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              color: Colors.white, strokeWidth: 2))
+                      : Icon(
+                          isAlreadyCheckedIn
+                              ? Icons.check_circle_rounded
+                              : Icons.how_to_reg_rounded,
+                          size: 24),
                   label: Text(
                     isAlreadyCheckedIn
                         ? 'PATIENT ALREADY CHECKED-IN'
-                        : (isCompleted ? 'APPOINTMENT COMPLETED' : 'CHECK-IN PATIENT'),
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                        : (isCompleted
+                            ? 'APPOINTMENT COMPLETED'
+                            : (isQrAppointmentIneligible
+                                ? 'APPOINTMENT NOT ELIGIBLE'
+                                : 'CHECK-IN PATIENT')),
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5),
                   ),
                 ),
               ),
@@ -428,13 +577,19 @@ class _CheckInScreenState extends State<CheckInScreen> {
             width: 130,
             child: Text(
               label,
-              style: const TextStyle(fontSize: 13, color: AppTheme.mutedText, fontWeight: FontWeight.w500),
+              style: const TextStyle(
+                  fontSize: 13,
+                  color: AppTheme.mutedText,
+                  fontWeight: FontWeight.w500),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(fontSize: 14, color: AppTheme.darkText, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                  fontSize: 14,
+                  color: AppTheme.darkText,
+                  fontWeight: FontWeight.w600),
             ),
           ),
         ],

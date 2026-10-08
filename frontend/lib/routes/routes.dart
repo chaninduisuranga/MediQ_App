@@ -40,6 +40,8 @@ import '../screens/doctor_notifications_screen.dart';
 import '../screens/doctor_edit_profile_screen.dart';
 import '../screens/doctor_change_password_screen.dart';
 
+import '../screens/patient_live_queue_screen.dart';
+
 class AppRoutes {
   static const String splash = '/splash';
   static const String login = '/login';
@@ -47,6 +49,7 @@ class AppRoutes {
   static const String profile = '/profile';
   static const String home = '/home';
   static const String bookAppointment = '/book-appointment';
+  static const String patientLiveQueue = '/patient-live-queue';
   static const String medicalRecords = '/medical-records';
   static const String pillTracker = '/pill-tracker';
   static const String symptomChecker = '/symptom-checker';
@@ -88,6 +91,7 @@ class AppRoutes {
         profile: (context) => const PatientProfileScreen(),
         home: (context) => const HomeScreen(),
         bookAppointment: (context) => const BookAppointmentScreen(),
+        patientLiveQueue: (context) => const PatientLiveQueueScreen(),
         medicalRecords: (context) => const MedicalRecordsScreen(),
         pillTracker: (context) => const PillTrackerScreen(),
         symptomChecker: (context) => const SymptomCheckerScreen(),

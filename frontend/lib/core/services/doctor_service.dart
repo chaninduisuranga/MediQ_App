@@ -61,7 +61,7 @@ class DoctorService {
     try {
       final token = AuthService.token;
       final response = await http.get(
-        Uri.parse('$baseUrl/doctor/appointments/today'),
+        Uri.parse('$baseUrl/doctor/queue/today'),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
@@ -70,7 +70,23 @@ class DoctorService {
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
         if (body['success'] == true && body['data'] != null) {
-          return List<Map<String, dynamic>>.from(body['data'] as List);
+          final data = body['data'] as Map<String, dynamic>;
+          final queueList = data['queue'] as List? ?? [];
+          // Normalize field names to match UI expectations
+          return queueList.map((item) {
+            final m = Map<String, dynamic>.from(item as Map);
+            // Map backend status to UI-expected status names
+            final rawStatus = (m['status'] as String? ?? 'PENDING').toUpperCase();
+            m['appointment_status'] = rawStatus;
+            m['queue_status'] = _mapToQueueStatus(rawStatus);
+            // queue_number displayed as formatted token
+            m['queue_number'] = m['queue_token'] ?? '#${m['queue_number']}';
+            m['raw_number'] = m['queue_number'];
+            // time fields
+            m['appointment_time'] = m['appointment_time'] ?? '--';
+            m['appointment_date'] = m['appointment_date'] ?? '';
+            return m;
+          }).toList();
         }
       }
       debugPrint(

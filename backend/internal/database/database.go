@@ -61,6 +61,32 @@ func InitDB(databaseURL string) *gorm.DB {
 	log.Println("Database connection established successfully")
 	DB = db
 	seedDefaultUsers(db)
+	seedDefaultChatFAQsOnStartup(db)
+
+	// Fix PostgreSQL sequence desynchronization for primary keys across all tables
+	db.Exec(`
+		DO $$ 
+		DECLARE 
+			tbl text;
+			seq text;
+			max_id bigint;
+		BEGIN 
+			FOR tbl IN 
+				SELECT table_name 
+				FROM information_schema.tables 
+				WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+			LOOP 
+				seq := pg_get_serial_sequence(tbl, 'id');
+				IF seq IS NOT NULL THEN 
+					EXECUTE format('SELECT COALESCE(MAX(id), 0) FROM %I', tbl) INTO max_id;
+					IF max_id > 0 THEN 
+						EXECUTE format('SELECT setval(%L, %s)', seq, max_id);
+					END IF;
+				END IF;
+			END LOOP;
+		END $$;
+	`)
+
 	return db
 }
 

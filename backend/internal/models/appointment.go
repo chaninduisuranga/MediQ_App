@@ -36,8 +36,8 @@ type OPDAppointment struct {
 	Patient          User              `gorm:"foreignKey:PatientID" json:"patient,omitempty"`
 	Room             OPDRoom           `gorm:"type:varchar(50);not null;index" json:"room"`
 	QueueNumber      int               `gorm:"not null" json:"queue_number"`
-	AppointmentDate  string            `gorm:"type:varchar(10);not null;index" json:"appointment_date"` // YYYY-MM-DD
-	AppointmentTime  string            `gorm:"type:varchar(5)" json:"appointment_time"`                 // HH:MM
+	AppointmentDate  string            `gorm:"type:varchar(20);not null;index" json:"appointment_date"` // YYYY-MM-DD
+	AppointmentTime  string            `gorm:"type:varchar(20)" json:"appointment_time"`                // HH:MM
 	PatientName      string            `gorm:"not null" json:"patient_name"`
 	PatientNIC       string            `gorm:"not null" json:"patient_nic"`
 	PatientPhone     string            `json:"patient_phone"`

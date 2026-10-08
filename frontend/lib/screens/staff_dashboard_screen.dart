@@ -53,7 +53,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
     },
   ];
 
-  String _selectedRoomKey = 'GENERAL_OPD';
+  String _selectedRoomKey = QueueService.selectedStaffRoomKey;
   bool _isLoading = true;
   // ignore: prefer_final_fields
   bool _isOnDuty = true;
@@ -68,14 +68,16 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    QueueService.setSelectedStaffRoomKey(_selectedRoomKey);
     _fetchQueueStats();
   }
 
   Future<void> _fetchQueueStats() async {
+    final roomKey = _selectedRoomKey;
     if (mounted) setState(() => _isLoading = true);
     try {
-      final appointments = await QueueService.getStaffQueue();
-      if (!mounted) return;
+      final appointments = await QueueService.getStaffQueue(roomKey: roomKey);
+      if (!mounted || roomKey != _selectedRoomKey) return;
       final activePatient = appointments.firstWhere(
         (a) => a['status'] == 'IN_PROGRESS',
         orElse: () => <String, dynamic>{},
@@ -90,7 +92,6 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
         _waitingCount = appointments
             .where((a) =>
                 a['status'] == 'PENDING' ||
-                a['status'] == 'CONFIRMED' ||
                 a['status'] == 'CHECKED_IN')
             .length;
         _priorityCount =
@@ -102,7 +103,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
         _isLoading = false;
       });
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted || roomKey != _selectedRoomKey) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -114,11 +115,12 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
   }
 
   void _showQuickCallNextDialog() async {
+    final roomKey = _selectedRoomKey;
     late final List<Map<String, dynamic>> appointments;
     try {
-      appointments = await QueueService.getStaffQueue();
+      appointments = await QueueService.getStaffQueue(roomKey: roomKey);
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted || roomKey != _selectedRoomKey) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Could not load the Staff queue: $error'),
@@ -130,10 +132,9 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
     final waiting = appointments
         .where((a) =>
             a['status'] == 'CHECKED_IN' ||
-            a['status'] == 'PENDING' ||
-            a['status'] == 'CONFIRMED')
+            a['status'] == 'PENDING')
         .toList();
-    if (!mounted) return;
+    if (!mounted || roomKey != _selectedRoomKey) return;
 
     if (waiting.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -227,9 +228,10 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                   await QueueService.updateStaffPatientStatus(
                     currentId,
                     'COMPLETED',
+                    roomKey: roomKey,
                   );
                 }
-                await QueueService.callStaffPatient(nextId);
+                await QueueService.callStaffPatient(nextId, roomKey: roomKey);
                 await _fetchQueueStats();
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -431,6 +433,7 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                         setState(() {
                           _selectedRoomKey = val;
                         });
+                        QueueService.setSelectedStaffRoomKey(val);
                         _fetchQueueStats();
                       }
                     },
@@ -447,11 +450,10 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                        color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                        color: AppTheme.primarySkyBlue.withValues(alpha: 0.3)),
                     boxShadow: [
                       BoxShadow(
-                        color:
-                            const Color(0xFF10B981).withValues(alpha: 0.08),
+                        color: AppTheme.primarySkyBlue.withValues(alpha: 0.08),
                         blurRadius: 10,
                         offset: const Offset(0, 4),
                       ),
@@ -463,11 +465,11 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color:
-                              const Color(0xFF10B981).withValues(alpha: 0.12),
+                              AppTheme.primarySkyBlue.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(Icons.medical_services_rounded,
-                            color: Color(0xFF059669), size: 28),
+                            color: AppTheme.primarySkyBlue, size: 28),
                       ),
                       const SizedBox(width: 14),
                       const Expanded(
@@ -493,10 +495,10 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                       ),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF10B981),
+                          backgroundColor: AppTheme.primarySkyBlue,
                           foregroundColor: Colors.white,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
                           ),
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 8),
@@ -644,7 +646,14 @@ class _StaffDashboardScreenState extends State<StaffDashboardScreen> {
                     context,
                     '/opd-queue',
                     arguments: {'roomKey': _selectedRoomKey},
-                  );
+                  ).then((_) {
+                    if (!mounted) return;
+                    final selectedRoom = QueueService.selectedStaffRoomKey;
+                    if (_selectedRoomKey != selectedRoom) {
+                      setState(() => _selectedRoomKey = selectedRoom);
+                    }
+                    _fetchQueueStats();
+                  });
                 },
               ),
 

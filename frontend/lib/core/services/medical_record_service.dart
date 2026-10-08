@@ -6,6 +6,33 @@ import 'auth_service.dart';
 class MedicalRecordService {
   static String get baseUrl => AuthService.baseUrl;
 
+  /// Fetches the patient's OPD consultation history (COMPLETED appointments).
+  /// Optional [month] in format 'YYYY-MM' filters results to that month.
+  static Future<Map<String, dynamic>> getDoctorHistory({String? month}) async {
+    try {
+      final token = AuthService.token;
+      var uriStr = '$baseUrl/appointments/history';
+      if (month != null && month.isNotEmpty) {
+        uriStr += '?month=$month';
+      }
+      final response = await http.get(
+        Uri.parse(uriStr),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+      final data = jsonDecode(response.body);
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {'success': true, 'data': data['data'] ?? []};
+      } else {
+        return {'success': false, 'message': data['error'] ?? 'Failed to fetch history'};
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Cannot connect to server.'};
+    }
+  }
+
   static Future<Map<String, dynamic>> getPatientRecords({String? recordType}) async {
     try {
       final token = AuthService.token;

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/theme/theme.dart';
 
 class StaffBottomNavBar extends StatelessWidget {
   final int currentIndex;
@@ -47,8 +48,8 @@ class StaffBottomNavBar extends StatelessWidget {
         currentIndex: currentIndex,
         onTap: (index) => _onTap(context, index),
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF0284C7),
-        unselectedItemColor: const Color(0xFF64748B),
+        selectedItemColor: AppTheme.primarySkyBlue,
+        unselectedItemColor: AppTheme.mutedText,
         selectedFontSize: 11,
         unselectedFontSize: 11,
         elevation: 0,
