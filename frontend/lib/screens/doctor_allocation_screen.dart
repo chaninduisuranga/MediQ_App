@@ -147,7 +147,7 @@ class _DoctorAllocationScreenState extends State<DoctorAllocationScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primarySkyBlue,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                  borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('ALLOCATE NOW',
@@ -540,7 +540,7 @@ class _DoctorAllocationScreenState extends State<DoctorAllocationScreen> {
                     backgroundColor: AppTheme.primarySkyBlue,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: _isLoading ? null : _handleAllocateNextBatch,
                   icon: const Icon(Icons.auto_mode_rounded, size: 22),
