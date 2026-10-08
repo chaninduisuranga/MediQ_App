@@ -49,10 +49,11 @@ class StaffAllocationService {
   static int get unallocatedWaitingCount =>
       _unallocatedWaitingPatients.length;
 
-  static Future<void> refreshData() async {
+  static Future<void> refreshData({String? roomKey}) async {
+    final selectedRoom = roomKey ?? QueueService.selectedStaffRoomKey;
     final results = await Future.wait([
-      QueueService.getStaffDoctors(),
-      QueueService.getStaffQueue(),
+      QueueService.getStaffDoctors(roomKey: selectedRoom),
+      QueueService.getStaffQueue(roomKey: selectedRoom),
     ]);
     final doctorData = results[0];
     final queue = results[1];
@@ -167,8 +168,10 @@ class StaffAllocationService {
     return List.unmodifiable(_unallocatedWaitingPatients);
   }
 
-  static Future<Map<String, dynamic>> allocateNextBatch() async {
-    await refreshData();
+  static Future<Map<String, dynamic>> allocateNextBatch(
+      {String? roomKey}) async {
+    final selectedRoom = roomKey ?? QueueService.selectedStaffRoomKey;
+    await refreshData(roomKey: selectedRoom);
     final availableDoctors =
         _doctors.where((doctor) => doctor.isAvailable).toList();
     if (availableDoctors.isEmpty) {
@@ -210,7 +213,11 @@ class StaffAllocationService {
         continue;
       }
       try {
-        await QueueService.allocateStaffPatient(patientId, doctor.id);
+        await QueueService.allocateStaffPatient(
+          patientId,
+          doctor.id,
+          roomKey: selectedRoom,
+        );
         doctor.allocatedPatients.add(patient);
         patientsByDoctor[doctor] = (patientsByDoctor[doctor] ?? 0) + 1;
         allocatedCount++;

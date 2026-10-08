@@ -1,6 +1,10 @@
 package models
 
-import "time"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type QueueActivityHistory struct {
 	ID            uint              `gorm:"primaryKey" json:"id"`
@@ -11,6 +15,7 @@ type QueueActivityHistory struct {
 	Status        AppointmentStatus `gorm:"type:varchar(20);not null" json:"status"`
 	Details       *string           `gorm:"type:text" json:"details,omitempty"`
 	OccurredAt    time.Time         `gorm:"not null;index" json:"occurred_at"`
+	DeletedAt     gorm.DeletedAt    `gorm:"index" json:"-"`
 }
 
 func (QueueActivityHistory) TableName() string {
