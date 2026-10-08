@@ -8,6 +8,51 @@ import 'auth_service.dart';
 class DoctorService {
   static String get baseUrl => AuthService.baseUrl;
 
+  static bool isAppointmentInConsultation(Map<String, dynamic> appointment) {
+    const consultationStatuses = {
+      'IN_CONSULTATION',
+      'IN_PROGRESS',
+      'SERVING',
+      'CONSULTING',
+      'ONGOING',
+      'ACTIVE',
+    };
+    return appointment['active'] == true ||
+        appointment['is_active'] == true ||
+        appointment['isActive'] == true ||
+        _appointmentStatuses(appointment).any(consultationStatuses.contains);
+  }
+
+  static bool isAppointmentWaiting(Map<String, dynamic> appointment) {
+    if (isAppointmentInConsultation(appointment)) return false;
+
+    const waitingStatuses = {
+      'WAITING',
+      'CHECKED_IN',
+      'PENDING',
+      'CONFIRMED',
+      'SCHEDULED',
+      'CALLED',
+    };
+    return _appointmentStatuses(appointment).any(waitingStatuses.contains);
+  }
+
+  static Iterable<String> _appointmentStatuses(
+      Map<String, dynamic> appointment) {
+    return [
+      appointment['appointment_status'],
+      appointment['consultation_status'],
+      appointment['queue_status'],
+      appointment['status'],
+    ].whereType<Object>().map(
+          (status) => status
+              .toString()
+              .trim()
+              .toUpperCase()
+              .replaceAll(RegExp(r'[\s-]+'), '_'),
+        );
+  }
+
   // ─────────────────────────────────────────────────────────────────────
   // Today's Appointments
   // ─────────────────────────────────────────────────────────────────────
@@ -158,7 +203,8 @@ class DoctorService {
         if (sessionType != null) 'session_type': sessionType,
         if (workingHoursStart != null) 'working_hours_start': workingHoursStart,
         if (workingHoursEnd != null) 'working_hours_end': workingHoursEnd,
-        if (maxPatientsPerDay != null) 'max_patients_per_day': maxPatientsPerDay,
+        if (maxPatientsPerDay != null)
+          'max_patients_per_day': maxPatientsPerDay,
         if (clinic != null) 'clinic': clinic,
       };
 
@@ -231,7 +277,10 @@ class DoctorService {
       if (response.statusCode == 200 && body['success'] == true) {
         return {'success': true, 'data': body['data']};
       }
-      return {'success': false, 'message': body['error'] ?? 'Failed to update profile'};
+      return {
+        'success': false,
+        'message': body['error'] ?? 'Failed to update profile'
+      };
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
     }
@@ -258,13 +307,17 @@ class DoctorService {
       if (response.statusCode == 200 && body['success'] == true) {
         return {'success': true, 'message': 'Password changed successfully'};
       }
-      return {'success': false, 'message': body['error'] ?? 'Failed to change password'};
+      return {
+        'success': false,
+        'message': body['error'] ?? 'Failed to change password'
+      };
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
     }
   }
 
-  static Future<List<Map<String, dynamic>>> getPatientHistory(int patientId) async {
+  static Future<List<Map<String, dynamic>>> getPatientHistory(
+      int patientId) async {
     try {
       final token = AuthService.token;
       final response = await http.get(
@@ -341,31 +394,20 @@ class DoctorService {
 
   static Future<Map<String, dynamic>> getDashboardStats() async {
     final appointments = await getTodayAppointments();
-    final waiting = appointments
-        .where((a) =>
-            a['queue_status'] == 'CHECKED_IN' ||
-            a['appointment_status'] == 'WAITING')
-        .length;
-    final inConsultation = appointments
-        .where((a) =>
-            a['appointment_status'] == 'IN_CONSULTATION' ||
-            a['queue_status'] == 'IN_PROGRESS')
-        .length;
+    final waiting = appointments.where(isAppointmentWaiting).length;
+    final inConsultation =
+        appointments.where(isAppointmentInConsultation).length;
     final completed = appointments
         .where((a) => a['appointment_status'] == 'COMPLETED')
         .length;
 
     final currentPatient = appointments.firstWhere(
-      (a) =>
-          a['appointment_status'] == 'IN_CONSULTATION' ||
-          a['queue_status'] == 'IN_PROGRESS',
+      isAppointmentInConsultation,
       orElse: () => <String, dynamic>{},
     );
 
     final nextPatient = appointments.firstWhere(
-      (a) =>
-          a['queue_status'] == 'CHECKED_IN' ||
-          a['appointment_status'] == 'WAITING',
+      isAppointmentWaiting,
       orElse: () => <String, dynamic>{},
     );
 

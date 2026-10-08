@@ -51,9 +51,8 @@ class QueueService {
       decoded = jsonDecode(response.body);
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = decoded is Map
-          ? decoded['error'] ?? decoded['message']
-          : null;
+      final message =
+          decoded is Map ? decoded['error'] ?? decoded['message'] : null;
       throw Exception(
         message?.toString() ??
             'Staff API request failed (${response.statusCode}).',
@@ -129,9 +128,10 @@ class QueueService {
     return _normalizeStaffQueue(_staffListFromResponse(response));
   }
 
-  static Future<List<Map<String, dynamic>>> searchStaffQueue(String query) async {
-    final uri = _staffUri('/staff/queue/search')
-        .replace(queryParameters: {'q': query});
+  static Future<List<Map<String, dynamic>>> searchStaffQueue(
+      String query) async {
+    final uri =
+        _staffUri('/staff/queue/search').replace(queryParameters: {'q': query});
     final response = await _sendStaffRequest('GET', uri);
     return _normalizeStaffQueue(_staffListFromResponse(response));
   }
@@ -258,14 +258,44 @@ class QueueService {
     return [];
   }
 
+  static bool isQueueEntryActive(Map<String, dynamic> entry) {
+    if (entry['active'] == true ||
+        entry['is_active'] == true ||
+        entry['isActive'] == true) {
+      return true;
+    }
+
+    const activeStatuses = {
+      'ACTIVE',
+      'IN_CONSULTATION',
+      'IN_PROGRESS',
+      'SERVING',
+      'CONSULTING',
+      'ONGOING',
+    };
+    return [
+      entry['appointment_status'],
+      entry['consultation_status'],
+      entry['queue_status'],
+      entry['status'],
+    ].whereType<Object>().any((status) {
+      final normalized = status
+          .toString()
+          .trim()
+          .toUpperCase()
+          .replaceAll(RegExp(r'[\s-]+'), '_');
+      return activeStatuses.contains(normalized);
+    });
+  }
+
   static void _sortQueueList(List<Map<String, dynamic>> list) {
     list.sort((a, b) {
-      if (a['queue_status'] == 'IN_PROGRESS' &&
-          b['queue_status'] != 'IN_PROGRESS') {
+      final aIsActive = isQueueEntryActive(a);
+      final bIsActive = isQueueEntryActive(b);
+      if (aIsActive && !bIsActive) {
         return -1;
       }
-      if (b['queue_status'] == 'IN_PROGRESS' &&
-          a['queue_status'] != 'IN_PROGRESS') {
+      if (bIsActive && !aIsActive) {
         return 1;
       }
 
