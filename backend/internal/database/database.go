@@ -35,7 +35,7 @@ func InitDB(databaseURL string) *gorm.DB {
 		db.Exec(`ALTER TABLE "` + item.table + `" DROP CONSTRAINT IF EXISTS "` + item.name + `" CASCADE`)
 	}
 
-	// Auto-migrate all tables. If migration fails only due to the known stale
+	// Auto-migrate all tables including Notification. If migration fails only due to the known stale
 	// constraint issue (which we already cleaned up above), log a warning and
 	// continue — the server is still functional.
 	if err := db.AutoMigrate(
@@ -46,6 +46,7 @@ func InitDB(databaseURL string) *gorm.DB {
 		&models.OPDAppointment{},
 		&models.QueueSession{},
 		&models.ChatMessage{},
+		&models.Notification{},
 	); err != nil {
 		// Treat missing-constraint errors as non-fatal warnings
 		if strings.Contains(err.Error(), "does not exist (SQLSTATE 42704)") {
@@ -54,7 +55,7 @@ func InitDB(databaseURL string) *gorm.DB {
 			log.Printf("Failed to auto-migrate database schema: %v", err)
 		}
 	} else {
-		log.Println("Database schema auto-migrated successfully (Users, Doctors, StaffAssignments, MedicalRecords, OPDAppointments, QueueSessions, ChatMessages)")
+		log.Println("Database schema auto-migrated successfully (Users, Doctors, StaffAssignments, MedicalRecords, OPDAppointments, QueueSessions, ChatMessages, Notifications)")
 	}
 
 	log.Println("Database connection established successfully")

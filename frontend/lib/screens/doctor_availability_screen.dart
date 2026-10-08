@@ -11,15 +11,25 @@ class DoctorAvailabilityScreen extends StatefulWidget {
       _DoctorAvailabilityScreenState();
 }
 
-class _DoctorAvailabilityScreenState
-    extends State<DoctorAvailabilityScreen> {
+class _DoctorAvailabilityScreenState extends State<DoctorAvailabilityScreen> {
   bool _isLoading = true;
   bool _isSaving = false;
   Map<String, dynamic> _availability = {};
 
+  final _clinicController = TextEditingController();
+  final _sessionTypeController = TextEditingController();
+  final _startTimeController = TextEditingController();
+  final _endTimeController = TextEditingController();
+  final _maxPatientsController = TextEditingController();
+
   static const _allDays = [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
-    'Saturday', 'Sunday'
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday'
   ];
 
   @override
@@ -28,31 +38,70 @@ class _DoctorAvailabilityScreenState
     _fetch();
   }
 
+  @override
+  void dispose() {
+    _clinicController.dispose();
+    _sessionTypeController.dispose();
+    _startTimeController.dispose();
+    _endTimeController.dispose();
+    _maxPatientsController.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetch() async {
     setState(() => _isLoading = true);
     final data = await DoctorService.getAvailability();
-    if (mounted) setState(() { _availability = data; _isLoading = false; });
+    if (mounted) {
+      setState(() {
+        _availability = Map<String, dynamic>.from(data);
+        _isLoading = false;
+        _clinicController.text = _availability['clinic']?.toString() ?? 'General OPD Clinic';
+        _sessionTypeController.text = _availability['session_type']?.toString() ?? 'Morning OPD';
+        _startTimeController.text = _availability['working_hours_start']?.toString() ?? '08:00 AM';
+        _endTimeController.text = _availability['working_hours_end']?.toString() ?? '04:00 PM';
+        _maxPatientsController.text = (_availability['max_patients_per_day'] ?? 30).toString();
+      });
+    }
   }
 
   Future<void> _saveAvailability() async {
     setState(() => _isSaving = true);
-    final isAvailable = (_availability['is_available'] as bool?) ?? true;
-    await DoctorService.updateAvailability(isAvailable);
+    final isAvailable = _availability['is_available'] == true;
+    final maxP = int.tryParse(_maxPatientsController.text.trim()) ?? 30;
+
+    final success = await DoctorService.updateAvailability(
+      isAvailable: isAvailable,
+      workingDays: _workingDays,
+      sessionType: _sessionTypeController.text.trim(),
+      workingHoursStart: _startTimeController.text.trim(),
+      workingHoursEnd: _endTimeController.text.trim(),
+      maxPatientsPerDay: maxP,
+      clinic: _clinicController.text.trim(),
+    );
+
     if (mounted) {
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Availability updated successfully.'),
-          backgroundColor: Color(0xFF10B981),
+        SnackBar(
+          content: Text(
+            success
+                ? 'Availability saved successfully.'
+                : 'Could not save availability. Please try again.',
+          ),
+          backgroundColor:
+              success ? const Color(0xFF10B981) : AppTheme.errorRed,
         ),
       );
+      if (success) {
+        Navigator.pop(context);
+      }
     }
   }
 
   List<String> get _workingDays {
     final raw = _availability['working_days'];
     if (raw is List) return raw.map((e) => e.toString()).toList();
-    return [];
+    return ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
   }
 
   void _toggleDay(String day) {
@@ -67,11 +116,11 @@ class _DoctorAvailabilityScreenState
 
   @override
   Widget build(BuildContext context) {
-    final isAvailable = (_availability['is_available'] as bool?) ?? true;
+    final isAvailable = _availability['is_available'] == true;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Availability',
+        title: const Text('Availability & Schedule',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         actions: [
           if (!_isLoading)
@@ -83,7 +132,8 @@ class _DoctorAvailabilityScreenState
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: AppTheme.doctorPrimaryColor))
+              child:
+                  CircularProgressIndicator(color: AppTheme.doctorPrimaryColor))
           : SingleChildScrollView(
               padding: const EdgeInsets.all(20),
               child: Column(
@@ -155,8 +205,7 @@ class _DoctorAvailabilityScreenState
                           activeTrackColor:
                               Colors.greenAccent.withValues(alpha: 0.6),
                           onChanged: (val) {
-                            setState(
-                                () => _availability['is_available'] = val);
+                            setState(() => _availability['is_available'] = val);
                           },
                         ),
                       ],
@@ -165,22 +214,84 @@ class _DoctorAvailabilityScreenState
 
                   const SizedBox(height: 20),
 
-                  // ── Session Info Card ──
-                  _buildInfoCard(
-                    title: 'Session Information',
-                    icon: Icons.info_outline_rounded,
-                    children: [
-                      _infoRow(Icons.local_hospital_rounded, 'Clinic',
-                          _availability['clinic'] ?? 'General OPD'),
-                      _infoRow(Icons.wb_sunny_rounded, 'Session Type',
-                          _availability['session_type'] ?? 'Morning Session'),
-                      _infoRow(Icons.schedule_rounded, 'Start Time',
-                          _availability['working_hours_start'] ?? '08:00 AM'),
-                      _infoRow(Icons.schedule_outlined, 'End Time',
-                          _availability['working_hours_end'] ?? '04:00 PM'),
-                      _infoRow(Icons.people_rounded, 'Max Patients/Day',
-                          '${_availability['max_patients_per_day'] ?? 40}'),
-                    ],
+                  // ── Session Info Form ──
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: Colors.grey.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.info_outline_rounded,
+                                size: 18, color: AppTheme.doctorPrimaryColor),
+                            SizedBox(width: 8),
+                            Text('Session Information',
+                                style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.darkText)),
+                          ],
+                        ),
+                        const Divider(height: 20),
+
+                        // Clinic Name
+                        _buildInputField(
+                          label: 'Clinic / Hospital Name',
+                          icon: Icons.local_hospital_rounded,
+                          controller: _clinicController,
+                          hint: 'Enter clinic name',
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Session Type
+                        _buildInputField(
+                          label: 'Session Type',
+                          icon: Icons.wb_sunny_rounded,
+                          controller: _sessionTypeController,
+                          hint: 'e.g. Morning OPD / Evening OPD',
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Working Hours
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildInputField(
+                                label: 'Start Time',
+                                icon: Icons.schedule_rounded,
+                                controller: _startTimeController,
+                                hint: '08:00 AM',
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildInputField(
+                                label: 'End Time',
+                                icon: Icons.schedule_outlined,
+                                controller: _endTimeController,
+                                hint: '04:00 PM',
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Max Patients
+                        _buildInputField(
+                          label: 'Max Patients / Day',
+                          icon: Icons.people_rounded,
+                          controller: _maxPatientsController,
+                          keyboardType: TextInputType.number,
+                          hint: '30',
+                        ),
+                      ],
+                    ),
                   ),
 
                   const SizedBox(height: 16),
@@ -274,64 +385,40 @@ class _DoctorAvailabilityScreenState
     );
   }
 
-  Widget _buildInfoCard({
-    required String title,
+  Widget _buildInputField({
+    required String label,
     required IconData icon,
-    required List<Widget> children,
+    required TextEditingController controller,
+    String? hint,
+    TextInputType? keyboardType,
   }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: AppTheme.doctorPrimaryColor),
-              const SizedBox(width: 8),
-              Text(title,
-                  style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: AppTheme.darkText)),
-            ],
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: AppTheme.mutedText),
+        ),
+        const SizedBox(height: 4),
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: hint,
+            prefixIcon: Icon(icon, size: 18, color: AppTheme.doctorPrimaryColor),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: BorderSide(color: Colors.grey.shade300),
+            ),
           ),
-          const Divider(height: 20),
-          ...children,
-        ],
-      ),
-    );
-  }
-
-  Widget _infoRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        children: [
-          Icon(icon, size: 17, color: AppTheme.doctorPrimaryColor),
-          const SizedBox(width: 10),
-          SizedBox(
-            width: 110,
-            child: Text(label,
-                style: const TextStyle(
-                    fontSize: 13,
-                    color: AppTheme.mutedText,
-                    fontWeight: FontWeight.w500)),
-          ),
-          Expanded(
-            child: Text(value,
-                style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.darkText)),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
