@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../core/services/doctor_service.dart';
-import '../core/services/queue_service.dart';
 import '../core/theme/theme.dart';
 import '../widgets/doctor_bottom_nav_bar.dart';
 
