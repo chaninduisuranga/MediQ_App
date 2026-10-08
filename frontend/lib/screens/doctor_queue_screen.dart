@@ -22,23 +22,32 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
   }
 
   Future<void> _fetchQueue() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     final list = await DoctorService.getTodayAppointments();
-    if (mounted) setState(() { _appointments = list; _isLoading = false; });
+    if (mounted) {
+      setState(() {
+        _appointments = list;
+        _isLoading = false;
+      });
+    }
   }
 
-  Map<String, dynamic> get _currentPatient => _appointments.firstWhere(
-        (a) =>
-            a['appointment_status'] == 'IN_CONSULTATION' ||
-            a['queue_status'] == 'IN_PROGRESS',
-        orElse: () => <String, dynamic>{},
-      );
+  Map<String, dynamic> get _currentPatient {
+    if (_appointments.isNotEmpty &&
+        QueueService.isQueueEntryActive(_appointments.first)) {
+      return _appointments.first;
+    }
+    return _appointments.firstWhere(
+      (appointment) =>
+          QueueService.isQueueEntryActive(appointment) ||
+          DoctorService.isAppointmentInConsultation(appointment),
+      orElse: () => <String, dynamic>{},
+    );
+  }
 
-  List<Map<String, dynamic>> get _waitingList => _appointments
-      .where((a) =>
-          a['queue_status'] == 'CHECKED_IN' ||
-          a['appointment_status'] == 'WAITING')
-      .toList();
+  List<Map<String, dynamic>> get _waitingList =>
+      _appointments.where(DoctorService.isAppointmentWaiting).toList();
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +68,8 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
       ),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(color: AppTheme.doctorPrimaryColor))
+              child:
+                  CircularProgressIndicator(color: AppTheme.doctorPrimaryColor))
           : RefreshIndicator(
               onRefresh: _fetchQueue,
               child: SingleChildScrollView(
@@ -69,20 +79,20 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // ── Current Patient Panel ──
-                    _buildSectionTitle('Currently In Consultation',
+                    _buildSectionTitle(
+                        'Currently In Consultation',
                         Icons.medical_services_rounded,
                         AppTheme.doctorPrimaryColor),
                     const SizedBox(height: 10),
                     current.isNotEmpty
                         ? _buildCurrentPatientCard(current)
-                        : _buildEmptyPanel(
-                            'No patient in consultation',
-                            Icons.person_off_rounded,
-                            AppTheme.mutedText),
+                        : _buildEmptyPanel('No patient in consultation',
+                            Icons.person_off_rounded, AppTheme.mutedText),
                     const SizedBox(height: 20),
 
                     // ── Next Patient Panel ──
-                    _buildSectionTitle('Next Patient',
+                    _buildSectionTitle(
+                        'Next Patient',
                         Icons.arrow_circle_right_rounded,
                         const Color(0xFF0D9488)),
                     const SizedBox(height: 10),
@@ -97,7 +107,8 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
                     // ── Waiting List ──
                     Row(
                       children: [
-                        _buildSectionTitle('Waiting Queue',
+                        _buildSectionTitle(
+                            'Waiting Queue',
                             Icons.format_list_numbered_rounded,
                             const Color(0xFFF59E0B)),
                         const Spacer(),
@@ -105,7 +116,8 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
+                            color:
+                                const Color(0xFFF59E0B).withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
@@ -191,14 +203,14 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
                     const SizedBox(height: 3),
                     Text(
                       '${appt['patient_id'] ?? ''} · ${appt['appointment_time'] ?? ''}',
-                      style: const TextStyle(
-                          color: Colors.white70, fontSize: 12),
+                      style:
+                          const TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                     const SizedBox(height: 3),
                     Text(
                       'Age ${appt['patient_age'] ?? '--'} · ${appt['patient_gender'] ?? ''}',
-                      style: const TextStyle(
-                          color: Colors.white60, fontSize: 12),
+                      style:
+                          const TextStyle(color: Colors.white60, fontSize: 12),
                     ),
                   ],
                 ),
@@ -245,8 +257,8 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-            color: const Color(0xFF0D9488).withValues(alpha: 0.3)),
+        border:
+            Border.all(color: const Color(0xFF0D9488).withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
@@ -287,8 +299,8 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
                 const SizedBox(height: 2),
                 Text(
                   appt['appointment_time'] ?? '--',
-                  style: const TextStyle(
-                      fontSize: 12, color: AppTheme.mutedText),
+                  style:
+                      const TextStyle(fontSize: 12, color: AppTheme.mutedText),
                 ),
               ],
             ),
@@ -315,9 +327,7 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: disabled
-              ? Colors.grey.shade100
-              : color.withValues(alpha: 0.1),
+          color: disabled ? Colors.grey.shade100 : color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
               color: disabled
@@ -328,8 +338,7 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(icon,
-                size: 18,
-                color: disabled ? Colors.grey.shade400 : color),
+                size: 18, color: disabled ? Colors.grey.shade400 : color),
             const SizedBox(width: 7),
             Text(
               label,
@@ -415,8 +424,7 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
             ),
           ),
           InkWell(
-            onTap: () => Navigator.pushNamed(
-                context, '/doctor-patient-detail',
+            onTap: () => Navigator.pushNamed(context, '/doctor-patient-detail',
                 arguments: appt),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -449,7 +457,7 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
         title: const Text('Skip Patient',
             style: TextStyle(fontWeight: FontWeight.bold)),
         content: Text(
-            'Skip ${appt['patient_name']} (${appt['queue_number']})? They will be moved to the Next Patient slot.',
+            'Skip ${appt['patient_name']} (${appt['queue_number']})? They will return to the waiting queue.',
             style: const TextStyle(color: AppTheme.mutedText, fontSize: 14)),
         actions: [
           TextButton(
@@ -463,24 +471,67 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
             onPressed: () async {
               Navigator.pop(ctx);
               final currentId = (appt['id'] as int?) ?? 0;
-              
+
               final appointments = await DoctorService.getTodayAppointments();
-              final waitingList = appointments.where((a) =>
-                  a['queue_status'] == 'CHECKED_IN' ||
-                  a['appointment_status'] == 'WAITING').toList();
-                  
+              final waitingList = appointments
+                  .where(DoctorService.isAppointmentWaiting)
+                  .where((a) => a['id'] != currentId)
+                  .toList();
+
+              final currentRequeued =
+                  await DoctorService.updateAppointmentStatus(
+                      currentId, 'WAITING');
+              if (!currentRequeued) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Could not return patient to the queue.'),
+                      backgroundColor: AppTheme.errorRed,
+                    ),
+                  );
+                }
+                return;
+              }
+
+              var nextPatientCalled = false;
               if (waitingList.isNotEmpty) {
                 final nextPatientId = (waitingList.first['id'] as int?) ?? 0;
-                await DoctorService.updateAppointmentStatus(nextPatientId, 'IN_CONSULTATION');
+                nextPatientCalled = await DoctorService.updateAppointmentStatus(
+                  nextPatientId,
+                  'IN_CONSULTATION',
+                );
               }
-              
-              await DoctorService.updateAppointmentStatus(currentId, 'WAITING');
-              
+
+              if (!nextPatientCalled && waitingList.isNotEmpty) {
+                final restored = await DoctorService.updateAppointmentStatus(
+                  currentId,
+                  'IN_CONSULTATION',
+                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        restored
+                            ? 'Could not call the next patient. The current patient remains in consultation.'
+                            : 'Could not call the next patient or restore the current consultation. Refresh the queue.',
+                      ),
+                      backgroundColor: AppTheme.errorRed,
+                    ),
+                  );
+                }
+                await _fetchQueue();
+                return;
+              }
+
               await _fetchQueue();
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('${appt['patient_name']} moved to Next Patient slot.'),
+                    content: Text(
+                      nextPatientCalled
+                          ? '${waitingList.first['patient_name']} is now in consultation. ${appt['patient_name']} returned to the waiting queue.'
+                          : '${appt['patient_name']} returned to the waiting queue. No other patient was waiting.',
+                    ),
                     backgroundColor: const Color(0xFFF59E0B),
                   ),
                 );
@@ -515,8 +566,7 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(16),
-        border:
-            Border.all(color: color.withValues(alpha: 0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [

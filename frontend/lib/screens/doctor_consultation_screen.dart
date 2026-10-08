@@ -125,13 +125,11 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
     // Automatically move 'Next Patient' to 'Currently In Consultation'
     final appointments = await DoctorService.getTodayAppointments();
     var nextPatientCalled = false;
-    final waitingList = appointments
-        .where((a) =>
-            a['queue_status'] == 'CHECKED_IN' ||
-            a['appointment_status'] == 'WAITING')
-        .toList();
+    final waitingList =
+        appointments.where(DoctorService.isAppointmentWaiting).toList();
+    final hasWaitingPatient = waitingList.isNotEmpty;
 
-    if (waitingList.isNotEmpty) {
+    if (hasWaitingPatient) {
       final nextPatientId = (waitingList.first['id'] as int?) ?? 0;
       nextPatientCalled = await DoctorService.updateAppointmentStatus(
         nextPatientId,
@@ -147,9 +145,13 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
         content: Text(
           nextPatientCalled
               ? 'Consultation completed. Next patient called automatically.'
-              : 'Consultation completed. No next patient was called.',
+              : hasWaitingPatient
+                  ? 'Consultation completed, but the next patient could not be called. Please refresh the queue.'
+                  : 'Consultation completed. No next patient was waiting.',
         ),
-        backgroundColor: const Color(0xFF10B981),
+        backgroundColor: hasWaitingPatient && !nextPatientCalled
+            ? AppTheme.errorRed
+            : const Color(0xFF10B981),
       ),
     );
     // Pop back to queue
@@ -163,10 +165,8 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
     final appointmentTimeForDetails = appointmentTime?.isNotEmpty == true
         ? appointmentTime!
         : _formatAppointmentTime(_dbTime);
-    final status = (appt['appointment_status'] ?? 'WAITING').toString();
-    final isInConsultation = _started ||
-        status == 'IN_CONSULTATION' ||
-        appt['queue_status'] == 'IN_PROGRESS';
+    final isInConsultation =
+        _started || DoctorService.isAppointmentInConsultation(appt);
 
     return Scaffold(
       appBar: AppBar(
