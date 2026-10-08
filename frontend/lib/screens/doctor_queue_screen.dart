@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../core/services/doctor_service.dart';
 import '../core/services/queue_service.dart';
@@ -14,15 +15,26 @@ class DoctorQueueScreen extends StatefulWidget {
 class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
   bool _isLoading = true;
   List<Map<String, dynamic>> _appointments = [];
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _fetchQueue();
+    // Real-time polling every 3 seconds
+    _refreshTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) _fetchQueue(silent: true);
+    });
   }
 
-  Future<void> _fetchQueue() async {
-    setState(() => _isLoading = true);
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchQueue({bool silent = false}) async {
+    if (!silent) setState(() => _isLoading = true);
     final list = await DoctorService.getTodayAppointments();
     if (mounted) setState(() { _appointments = list; _isLoading = false; });
   }
@@ -476,7 +488,7 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
               
               await DoctorService.updateAppointmentStatus(currentId, 'WAITING');
               
-              await _fetchQueue();
+              await _fetchQueue(silent: true);
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

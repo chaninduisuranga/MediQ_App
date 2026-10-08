@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -32,16 +33,25 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
   List<dynamic> _myAppointments = [];
   bool _isLoadingAppointments = true;
 
+  // Auto-refresh timer for My Bookings (detects when consultation is COMPLETED by staff)
+  Timer? _autoRefreshTimer;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _loadQueueCounts();
     _loadMyAppointments();
+    // Auto-refresh every 30s — when staff marks consultation COMPLETE,
+    // the QR/booking card disappears automatically from the patient's view.
+    _autoRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (mounted) _loadMyAppointments();
+    });
   }
 
   @override
   void dispose() {
+    _autoRefreshTimer?.cancel();
     _tabController.dispose();
     _notesController.dispose();
     super.dispose();
@@ -1105,11 +1115,38 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('My OPD Appointments',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
-                      const SizedBox(height: 4),
-                      Text('${_myAppointments.length} active appointment(s)',
-                          style: const TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('My OPD Appointments',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                            ),
+                            child: const Row(
+                              children: [
+                                Icon(Icons.circle, size: 7, color: Color(0xFF10B981)),
+                                SizedBox(width: 4),
+                                Text('Live', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          Text('${_myAppointments.length} active appointment(s)',
+                              style: const TextStyle(fontSize: 13, color: Color(0xFF64748B))),
+                          const SizedBox(width: 8),
+                          const Text('• auto-syncs every 30s',
+                              style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                        ],
+                      ),
                       const SizedBox(height: 16),
                       ..._myAppointments.map((appt) => _buildAppointmentCard(appt)),
                     ],

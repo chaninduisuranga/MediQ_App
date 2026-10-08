@@ -16,9 +16,15 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> with Single
   late TabController _tabController;
   final ImagePicker _picker = ImagePicker();
 
-  List<dynamic> _doctorRecords = [];
+  // OPD Doctor History (from completed appointments)
+  List<dynamic> _doctorHistory = [];
+  List<String> _availableMonths = [];  // e.g. ["2026-10", "2026-09"]
+  String? _selectedMonth;              // null = All
+  bool _isLoadingHistory = true;
+
+  // Prescription photos
   List<dynamic> _prescriptionPhotos = [];
-  bool _isLoading = true;
+  bool _isLoadingPhotos = true;
 
   @override
   void initState() {
@@ -27,7 +33,8 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> with Single
     _tabController.addListener(() {
       if (mounted) setState(() {});
     });
-    _fetchRecords();
+    _fetchDoctorHistory();
+    _fetchPrescriptions();
   }
 
   @override
@@ -36,22 +43,50 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> with Single
     super.dispose();
   }
 
-  Future<void> _fetchRecords() async {
-    setState(() => _isLoading = true);
-
-    final res = await MedicalRecordService.getPatientRecords();
-
+  Future<void> _fetchDoctorHistory({String? month}) async {
+    setState(() => _isLoadingHistory = true);
+    final res = await MedicalRecordService.getDoctorHistory(month: month);
     if (mounted) {
       setState(() {
-        _isLoading = false;
+        _isLoadingHistory = false;
         if (res['success'] == true) {
-          final all = res['data'] as List<dynamic>;
-          _doctorRecords = all.where((r) => r['record_type'] == 'DOCTOR_DIAGNOSIS').toList();
-          _prescriptionPhotos = all.where((r) => r['record_type'] == 'PATIENT_UPLOAD' || r['image_url'] != null).toList();
+          _doctorHistory = (res['data'] as List<dynamic>? ?? []);
+          // Build unique month list from all history (for filter chips)
+          // Re-fetch all months when no month filter active
+          if (month == null) {
+            final months = <String>{};
+            for (final item in _doctorHistory) {
+              final date = item['appointment_date'] as String? ?? '';
+              if (date.length >= 7) months.add(date.substring(0, 7)); // YYYY-MM
+            }
+            final sortedMonths = months.toList()..sort((a, b) => b.compareTo(a));
+            _availableMonths = sortedMonths;
+          }
         }
       });
     }
   }
+
+  Future<void> _fetchPrescriptions() async {
+    setState(() => _isLoadingPhotos = true);
+    final res = await MedicalRecordService.getPatientRecords();
+    if (mounted) {
+      setState(() {
+        _isLoadingPhotos = false;
+        if (res['success'] == true) {
+          final all = res['data'] as List<dynamic>;
+          _prescriptionPhotos = all
+              .where((r) => r['record_type'] == 'PATIENT_UPLOAD' || r['image_url'] != null)
+              .toList();
+        }
+      });
+    }
+  }
+
+  Future<void> _fetchRecords() async {
+    await Future.wait([_fetchDoctorHistory(month: _selectedMonth), _fetchPrescriptions()]);
+  }
+
 
   Future<void> _pickAndUploadImage(ImageSource source) async {
     try {
@@ -387,17 +422,54 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> with Single
     );
   }
 
-  // TAB 1: Doctor Diagnoses & History
+  // ─── HELPER: Room display name → icon + accent color ─────────────────────
+  IconData _roomIcon(String roomKey) {
+    switch (roomKey) {
+      case 'DRESSING_ROOM':    return Icons.healing_rounded;
+      case 'INJECTION_ROOM':   return Icons.vaccines_rounded;
+      case 'BLEEDING_ROOM':    return Icons.bloodtype_rounded;
+      case 'ANIMAL_BITE_ROOM': return Icons.pets_rounded;
+      case 'OPD_CLINIC_ROOM':  return Icons.local_hospital_rounded;
+      case 'DISPENSARY_ROOM':  return Icons.medication_rounded;
+      default:                 return Icons.medical_services_rounded;
+    }
+  }
+
+  Color _roomColor(String roomKey) {
+    switch (roomKey) {
+      case 'DRESSING_ROOM':    return const Color(0xFF6366F1);
+      case 'INJECTION_ROOM':   return const Color(0xFF10B981);
+      case 'BLEEDING_ROOM':    return const Color(0xFFEF4444);
+      case 'ANIMAL_BITE_ROOM': return const Color(0xFFF59E0B);
+      case 'OPD_CLINIC_ROOM':  return const Color(0xFF2563EB);
+      case 'DISPENSARY_ROOM':  return const Color(0xFF8B5CF6);
+      default:                 return const Color(0xFF64748B);
+    }
+  }
+
+  // Converts "YYYY-MM" → "October 2026"
+  String _formatMonthLabel(String ym) {
+    final parts = ym.split('-');
+    if (parts.length < 2) return ym;
+    final year = parts[0];
+    const months = ['', 'January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+    final mNum = int.tryParse(parts[1]) ?? 0;
+    return '${months[mNum]} $year';
+  }
+
+  // ─── TAB 1: OPD Doctor History ────────────────────────────────────────────
   Widget _buildDoctorHistoryTab() {
     return RefreshIndicator(
-      onRefresh: _fetchRecords,
+      onRefresh: () => _fetchDoctorHistory(month: _selectedMonth),
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Ultra-Modern Info Banner
+
+            // ── Info Banner ──────────────────────────────────────────────────
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -423,17 +495,18 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> with Single
                       color: Colors.white.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.verified_user_rounded, color: Color(0xFF38BDF8), size: 24),
+                    child: const Icon(Icons.history_edu_rounded, color: Color(0xFF38BDF8), size: 24),
                   ),
                   const SizedBox(width: 14),
                   const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Official OPD Medical Record', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                        Text('OPD Consultation History',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
                         SizedBox(height: 2),
                         Text(
-                          'Doctor consultations, diagnoses & official prescriptions are automatically stored here.',
+                          'All completed OPD visits are automatically recorded here with doctor notes.',
                           style: TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
                         ),
                       ],
@@ -444,111 +517,302 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> with Single
             ),
             const SizedBox(height: 20),
 
-            if (_isLoading)
-              const Center(child: Padding(padding: EdgeInsets.all(30), child: CircularProgressIndicator(color: Color(0xFF2563EB))))
-            else if (_doctorRecords.isEmpty)
-              _buildEmptyState(
-                icon: Icons.assignment_outlined,
-                title: 'No Doctor Records Yet',
-                subtitle: 'Your medical diagnoses and prescriptions from OPD visits will be displayed here.',
+            // ── Month Filter Chips ───────────────────────────────────────────
+            if (_availableMonths.isNotEmpty) ...[
+              const Text('Filter by Month',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
+              const SizedBox(height: 10),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    // "All" chip
+                    _buildMonthChip(null),
+                    const SizedBox(width: 8),
+                    ..._availableMonths
+                        .map((m) => Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: _buildMonthChip(m),
+                            ))
+                        ,
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+
+            // ── Content ───────────────────────────────────────────────────
+            if (_isLoadingHistory)
+              const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(40),
+                  child: CircularProgressIndicator(color: Color(0xFF2563EB)),
+                ),
               )
-            else
-              ListView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: _doctorRecords.length,
-                itemBuilder: (context, index) {
-                  final rec = _doctorRecords[index];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFFF1F5F9)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF0F172A).withValues(alpha: 0.04),
-                          blurRadius: 12,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+            else if (_doctorHistory.isEmpty)
+              _buildEmptyState(
+                icon: Icons.history_edu_outlined,
+                title: 'No Consultation History',
+                subtitle: _selectedMonth != null
+                    ? 'No completed OPD visits for ${_formatMonthLabel(_selectedMonth!)}.'
+                    : 'Your OPD consultation records will appear here after a completed visit.',
+              )
+            else ...[
+              Row(
+                children: [
+                  Text('${_doctorHistory.length} consultation(s)',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF64748B))),
+                  if (_selectedMonth != null) ...[
+                    const SizedBox(width: 6),
+                    Text('· ${_formatMonthLabel(_selectedMonth!)}',
+                        style: const TextStyle(fontSize: 13, color: Color(0xFF2563EB), fontWeight: FontWeight.bold)),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 12),
+              ..._doctorHistory.map((item) => _buildConsultationCard(item)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMonthChip(String? month) {
+    final isSelected = _selectedMonth == month;
+    final label = month == null ? 'All' : _formatMonthLabel(month);
+    return GestureDetector(
+      onTap: () {
+        setState(() => _selectedMonth = month);
+        _fetchDoctorHistory(month: month);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? const LinearGradient(colors: [Color(0xFF1E3A8A), Color(0xFF2563EB)])
+              : null,
+          color: isSelected ? null : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF2563EB) : const Color(0xFFE2E8F0),
+            width: isSelected ? 1.5 : 1,
+          ),
+          boxShadow: isSelected
+              ? [BoxShadow(color: const Color(0xFF2563EB).withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))]
+              : [],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSelected) ...[
+              const Icon(Icons.check_circle_rounded, size: 14, color: Colors.white),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                color: isSelected ? Colors.white : const Color(0xFF475569),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConsultationCard(Map<String, dynamic> item) {
+    final date          = item['appointment_date'] as String? ?? '';
+    final time          = item['appointment_time'] as String? ?? '';
+    final roomKey       = item['room'] as String? ?? '';
+    final roomName      = item['room_display_name'] as String? ?? roomKey;
+    final doctorName    = item['doctor_name'] as String? ?? 'OPD Doctor';
+    final notes         = item['notes'] as String? ?? '';
+    final queueNum      = item['queue_number'] as int? ?? 0;
+    final completedAt   = item['completed_at'] as String? ?? '';
+    final accent        = _roomColor(roomKey);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: accent.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(color: accent.withValues(alpha: 0.10), blurRadius: 14, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6),
+        ],
+      ),
+      child: Column(
+        children: [
+          // ── Header strip ──
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [const Color(0xFF0F172A), accent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(20),
+                topRight: Radius.circular(20),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(_roomIcon(roomKey), color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(roomName,
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+                      Text('$date${time.isNotEmpty ? ' · $time' : ''}',
+                          style: const TextStyle(color: Colors.white70, fontSize: 11)),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.22),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Text(
+                    'Q#$queueNum',
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // ── Body ──
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Doctor row
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: accent.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.person_rounded, size: 16, color: accent),
                     ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(18),
+                    const SizedBox(width: 10),
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(colors: [Color(0xFF2563EB), Color(0xFF3B82F6)]),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(Icons.medical_services_rounded, color: Colors.white, size: 20),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      rec['title'] ?? 'OPD Consultation',
-                                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
-                                    ),
-                                    Text(
-                                      rec['record_date'] != null ? rec['record_date'].toString().split('T')[0] : '',
-                                      style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8)),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          const Divider(color: Color(0xFFF1F5F9)),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              const Icon(Icons.person_outline_rounded, size: 16, color: Color(0xFF2563EB)),
-                              const SizedBox(width: 6),
-                              Text('Doctor: ${rec['doctor_name'] ?? 'OPD Doctor'}', style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.bold, fontSize: 13)),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const Icon(Icons.local_hospital_outlined, size: 16, color: Color(0xFF64748B)),
-                              const SizedBox(width: 6),
-                              Text('Clinic: ${rec['clinic_name'] ?? 'General OPD'}', style: const TextStyle(color: Color(0xFF64748B), fontSize: 12)),
-                            ],
-                          ),
-                          if (rec['diagnosis'] != null && rec['diagnosis'].toString().isNotEmpty) ...[
-                            const SizedBox(height: 10),
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: const Color(0xFFE2E8F0)),
-                              ),
-                              child: Text(
-                                'Diagnosis: ${rec['diagnosis']}',
-                                style: const TextStyle(fontSize: 13, color: Color(0xFF334155), fontWeight: FontWeight.w500),
-                              ),
-                            ),
-                          ],
+                          const Text('Attending Doctor',
+                              style: TextStyle(fontSize: 10, color: Color(0xFF94A3B8), fontWeight: FontWeight.w600)),
+                          Text(doctorName,
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: accent)),
                         ],
                       ),
                     ),
-                  );
-                },
-              ),
-          ],
-        ),
+                    if (completedAt.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.3)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.check_circle_rounded, size: 12, color: Color(0xFF10B981)),
+                            SizedBox(width: 4),
+                            Text('Completed', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF10B981))),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+
+                // Doctor notes (if any)
+                if (notes.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.note_alt_rounded, size: 14, color: accent),
+                            const SizedBox(width: 6),
+                            Text('Doctor\'s Notes',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: accent)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          notes,
+                          style: const TextStyle(fontSize: 13, color: Color(0xFF334155), height: 1.5),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.info_outline_rounded, size: 13, color: Color(0xFF94A3B8)),
+                        SizedBox(width: 6),
+                        Text('No consultation notes recorded for this visit.',
+                            style: TextStyle(fontSize: 12, color: Color(0xFF94A3B8))),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Completed time footer
+                if (completedAt.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      const Icon(Icons.schedule_rounded, size: 13, color: Color(0xFF94A3B8)),
+                      const SizedBox(width: 4),
+                      Text('Consultation completed: $completedAt',
+                          style: const TextStyle(fontSize: 11, color: Color(0xFF94A3B8))),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -614,7 +878,7 @@ class _MedicalRecordsScreenState extends State<MedicalRecordsScreen> with Single
             const Text('Saved Prescriptions', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF0F172A))),
             const SizedBox(height: 14),
 
-            if (_isLoading)
+            if (_isLoadingPhotos)
               const Center(child: Padding(padding: EdgeInsets.all(30), child: CircularProgressIndicator(color: Color(0xFF2563EB))))
             else if (_prescriptionPhotos.isEmpty)
               _buildEmptyState(

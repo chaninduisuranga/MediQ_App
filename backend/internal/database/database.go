@@ -35,6 +35,30 @@ func InitDB(databaseURL string) *gorm.DB {
 		db.Exec(`ALTER TABLE "` + item.table + `" DROP CONSTRAINT IF EXISTS "` + item.name + `" CASCADE`)
 	}
 
+	// Ensure opd_appointments table columns have correct string data types in PostgreSQL
+	db.Exec(`
+		DO $$ 
+		BEGIN 
+			IF EXISTS (
+				SELECT 1 FROM information_schema.columns 
+				WHERE table_name = 'opd_appointments' 
+				  AND column_name = 'appointment_time' 
+				  AND data_type NOT IN ('character varying', 'text')
+			) THEN 
+				ALTER TABLE opd_appointments ALTER COLUMN appointment_time TYPE varchar(50) USING appointment_time::text;
+			END IF;
+
+			IF EXISTS (
+				SELECT 1 FROM information_schema.columns 
+				WHERE table_name = 'opd_appointments' 
+				  AND column_name = 'appointment_date' 
+				  AND data_type NOT IN ('character varying', 'text')
+			) THEN 
+				ALTER TABLE opd_appointments ALTER COLUMN appointment_date TYPE varchar(20) USING appointment_date::text;
+			END IF;
+		END $$;
+	`)
+
 	// Auto-migrate all tables. If migration fails only due to the known stale
 	// constraint issue (which we already cleaned up above), log a warning and
 	// continue — the server is still functional.
@@ -60,6 +84,31 @@ func InitDB(databaseURL string) *gorm.DB {
 	log.Println("Database connection established successfully")
 	DB = db
 	seedDefaultUsers(db)
+
+	// Fix PostgreSQL sequence desynchronization for primary keys across all tables
+	db.Exec(`
+		DO $$ 
+		DECLARE 
+			tbl text;
+			seq text;
+			max_id bigint;
+		BEGIN 
+			FOR tbl IN 
+				SELECT table_name 
+				FROM information_schema.tables 
+				WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+			LOOP 
+				seq := pg_get_serial_sequence(tbl, 'id');
+				IF seq IS NOT NULL THEN 
+					EXECUTE format('SELECT COALESCE(MAX(id), 0) FROM %I', tbl) INTO max_id;
+					IF max_id > 0 THEN 
+						EXECUTE format('SELECT setval(%L, %s)', seq, max_id);
+					END IF;
+				END IF;
+			END LOOP;
+		END $$;
+	`)
+
 	return db
 }
 
