@@ -52,8 +52,10 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
   String _selectedFilter = 'ALL';
   final List<StaffAlert> _alerts = [];
   final Set<int> _updatingAlertIds = {};
+  final Set<int> _deletingAlertIds = {};
   bool _isLoading = true;
   bool _isMarkingAllRead = false;
+  bool _isClearingAll = false;
   String? _loadError;
 
   @override
@@ -140,6 +142,99 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
     }
   }
 
+  Future<void> _deleteAlert(StaffAlert alert) async {
+    if (_deletingAlertIds.contains(alert.id) || _isClearingAll) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete notification?'),
+        content: const Text(
+          'This notification will be permanently deleted.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _deletingAlertIds.add(alert.id));
+    try {
+      await QueueService.deleteStaffNotification(alert.id);
+      if (!mounted) return;
+      setState(() {
+        _alerts.removeWhere((item) => item.id == alert.id);
+        _deletingAlertIds.remove(alert.id);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Notification deleted.'),
+          backgroundColor: AppTheme.primarySkyBlue,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _deletingAlertIds.remove(alert.id));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not delete notification: $error')),
+      );
+    }
+  }
+
+  Future<void> _clearAllNotifications() async {
+    if (_alerts.isEmpty || _isClearingAll) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear all notifications?'),
+        content: const Text(
+          'All of your notifications will be permanently deleted. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Clear All'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isClearingAll = true);
+    try {
+      await QueueService.clearAllStaffNotifications();
+      if (!mounted) return;
+      setState(() {
+        _alerts.clear();
+        _deletingAlertIds.clear();
+        _isClearingAll = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('All notifications deleted.'),
+          backgroundColor: AppTheme.primarySkyBlue,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _isClearingAll = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not clear notifications: $error')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -154,6 +249,12 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         actions: [
+          if (_alerts.isNotEmpty)
+            IconButton(
+              tooltip: 'Clear All Notifications',
+              onPressed: _isClearingAll ? null : _clearAllNotifications,
+              icon: const Icon(Icons.delete_sweep_outlined),
+            ),
           if (_unreadCount > 0)
             TextButton.icon(
               onPressed: _isMarkingAllRead ? null : _markAllAsRead,
@@ -358,7 +459,10 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
     final timeAgo = _formatTimeAgo(alert.timestamp);
 
     return InkWell(
-      onTap: alert.isRead || _updatingAlertIds.contains(alert.id)
+      onTap: alert.isRead ||
+              _updatingAlertIds.contains(alert.id) ||
+              _deletingAlertIds.contains(alert.id) ||
+              _isClearingAll
           ? null
           : () => _markAsRead(alert),
       borderRadius: BorderRadius.circular(16),
@@ -442,6 +546,18 @@ class _StaffNotificationsScreenState extends State<StaffNotificationsScreen> {
                   ),
                 ],
               ),
+            ),
+            IconButton(
+              tooltip: 'Delete notification',
+              onPressed: _deletingAlertIds.contains(alert.id) || _isClearingAll
+                  ? null
+                  : () => _deleteAlert(alert),
+              icon: const Icon(
+                Icons.delete_outline_rounded,
+                color: AppTheme.mutedText,
+                size: 20,
+              ),
+              visualDensity: VisualDensity.compact,
             ),
           ],
         ),

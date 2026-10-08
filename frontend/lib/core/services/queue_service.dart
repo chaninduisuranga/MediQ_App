@@ -35,6 +35,9 @@ class QueueService {
       case 'PATCH':
         response = await http.patch(uri, headers: headers, body: encodedBody);
         break;
+      case 'DELETE':
+        response = await http.delete(uri, headers: headers);
+        break;
       default:
         throw ArgumentError.value(method, 'method', 'Unsupported HTTP method');
     }
@@ -138,6 +141,20 @@ class QueueService {
     await _sendStaffRequest(
       'PATCH',
       _staffUri('/staff/notifications/read-all'),
+    );
+  }
+
+  static Future<void> deleteStaffNotification(int id) async {
+    await _sendStaffRequest(
+      'DELETE',
+      _staffUri('/staff/notifications/$id'),
+    );
+  }
+
+  static Future<void> clearAllStaffNotifications() async {
+    await _sendStaffRequest(
+      'DELETE',
+      _staffUri('/staff/notifications/clear-all'),
     );
   }
 

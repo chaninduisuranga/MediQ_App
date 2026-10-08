@@ -102,6 +102,64 @@ func (h *StaffNotificationHandler) MarkAllNotificationsRead(c *gin.Context) {
 	})
 }
 
+func (h *StaffNotificationHandler) DeleteNotification(c *gin.Context) {
+	if database.DB == nil {
+		utils.SendError(c, http.StatusInternalServerError, "Database connection not initialized")
+		return
+	}
+
+	userID, ok := staffNotificationUserID(c)
+	if !ok {
+		utils.SendError(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	notificationID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil || notificationID == 0 {
+		utils.SendError(c, http.StatusBadRequest, "Invalid notification ID")
+		return
+	}
+
+	result := database.DB.Unscoped().
+		Where("id = ? AND staff_user_id = ?", notificationID, userID).
+		Delete(&models.StaffNotification{})
+	if result.Error != nil {
+		utils.SendError(c, http.StatusInternalServerError, "Failed to delete Staff notification")
+		return
+	}
+	if result.RowsAffected == 0 {
+		utils.SendError(c, http.StatusNotFound, "Notification not found")
+		return
+	}
+
+	utils.SendSuccess(c, http.StatusOK, "Staff notification deleted", nil)
+}
+
+func (h *StaffNotificationHandler) ClearAllNotifications(c *gin.Context) {
+	if database.DB == nil {
+		utils.SendError(c, http.StatusInternalServerError, "Database connection not initialized")
+		return
+	}
+
+	userID, ok := staffNotificationUserID(c)
+	if !ok {
+		utils.SendError(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	result := database.DB.Unscoped().
+		Where("staff_user_id = ?", userID).
+		Delete(&models.StaffNotification{})
+	if result.Error != nil {
+		utils.SendError(c, http.StatusInternalServerError, "Failed to delete Staff notifications")
+		return
+	}
+
+	utils.SendSuccess(c, http.StatusOK, "Staff notifications deleted", gin.H{
+		"deleted_count": result.RowsAffected,
+	})
+}
+
 func staffNotificationUserID(c *gin.Context) (uint, bool) {
 	userIDValue, exists := c.Get("userID")
 	if !exists {

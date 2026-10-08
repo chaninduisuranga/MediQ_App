@@ -82,6 +82,8 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			staffQueueHandler := handlers.NewStaffQueueHandler()
 			staffNotificationHandler := handlers.NewStaffNotificationHandler()
 			staff.GET("/notifications", staffNotificationHandler.GetNotifications)
+			staff.DELETE("/notifications/clear-all", staffNotificationHandler.ClearAllNotifications)
+			staff.DELETE("/notifications/:id", staffNotificationHandler.DeleteNotification)
 			staff.PATCH("/notifications/:id/read", staffNotificationHandler.MarkNotificationRead)
 			staff.PATCH("/notifications/read-all", staffNotificationHandler.MarkAllNotificationsRead)
 			staff.GET("/profile", staffQueueHandler.GetProfile)
