@@ -228,7 +228,7 @@ class _CheckInScreenState extends State<CheckInScreen> {
                       ElevatedButton(
                         onPressed: _isLoading ? null : _fetchAppointmentDetails,
                         style: ElevatedButton.styleFrom(
-                          minimumSize: const Size(80, 48),
+                          minimumSize: const Size(80, 52),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         child: _isLoading
@@ -389,13 +389,13 @@ class _CheckInScreenState extends State<CheckInScreen> {
               // Confirm & Check In Action Button
               SizedBox(
                 width: double.infinity,
-                height: 54,
+                height: 52,
                 child: ElevatedButton.icon(
                   onPressed: (isAlreadyCheckedIn || isCompleted || _isCheckingIn) ? null : _handleConfirmCheckIn,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.accentGreen,
+                    backgroundColor: AppTheme.primarySkyBlue,
                     foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                   icon: _isCheckingIn
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))

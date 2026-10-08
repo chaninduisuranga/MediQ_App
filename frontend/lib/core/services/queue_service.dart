@@ -35,6 +35,9 @@ class QueueService {
       case 'PATCH':
         response = await http.patch(uri, headers: headers, body: encodedBody);
         break;
+      case 'DELETE':
+        response = await http.delete(uri, headers: headers);
+        break;
       default:
         throw ArgumentError.value(method, 'method', 'Unsupported HTTP method');
     }
@@ -113,6 +116,46 @@ class QueueService {
       throw const FormatException('Staff profile response was not an object.');
     }
     return Map<String, dynamic>.from(data);
+  }
+
+  /// Returns notifications belonging to the authenticated Staff member.
+  static Future<List<Map<String, dynamic>>> getStaffNotifications() async {
+    final response = await _sendStaffRequest(
+      'GET',
+      _staffUri('/staff/notifications'),
+    );
+    return _staffListFromResponse(
+      response,
+      keys: const ['notifications', 'items'],
+    );
+  }
+
+  static Future<void> markStaffNotificationRead(int id) async {
+    await _sendStaffRequest(
+      'PATCH',
+      _staffUri('/staff/notifications/$id/read'),
+    );
+  }
+
+  static Future<void> markAllStaffNotificationsRead() async {
+    await _sendStaffRequest(
+      'PATCH',
+      _staffUri('/staff/notifications/read-all'),
+    );
+  }
+
+  static Future<void> deleteStaffNotification(int id) async {
+    await _sendStaffRequest(
+      'DELETE',
+      _staffUri('/staff/notifications/$id'),
+    );
+  }
+
+  static Future<void> clearAllStaffNotifications() async {
+    await _sendStaffRequest(
+      'DELETE',
+      _staffUri('/staff/notifications/clear-all'),
+    );
   }
 
   /// Returns the queue assigned to the authenticated Staff member.
