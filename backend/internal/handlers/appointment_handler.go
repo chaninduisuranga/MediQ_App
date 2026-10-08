@@ -102,6 +102,15 @@ func (h *AppointmentHandler) BookAppointment(c *gin.Context) {
 		return
 	}
 
+	// 10:00 AM cutoff for TODAY's appointments
+	if selectedDate == todayStr {
+		cutoffTime := time.Date(now.Year(), now.Month(), now.Day(), 10, 0, 0, 0, loc)
+		if now.After(cutoffTime) {
+			utils.SendError(c, http.StatusBadRequest, "Same-day OPD appointment booking closes at 10:00 AM. Please select Tomorrow or the next available day.")
+			return
+		}
+	}
+
 	// Check if patient already has an appointment for this room on selected date
 	var existingCount int64
 	database.DB.Model(&models.OPDAppointment{}).
@@ -171,7 +180,77 @@ func (h *AppointmentHandler) BookAppointment(c *gin.Context) {
 	})
 }
 
-// GetMyAppointments returns all appointments for the authenticated patient
+// GetPatientHistory returns COMPLETED OPD consultations for the authenticated patient (Doctor History).
+// Optional query param: ?month=YYYY-MM  e.g. ?month=2026-10
+func (h *AppointmentHandler) GetPatientHistory(c *gin.Context) {
+	userIDVal, exists := c.Get("userID")
+	if !exists {
+		utils.SendError(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+	userID := userIDVal.(uint)
+
+	monthFilter := strings.TrimSpace(c.Query("month")) // e.g. "2026-10"
+
+	query := database.DB.Preload("AssignedDoctor.User").
+		Where("patient_id = ? AND status = ?", userID, models.AppointmentCompleted)
+
+	if monthFilter != "" {
+		// appointment_date is stored as YYYY-MM-DD, filter by prefix match
+		query = query.Where("appointment_date LIKE ?", monthFilter+"%")
+	}
+
+	var appointments []models.OPDAppointment
+	if err := query.Order("appointment_date DESC, queue_number DESC").
+		Find(&appointments).Error; err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "Failed to retrieve history: "+err.Error())
+		return
+	}
+
+	type HistoryItem struct {
+		ID              uint   `json:"id"`
+		AppointmentDate string `json:"appointment_date"`
+		AppointmentTime string `json:"appointment_time"`
+		Room            string `json:"room"`
+		RoomDisplayName string `json:"room_display_name"`
+		QueueNumber     int    `json:"queue_number"`
+		DoctorName      string `json:"doctor_name"`
+		Notes           string `json:"notes"`
+		CompletedAt     string `json:"completed_at,omitempty"`
+	}
+
+	items := make([]HistoryItem, 0, len(appointments))
+	for _, appt := range appointments {
+		doctorName := "OPD Doctor"
+		if appt.AssignedDoctor != nil && appt.AssignedDoctor.User.FullName != "" {
+			doctorName = appt.AssignedDoctor.User.FullName
+		}
+		completedAt := ""
+		if appt.CompletedAt != nil {
+			loc := time.FixedZone("IST", 5*3600+30*60)
+			completedAt = appt.CompletedAt.In(loc).Format("2006-01-02 15:04")
+		}
+		roomName := validRooms[appt.Room]
+		if roomName == "" {
+			roomName = string(appt.Room)
+		}
+		items = append(items, HistoryItem{
+			ID:              appt.ID,
+			AppointmentDate: appt.AppointmentDate,
+			AppointmentTime: appt.AppointmentTime,
+			Room:            string(appt.Room),
+			RoomDisplayName: roomName,
+			QueueNumber:     appt.QueueNumber,
+			DoctorName:      doctorName,
+			Notes:           appt.Notes,
+			CompletedAt:     completedAt,
+		})
+	}
+
+	utils.SendSuccess(c, http.StatusOK, "Patient OPD history retrieved", items)
+}
+
+// GetMyAppointments returns active (non-completed, non-cancelled) appointments for the authenticated patient
 func (h *AppointmentHandler) GetMyAppointments(c *gin.Context) {
 	userIDVal, exists := c.Get("userID")
 	if !exists {
@@ -181,7 +260,7 @@ func (h *AppointmentHandler) GetMyAppointments(c *gin.Context) {
 	userID := userIDVal.(uint)
 
 	var appointments []models.OPDAppointment
-	if err := database.DB.Where("patient_id = ?", userID).
+	if err := database.DB.Where("patient_id = ? AND status NOT IN ('COMPLETED', 'CANCELLED')", userID).
 		Order("appointment_date ASC, queue_number ASC").
 		Find(&appointments).Error; err != nil {
 		utils.SendError(c, http.StatusInternalServerError, "Failed to retrieve appointments: "+err.Error())
@@ -191,7 +270,7 @@ func (h *AppointmentHandler) GetMyAppointments(c *gin.Context) {
 	utils.SendSuccess(c, http.StatusOK, "Appointments retrieved successfully", appointments)
 }
 
-// GetQueueStatus returns the current queue count for a specific room on a given date (default today)
+// GetQueueStatus returns the current queue count and live token breakdown for a specific room on a given date (default today)
 func (h *AppointmentHandler) GetQueueStatus(c *gin.Context) {
 	roomKey := c.Param("room")
 	room := models.OPDRoom(strings.ToUpper(strings.TrimSpace(roomKey)))
@@ -209,24 +288,76 @@ func (h *AppointmentHandler) GetQueueStatus(c *gin.Context) {
 
 	var maxQueue int
 	database.DB.Model(&models.OPDAppointment{}).
-		Where("room = ? AND appointment_date = ?", room, targetDate).
+		Where("room = ? AND appointment_date = ? AND status != ?", room, targetDate, models.AppointmentCancelled).
 		Select("COALESCE(MAX(queue_number), 0)").
 		Scan(&maxQueue)
 
+	var appointments []models.OPDAppointment
+	database.DB.Preload("AssignedDoctor.User").
+		Where("room = ? AND appointment_date = ? AND status != ?", room, targetDate, models.AppointmentCancelled).
+		Order("queue_number ASC").
+		Find(&appointments)
+
+	nowServing := 0
+	servingDoctorName := ""
+	var servingPatientID uint
+
+	type QueueItemResponse struct {
+		ID          uint   `json:"id"`
+		QueueNumber int    `json:"queue_number"`
+		Status      string `json:"status"`
+		IsPriority  bool   `json:"is_priority"`
+		PatientID   uint   `json:"patient_id"`
+		PatientName string `json:"patient_name"`
+		DoctorName  string `json:"doctor_name,omitempty"`
+	}
+
+	queueList := make([]QueueItemResponse, 0, len(appointments))
+	for _, appt := range appointments {
+		docName := ""
+		if appt.AssignedDoctor != nil && appt.AssignedDoctor.User.FullName != "" {
+			docName = appt.AssignedDoctor.User.FullName
+		}
+		if appt.Status == models.AppointmentServing {
+			nowServing = appt.QueueNumber
+			servingDoctorName = docName
+			servingPatientID = appt.PatientID
+		}
+		queueList = append(queueList, QueueItemResponse{
+			ID:          appt.ID,
+			QueueNumber: appt.QueueNumber,
+			Status:      string(appt.Status),
+			IsPriority:  appt.IsPriority,
+			PatientID:   appt.PatientID,
+			PatientName: appt.PatientName,
+			DoctorName:  docName,
+		})
+	}
+
 	type QueueStatusResponse struct {
-		Room            string `json:"room"`
-		RoomDisplayName string `json:"room_display_name"`
-		Date            string `json:"date"`
-		CurrentMax      int    `json:"current_max"`
-		NextNumber      int    `json:"next_number"`
+		Room              string              `json:"room"`
+		RoomDisplayName   string              `json:"room_display_name"`
+		Date              string              `json:"date"`
+		CurrentMax        int                 `json:"current_max"`
+		NextNumber        int                 `json:"next_number"`
+		NowServing        int                 `json:"now_serving"`
+		ServingDoctorName string              `json:"serving_doctor_name,omitempty"`
+		ServingPatientID  uint                `json:"serving_patient_id,omitempty"`
+		TotalBooked       int                 `json:"total_booked"`
+		QueueTokens       []QueueItemResponse `json:"queue_tokens"`
 	}
 
 	utils.SendSuccess(c, http.StatusOK, "Queue status", QueueStatusResponse{
-		Room:            string(room),
-		RoomDisplayName: validRooms[room],
-		Date:            targetDate,
-		CurrentMax:      maxQueue,
-		NextNumber:      maxQueue + 1,
+		Room:              string(room),
+		RoomDisplayName:   validRooms[room],
+		Date:              targetDate,
+		CurrentMax:        maxQueue,
+		NextNumber:        maxQueue + 1,
+		NowServing:        nowServing,
+		ServingDoctorName: servingDoctorName,
+		ServingPatientID:  servingPatientID,
+		TotalBooked:       len(appointments),
+		QueueTokens:       queueList,
 	})
 }
 

@@ -576,7 +576,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     badgeText: '0 in queue',
                     onTap: () {
                       Navigator.pop(ctx);
-                      _openBookAppointment();
+                      Navigator.pushNamed(context, '/patient-live-queue');
                     },
                   ),
                   _buildServiceCardItem(
@@ -586,7 +586,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     badgeText: '0 in queue',
                     onTap: () {
                       Navigator.pop(ctx);
-                      _openBookAppointment();
+                      Navigator.pushNamed(context, '/patient-live-queue');
                     },
                   ),
                   _buildServiceCardItem(
@@ -596,7 +596,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     badgeText: '0 in queue',
                     onTap: () {
                       Navigator.pop(ctx);
-                      _openBookAppointment();
+                      Navigator.pushNamed(context, '/patient-live-queue');
                     },
                   ),
                   _buildServiceCardItem(
@@ -606,7 +606,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     badgeText: '0 in queue',
                     onTap: () {
                       Navigator.pop(ctx);
-                      _openBookAppointment();
+                      Navigator.pushNamed(context, '/patient-live-queue');
                     },
                   ),
                   _buildServiceCardItem(
@@ -616,7 +616,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     badgeText: '0 in queue',
                     onTap: () {
                       Navigator.pop(ctx);
-                      _openBookAppointment();
+                      Navigator.pushNamed(context, '/patient-live-queue');
                     },
                   ),
                 ],
@@ -1611,7 +1611,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     Column(
                       children: [
                         SizedBox(
-                          height: 205,
+                          height: 230,
                           child: PageView(
                             controller: _bannerPageController,
                             onPageChanged: (index) {
@@ -1622,10 +1622,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             children: [
                               // 1. Book Appointment Card (Navy to Ocean Blue)
                               _buildHeroBannerCard(
-                                badgeText: "INSTANT OPD TOKEN",
-                                title: "Book Appointment",
-                                subtitle: "Consult with trusted OPD doctors without waiting in long queues.",
-                                buttonText: "Book Now",
+                                badgeText: LanguageService.tr('hero_banner_1_badge'),
+                                title: LanguageService.tr('hero_banner_1_title'),
+                                subtitle: LanguageService.tr('hero_banner_1_sub'),
+                                buttonText: LanguageService.tr('hero_banner_1_btn'),
                                 gradientColors: const [
                                   Color(0xFF0F172A),
                                   Color(0xFF1E3A8A),
@@ -1640,10 +1640,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               // 2. OPD Live Queue Card (Sapphire to Royal Blue)
                               _buildHeroBannerCard(
-                                badgeText: "LIVE QUEUE TRACKER",
-                                title: "OPD Live Queue",
-                                subtitle: "Track your token queue number live & stay updated on your wait time.",
-                                buttonText: "Check Queue",
+                                badgeText: LanguageService.tr('hero_banner_2_badge'),
+                                title: LanguageService.tr('hero_banner_2_title'),
+                                subtitle: LanguageService.tr('hero_banner_2_sub'),
+                                buttonText: LanguageService.tr('hero_banner_2_btn'),
                                 gradientColors: const [
                                   Color(0xFF0B192C),
                                   Color(0xFF1E40AF),
@@ -1658,10 +1658,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               // 3. Medical Records Card (Deep Ocean to Cerulean Blue)
                               _buildHeroBannerCard(
-                                badgeText: "DIGITAL HEALTH RECORD",
-                                title: "Medical Records",
-                                subtitle: "Store & access all your lab reports, prescriptions & doctor notes securely.",
-                                buttonText: "View Records",
+                                badgeText: LanguageService.tr('hero_banner_3_badge'),
+                                title: LanguageService.tr('hero_banner_3_title'),
+                                subtitle: LanguageService.tr('hero_banner_3_sub'),
+                                buttonText: LanguageService.tr('hero_banner_3_btn'),
                                 gradientColors: const [
                                   Color(0xFF0F2C3A),
                                   Color(0xFF0369A1),
@@ -1676,10 +1676,10 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                               // 4. Pill & Vitals Tracker Card (Midnight Blue to Electric Sky Blue)
                               _buildHeroBannerCard(
-                                badgeText: "DAILY VITALS & PILLS",
-                                title: "Pills & Vitals Tracker",
-                                subtitle: "Set medicine pill timings, check your BMI & track blood sugar levels easily.",
-                                buttonText: "Track Health",
+                                badgeText: LanguageService.tr('hero_banner_4_badge'),
+                                title: LanguageService.tr('hero_banner_4_title'),
+                                subtitle: LanguageService.tr('hero_banner_4_sub'),
+                                buttonText: LanguageService.tr('hero_banner_4_btn'),
                                 gradientColors: const [
                                   Color(0xFF172554),
                                   Color(0xFF1D4ED8),
@@ -1718,9 +1718,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 24),
 
                     // OUR SERVICES SECTION (All 6 OPD Modules)
-                    const Text(
-                      "Our Services",
-                      style: TextStyle(
+                    Text(
+                      LanguageService.tr('our_services'),
+                      style: const TextStyle(
                         fontSize: 17,
                         fontWeight: FontWeight.bold,
                         color: Color(0xFF0F172A),
@@ -1737,9 +1737,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             icon: Icons.confirmation_number_rounded,
                             iconColor: const Color(0xFF2563EB),
                             iconBgColor: const Color(0xFFEFF6FF),
-                            title: "OPD Live Queue",
-                            subtitle: "Live token queue",
-                            onTap: _showChooseOPDRoomSheet,
+                            title: LanguageService.tr('opd_live_queue'),
+                            subtitle: LanguageService.tr('opd_live_queue_sub_card'),
+                            onTap: () => Navigator.pushNamed(context, '/patient-live-queue'),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -1749,8 +1749,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             icon: Icons.event_available_rounded,
                             iconColor: const Color(0xFF1D4ED8),
                             iconBgColor: const Color(0xFFDBEAFE),
-                            title: "Book Appointment",
-                            subtitle: "Book doctor slot",
+                            title: LanguageService.tr('book_appointment'),
+                            subtitle: LanguageService.tr('book_appointment_sub_card'),
                             onTap: _openBookAppointment,
                           ),
                         ),
@@ -1765,8 +1765,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             icon: Icons.folder_shared_rounded,
                             iconColor: const Color(0xFF0284C7),
                             iconBgColor: const Color(0xFFF0F9FF),
-                            title: "Medical Records",
-                            subtitle: "Lab & OPD records",
+                            title: LanguageService.tr('medical_records'),
+                            subtitle: LanguageService.tr('medical_records_sub_card'),
                             onTap: _openMedicalRecords,
                           ),
                         ),
@@ -1777,8 +1777,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             icon: Icons.medication_rounded,
                             iconColor: const Color(0xFF0891B2),
                             iconBgColor: const Color(0xFFECFEFF),
-                            title: "Pill Tracker",
-                            subtitle: "Get your meds",
+                            title: LanguageService.tr('pill_tracker'),
+                            subtitle: LanguageService.tr('pill_tracker_sub_card'),
                             onTap: () => Navigator.pushNamed(context, '/pill-tracker'),
                           ),
                         ),
@@ -1793,8 +1793,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             icon: Icons.psychology_rounded,
                             iconColor: const Color(0xFF4F46E5),
                             iconBgColor: const Color(0xFFEEF2FF),
-                            title: "Symptom Checker",
-                            subtitle: "AI health triage",
+                            title: LanguageService.tr('symptom_checker'),
+                            subtitle: LanguageService.tr('symptom_checker_sub_card'),
                             onTap: () => Navigator.pushNamed(context, '/symptom-checker'),
                           ),
                         ),
@@ -1805,8 +1805,8 @@ class _HomeScreenState extends State<HomeScreen> {
                             icon: Icons.monitor_weight_rounded,
                             iconColor: const Color(0xFF2563EB),
                             iconBgColor: const Color(0xFFEFF6FF),
-                            title: "Health Vitals",
-                            subtitle: "Full body checkup",
+                            title: LanguageService.tr('health_vitals'),
+                            subtitle: LanguageService.tr('health_vitals_sub_card'),
                             onTap: () => Navigator.pushNamed(context, '/health-vitals'),
                           ),
                         ),
@@ -1975,7 +1975,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             // Foreground Banner Content
             Padding(
-              padding: const EdgeInsets.all(22),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               child: Row(
                 children: [
                   Expanded(
@@ -1985,7 +1985,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         // Badge Tag
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(20),
@@ -1999,48 +1999,54 @@ class _HomeScreenState extends State<HomeScreen> {
                               Icon(
                                 Icons.stars_rounded,
                                 color: ambientTopColor,
-                                size: 13,
+                                size: 12,
                               ),
-                              const SizedBox(width: 5),
-                              Text(
-                                badgeText,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.6,
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  badgeText,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.4,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 6),
 
                         Text(
                           title,
                           style: const TextStyle(
-                            fontSize: 20,
+                            fontSize: 17,
                             fontWeight: FontWeight.w900,
                             color: Colors.white,
                             letterSpacing: 0.2,
                           ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(height: 4),
                         Text(
                           subtitle,
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 11,
                             color: Colors.white.withValues(alpha: 0.85),
-                            height: 1.35,
+                            height: 1.25,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 10),
 
                         // Action Button
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(24),
@@ -2058,15 +2064,15 @@ class _HomeScreenState extends State<HomeScreen> {
                               Text(
                                 buttonText,
                                 style: TextStyle(
-                                  fontSize: 13,
+                                  fontSize: 12,
                                   fontWeight: FontWeight.w900,
                                   color: gradientColors.length > 1 ? gradientColors[1] : gradientColors[0],
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 6),
                               Icon(
                                 Icons.arrow_forward_rounded,
-                                size: 16,
+                                size: 14,
                                 color: gradientColors.length > 1 ? gradientColors[1] : gradientColors[0],
                               ),
                             ],
@@ -2075,12 +2081,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 10),
 
                   // Right 3D Medical Graphic with Glowing Glass Sphere
                   Container(
-                    width: 95,
-                    height: 95,
+                    width: 78,
+                    height: 78,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
@@ -2098,30 +2104,30 @@ class _HomeScreenState extends State<HomeScreen> {
                       boxShadow: [
                         BoxShadow(
                           color: ambientTopColor.withValues(alpha: 0.4),
-                          blurRadius: 20,
-                          spreadRadius: 3,
+                          blurRadius: 16,
+                          spreadRadius: 2,
                         ),
                       ],
                     ),
                     child: Center(
                       child: imagePath != null
                           ? ClipRRect(
-                              borderRadius: BorderRadius.circular(45),
+                              borderRadius: BorderRadius.circular(39),
                               child: Image.asset(
                                 imagePath,
-                                width: 80,
-                                height: 80,
+                                width: 65,
+                                height: 65,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => Icon(
                                   iconData,
-                                  size: 46,
+                                  size: 38,
                                   color: Colors.white,
                                 ),
                               ),
                             )
                           : Icon(
                               iconData,
-                              size: 46,
+                              size: 38,
                               color: Colors.white,
                             ),
                     ),
@@ -2217,13 +2223,13 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               title,
               style: const TextStyle(
-                fontSize: 13.5,
+                fontSize: 12.5,
                 fontWeight: FontWeight.w800,
                 color: Color(0xFF0F172A),
                 letterSpacing: 0.1,
               ),
               textAlign: TextAlign.center,
-              maxLines: 1,
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 2),

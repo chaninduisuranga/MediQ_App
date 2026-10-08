@@ -60,6 +60,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			{
 				apptAuth.POST("/book", appointmentHandler.BookAppointment)
 				apptAuth.GET("/my", appointmentHandler.GetMyAppointments)
+				apptAuth.GET("/history", appointmentHandler.GetPatientHistory)
 				apptAuth.PUT("/:id/cancel", appointmentHandler.CancelAppointment)
 			}
 		}
@@ -90,6 +91,17 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			staff.PATCH("/queue/priority/:id", staffQueueHandler.TogglePriority)
 			staff.GET("/doctors", staffQueueHandler.GetDoctors)
 			staff.POST("/queue/allocate/:id", staffQueueHandler.AllocateDoctor)
+		}
+
+		// Doctor routes
+		doctor := v1.Group("/doctor")
+		doctor.Use(middleware.AuthMiddleware(cfg))
+		doctor.Use(middleware.DoctorAuthorizationMiddleware())
+		{
+			doctorHandler := handlers.NewDoctorHandler()
+			doctor.GET("/queue/today", doctorHandler.GetTodayQueue)
+			doctor.GET("/queue/stats", doctorHandler.GetQueueStats)
+			doctor.PATCH("/queue/:id/status", doctorHandler.UpdateAppointmentStatus)
 		}
 
 		// Admin routes

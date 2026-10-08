@@ -106,6 +106,33 @@ class _AiChatScreenState extends State<AiChatScreen> {
     }
   }
 
+  Future<void> _startNewChat() async {
+    if (_messages.isEmpty && _messageController.text.isEmpty) return;
+
+    await _chatService.clearHistory();
+    setState(() {
+      _messages.clear();
+      _messageController.clear();
+    });
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.add_comment_rounded, color: Colors.white, size: 18),
+              SizedBox(width: 8),
+              Text('New chat session started'),
+            ],
+          ),
+          backgroundColor: Color(0xFF1E3A8A),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   Future<void> _clearChatHistory() async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -243,7 +270,12 @@ class _AiChatScreenState extends State<AiChatScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete_outline_rounded, color: Colors.white),
+            icon: const Icon(Icons.add_rounded, color: Colors.white, size: 26),
+            tooltip: 'New Chat',
+            onPressed: _startNewChat,
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline_rounded, color: Colors.white, size: 22),
             tooltip: 'Clear Chat',
             onPressed: _messages.isEmpty ? null : _clearChatHistory,
           ),
