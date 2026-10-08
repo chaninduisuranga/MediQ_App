@@ -27,7 +27,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
 
   // Queue counts per room
   final Map<String, int> _queueCounts = {};
-  bool _isLoadingQueues = true;
 
   // My appointments
   List<dynamic> _myAppointments = [];
@@ -62,7 +61,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
   }
 
   Future<void> _loadQueueCounts() async {
-    setState(() => _isLoadingQueues = true);
     final dateStr = _formatDate(_selectedDate);
     for (final room in AppointmentService.opdRooms) {
       final key = room['key'] as String;
@@ -73,7 +71,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen>
         });
       }
     }
-    if (mounted) setState(() => _isLoadingQueues = false);
   }
 
   Future<void> _loadMyAppointments() async {

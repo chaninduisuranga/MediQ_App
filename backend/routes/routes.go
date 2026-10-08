@@ -138,6 +138,14 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 
 			adminQueueHandler := handlers.NewAdminQueueHandler()
 			admin.GET("/queues", adminQueueHandler.GetQueues)
+
+			// ── AI Chatbot FAQ management ──────────────────────────────────────────
+			chatFAQHandler := handlers.NewChatFAQHandler()
+			admin.GET("/chat-faqs", chatFAQHandler.ListFAQs)
+			admin.POST("/chat-faqs", chatFAQHandler.CreateFAQ)
+			admin.PATCH("/chat-faqs/:id", chatFAQHandler.UpdateFAQ)
+			admin.DELETE("/chat-faqs/:id", chatFAQHandler.DeleteFAQ)
+			admin.POST("/chat-faqs/seed", chatFAQHandler.SeedDefaultFAQs)
 		}
 	}
 
