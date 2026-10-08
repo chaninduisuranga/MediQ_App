@@ -37,6 +37,8 @@ import '../screens/doctor_previous_appointments_screen.dart';
 import '../screens/doctor_availability_screen.dart';
 import '../screens/doctor_profile_screen.dart';
 import '../screens/doctor_notifications_screen.dart';
+import '../screens/doctor_edit_profile_screen.dart';
+import '../screens/doctor_change_password_screen.dart';
 
 import '../screens/patient_live_queue_screen.dart';
 
@@ -79,6 +81,8 @@ class AppRoutes {
   static const String doctorAvailability = '/doctor-availability';
   static const String doctorProfile = '/doctor-profile';
   static const String doctorNotifications = '/doctor-notifications';
+  static const String doctorEditProfile = '/doctor-edit-profile';
+  static const String doctorChangePassword = '/doctor-change-password';
 
   static Map<String, WidgetBuilder> get routes => {
         splash: (context) => const SplashScreen(),
@@ -121,5 +125,7 @@ class AppRoutes {
         doctorAvailability: (context) => const DoctorAvailabilityScreen(),
         doctorProfile: (context) => const DoctorProfileScreen(),
         doctorNotifications: (context) => const DoctorNotificationsScreen(),
+        doctorEditProfile: (context) => const DoctorEditProfileScreen(),
+        doctorChangePassword: (context) => const DoctorChangePasswordScreen(),
       };
 }

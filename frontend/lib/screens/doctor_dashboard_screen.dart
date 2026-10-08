@@ -3,7 +3,7 @@ import '../core/services/auth_service.dart';
 import '../core/services/doctor_service.dart';
 import '../core/theme/theme.dart';
 import '../widgets/doctor_bottom_nav_bar.dart';
-
+import 'doctor_display_name.dart';
 
 class DoctorDashboardScreen extends StatefulWidget {
   const DoctorDashboardScreen({super.key});
@@ -48,7 +48,8 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
   Widget build(BuildContext context) {
     final user = AuthService.currentUser ?? {};
     final doctorName = user['full_name'] ?? 'Doctor';
-    final specialization = user['specialization'] ?? user['department'] ?? 'General OPD';
+    final specialization =
+        user['specialization'] ?? user['department'] ?? 'General OPD';
     final today = _formatDate(DateTime.now());
     final isAvailable = (_stats['is_available'] as bool?) ?? true;
 
@@ -92,7 +93,8 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                         children: [
                           CircleAvatar(
                             radius: 28,
-                            backgroundColor: Colors.white.withValues(alpha: 0.2),
+                            backgroundColor:
+                                Colors.white.withValues(alpha: 0.2),
                             child: const Icon(Icons.medical_services_rounded,
                                 color: Colors.white, size: 30),
                           ),
@@ -102,7 +104,10 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'Dr. $doctorName',
+                                  formatDoctorDisplayName(
+                                    doctorName,
+                                    fallback: 'Doctor',
+                                  ),
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 20,
@@ -227,7 +232,8 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                     // Stat Cards Grid — responsive 2-col or 4-col
                     LayoutBuilder(
                       builder: (ctx, constraints) {
-                        final crossAxisCount = constraints.maxWidth > 500 ? 4 : 2;
+                        final crossAxisCount =
+                            constraints.maxWidth > 500 ? 4 : 2;
                         return GridView.count(
                           crossAxisCount: crossAxisCount,
                           shrinkWrap: true,
@@ -302,8 +308,8 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
                       subtitle: 'View all appointments scheduled for today',
                       icon: Icons.calendar_today_rounded,
                       color: AppTheme.doctorPrimaryColor,
-                      onTap: () => Navigator.pushNamed(
-                          context, '/doctor-appointments'),
+                      onTap: () =>
+                          Navigator.pushNamed(context, '/doctor-appointments'),
                     ),
                     const SizedBox(height: 10),
                     _buildNavTile(
@@ -531,12 +537,27 @@ class _DoctorDashboardScreenState extends State<DoctorDashboardScreen> {
 
   String _formatDate(DateTime d) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     const days = [
-      'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday',
-      'Saturday', 'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
     ];
     return '${days[d.weekday - 1]}, ${d.day} ${months[d.month - 1]} ${d.year}';
   }

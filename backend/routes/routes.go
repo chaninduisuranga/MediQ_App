@@ -20,6 +20,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	authHandler := handlers.NewAuthHandler(cfg)
 	medicalHandler := handlers.NewMedicalRecordHandler(cfg)
 	appointmentHandler := handlers.NewAppointmentHandler()
+	doctorHandler := handlers.NewDoctorHandler()
 
 	// API v1 Group
 	v1 := r.Group("/api/v1")
@@ -49,9 +50,9 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 		// OPD Appointment routes
 		appt := v1.Group("/appointments")
 		{
-			// Public: get rooms, queue status, and view ticket via QR scan
+			// Public: get rooms and view ticket via QR scan
 			appt.GET("/rooms", appointmentHandler.GetRooms)
-			appt.GET("/queue/:room", appointmentHandler.GetQueueStatus)
+			appt.GET("/queue/:room", middleware.OptionalAuthMiddleware(cfg), doctorHandler.GetQueueByRoom)
 			appt.GET("/view/:id", appointmentHandler.ViewAppointment)
 
 			// Protected: patient booking
@@ -60,9 +61,27 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			{
 				apptAuth.POST("/book", appointmentHandler.BookAppointment)
 				apptAuth.GET("/my", appointmentHandler.GetMyAppointments)
-				apptAuth.GET("/history", appointmentHandler.GetPatientHistory)
+				apptAuth.GET("/:id", doctorHandler.GetAppointmentByID)
+				apptAuth.PUT("/:id/checkin", doctorHandler.CheckInAppointment)
 				apptAuth.PUT("/:id/cancel", appointmentHandler.CancelAppointment)
 			}
+		}
+
+		doctor := v1.Group("/doctor")
+		doctor.Use(middleware.AuthMiddleware(cfg), middleware.DoctorAuthorizationMiddleware())
+		{
+			doctor.GET("/appointments/today", doctorHandler.GetTodayAppointments)
+			doctor.GET("/appointments/history", doctorHandler.GetPreviousAppointments)
+			doctor.PUT("/appointments/:id/status", doctorHandler.UpdateAppointmentStatus)
+			doctor.GET("/appointments/:id/consultation-details", doctorHandler.GetConsultationDetails)
+			doctor.GET("/availability", doctorHandler.GetAvailability)
+			doctor.PUT("/availability", doctorHandler.UpdateAvailability)
+			doctor.GET("/profile", doctorHandler.GetDoctorProfile)
+			doctor.PUT("/profile", doctorHandler.UpdateDoctorProfile)
+			doctor.POST("/change-password", authHandler.ChangePassword)
+			doctor.GET("/notifications", doctorHandler.GetNotifications)
+			doctor.PUT("/notifications/:id/read", doctorHandler.MarkNotificationRead)
+			doctor.GET("/patients/:patient_id/history", doctorHandler.GetPatientHistory)
 		}
 
 		// AI Chatbot routes

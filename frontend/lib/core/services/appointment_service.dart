@@ -15,7 +15,7 @@ class AppointmentService {
     },
     {
       'key': 'INJECTION_ROOM',
-      'name': 'Injection Room',
+      'ame': 'Injection Room',
       'subtitle': 'IV & IM Injections',
       'icon': 'syringe',
       'color': 0xFF0284C7,

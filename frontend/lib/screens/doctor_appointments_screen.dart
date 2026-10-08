@@ -34,21 +34,30 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
   Future<void> _fetchAppointments() async {
     setState(() => _isLoading = true);
     final list = await DoctorService.getTodayAppointments();
-    if (mounted) setState(() { _allAppointments = list; _isLoading = false; });
+    if (mounted) {
+      setState(() {
+        _allAppointments = list;
+        _isLoading = false;
+      });
+    }
   }
 
   List<Map<String, dynamic>> get _filtered {
     if (_activeFilter == 'ALL') return _allAppointments;
     return _allAppointments.where((a) {
-      final qs = (a['queue_status'] ?? '').toString().toUpperCase();
-      final as_ = (a['appointment_status'] ?? '').toString().toUpperCase();
       if (_activeFilter == 'WAITING') {
-        return qs == 'CHECKED_IN' || as_ == 'WAITING';
+        return DoctorService.isAppointmentWaiting(a);
       }
       if (_activeFilter == 'IN_CONSULTATION') {
-        return as_ == 'IN_CONSULTATION' || qs == 'IN_PROGRESS';
+        return DoctorService.isAppointmentInConsultation(a);
       }
-      return as_ == _activeFilter || qs == _activeFilter;
+      return [
+        a['appointment_status'],
+        a['consultation_status'],
+        a['queue_status'],
+        a['status'],
+      ].any(
+          (status) => status?.toString().trim().toUpperCase() == _activeFilter);
     }).toList();
   }
 
@@ -133,10 +142,9 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
 
   Widget _buildAppointmentCard(Map<String, dynamic> appt) {
     final status = (appt['appointment_status'] ?? 'SCHEDULED').toString();
-    final queueStatus = (appt['queue_status'] ?? 'PENDING').toString();
     final statusColor = DoctorService.getStatusColor(status);
     final displayStatus = DoctorService.getStatusLabel(status);
-    final isActive = status == 'IN_CONSULTATION' || queueStatus == 'IN_PROGRESS';
+    final isActive = DoctorService.isAppointmentInConsultation(appt);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),

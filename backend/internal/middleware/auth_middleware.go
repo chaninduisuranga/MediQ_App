@@ -40,3 +40,14 @@ func AuthMiddleware(cfg *config.Config) gin.HandlerFunc {
 		c.Next()
 	}
 }
+
+func OptionalAuthMiddleware(cfg *config.Config) gin.HandlerFunc {
+	authMiddleware := AuthMiddleware(cfg)
+	return func(c *gin.Context) {
+		if c.GetHeader("Authorization") == "" {
+			c.Next()
+			return
+		}
+		authMiddleware(c)
+	}
+}

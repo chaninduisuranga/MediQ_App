@@ -32,8 +32,8 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
   bool _isInit = false;
 
   Map<String, dynamic> get _appt =>
-      (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?)
-          ?? {};
+      (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ??
+      {};
 
   @override
   void didChangeDependencies() {
@@ -80,13 +80,22 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
   Future<void> _startConsultation() async {
     final id = (_appt['id'] as int?) ?? 0;
     setState(() => _isSaving = true);
-    await DoctorService.updateAppointmentStatus(id, 'IN_CONSULTATION');
-    if (mounted) setState(() { _isSaving = false; _started = true; });
+    final success =
+        await DoctorService.updateAppointmentStatus(id, 'IN_CONSULTATION');
     if (mounted) {
+      setState(() {
+        _isSaving = false;
+        _started = success;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Consultation started.'),
-          backgroundColor: AppTheme.doctorPrimaryColor,
+        SnackBar(
+          content: Text(
+            success
+                ? 'Consultation started.'
+                : 'Could not start consultation. Please try again.',
+          ),
+          backgroundColor:
+              success ? AppTheme.doctorPrimaryColor : AppTheme.errorRed,
         ),
       );
     }
@@ -95,26 +104,54 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
   Future<void> _completeConsultation() async {
     final id = (_appt['id'] as int?) ?? 0;
     setState(() => _isSaving = true);
-    await DoctorService.updateAppointmentStatus(id, 'COMPLETED');
-    
+    final success = await DoctorService.updateAppointmentStatus(
+      id,
+      'COMPLETED',
+      notes: _notesController.text.trim(),
+    );
+    if (!success) {
+      if (mounted) {
+        setState(() => _isSaving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not complete consultation. Please try again.'),
+            backgroundColor: AppTheme.errorRed,
+          ),
+        );
+      }
+      return;
+    }
+
     // Automatically move 'Next Patient' to 'Currently In Consultation'
     final appointments = await DoctorService.getTodayAppointments();
-    final waitingList = appointments.where((a) =>
-        a['queue_status'] == 'CHECKED_IN' ||
-        a['appointment_status'] == 'WAITING').toList();
-        
-    if (waitingList.isNotEmpty) {
+    var nextPatientCalled = false;
+    final waitingList =
+        appointments.where(DoctorService.isAppointmentWaiting).toList();
+    final hasWaitingPatient = waitingList.isNotEmpty;
+
+    if (hasWaitingPatient) {
       final nextPatientId = (waitingList.first['id'] as int?) ?? 0;
-      await DoctorService.updateAppointmentStatus(nextPatientId, 'IN_CONSULTATION');
+      nextPatientCalled = await DoctorService.updateAppointmentStatus(
+        nextPatientId,
+        'IN_CONSULTATION',
+      );
     }
-    
+
     if (mounted) setState(() => _isSaving = false);
     if (!mounted) return;
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Consultation completed. Next patient called automatically.'),
-        backgroundColor: Color(0xFF10B981),
+      SnackBar(
+        content: Text(
+          nextPatientCalled
+              ? 'Consultation completed. Next patient called automatically.'
+              : hasWaitingPatient
+                  ? 'Consultation completed, but the next patient could not be called. Please refresh the queue.'
+                  : 'Consultation completed. No next patient was waiting.',
+        ),
+        backgroundColor: hasWaitingPatient && !nextPatientCalled
+            ? AppTheme.errorRed
+            : const Color(0xFF10B981),
       ),
     );
     // Pop back to queue
@@ -124,9 +161,12 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
   @override
   Widget build(BuildContext context) {
     final appt = _appt;
-    final status = (appt['appointment_status'] ?? 'WAITING').toString();
+    final appointmentTime = appt['appointment_time']?.toString().trim();
+    final appointmentTimeForDetails = appointmentTime?.isNotEmpty == true
+        ? appointmentTime!
+        : _formatAppointmentTime(_dbTime);
     final isInConsultation =
-        _started || status == 'IN_CONSULTATION' || appt['queue_status'] == 'IN_PROGRESS';
+        _started || DoctorService.isAppointmentInConsultation(appt);
 
     return Scaffold(
       appBar: AppBar(
@@ -226,9 +266,16 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
               title: 'Appointment Details',
               icon: Icons.calendar_today_rounded,
               children: [
-                _infoRow('Time', _isFetchingDb ? 'Loading...' : _dbTime),
+                _infoRow(
+                  'Time',
+                  _isFetchingDb ? 'Loading...' : appointmentTimeForDetails,
+                ),
                 _infoRow('Date', _isFetchingDb ? 'Loading...' : _dbDate),
-                _infoRow('Notes', _isFetchingDb ? 'Loading...' : (_dbNotes.isEmpty ? 'Not provided' : _dbNotes)),
+                _infoRow(
+                    'Notes',
+                    _isFetchingDb
+                        ? 'Loading...'
+                        : (_dbNotes.isEmpty ? 'Not provided' : _dbNotes)),
               ],
             ),
 
@@ -242,22 +289,31 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
                 border: Border.all(color: Colors.grey.shade200),
               ),
               child: Theme(
-                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                data: Theme.of(context)
+                    .copyWith(dividerColor: Colors.transparent),
                 child: ExpansionTile(
                   title: const Row(
                     children: [
-                      Icon(Icons.person_search_rounded, size: 18, color: AppTheme.doctorPrimaryColor),
+                      Icon(Icons.person_search_rounded,
+                          size: 18, color: AppTheme.doctorPrimaryColor),
                       SizedBox(width: 8),
-                      Text('Patient Details', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.darkText)),
+                      Text('Patient Details',
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: AppTheme.darkText)),
                     ],
                   ),
-                  childrenPadding: const EdgeInsets.only(left: 18, right: 18, bottom: 18),
+                  childrenPadding:
+                      const EdgeInsets.only(left: 18, right: 18, bottom: 18),
                   children: [
                     const Divider(height: 10),
                     const SizedBox(height: 10),
-                    _infoRow('Blood Group', _isFetchingDb ? '...' : _dbBloodGroup),
+                    _infoRow(
+                        'Blood Group', _isFetchingDb ? '...' : _dbBloodGroup),
                     _infoRow('Allergies', _isFetchingDb ? '...' : _dbAllergies),
-                    _infoRow('Conditions', _isFetchingDb ? '...' : _dbMedicalConditions),
+                    _infoRow('Conditions',
+                        _isFetchingDb ? '...' : _dbMedicalConditions),
                     _infoRow('Address', _isFetchingDb ? '...' : _dbAddress),
                   ],
                 ),
@@ -420,12 +476,10 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
                       label,
                       style: TextStyle(
                         fontSize: 9,
-                        fontWeight: isCurrent
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        color: isActive
-                            ? AppTheme.darkText
-                            : AppTheme.mutedText,
+                        fontWeight:
+                            isCurrent ? FontWeight.bold : FontWeight.normal,
+                        color:
+                            isActive ? AppTheme.darkText : AppTheme.mutedText,
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -437,6 +491,19 @@ class _DoctorConsultationScreenState extends State<DoctorConsultationScreen> {
         }).toList(),
       ),
     );
+  }
+
+  String _formatAppointmentTime(String value) {
+    final match = RegExp(
+      r'(?:T|\s)(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(?:Z|[+-]\d{2}:?\d{2})?$',
+    ).firstMatch(value.trim());
+    if (match == null) return value;
+
+    final hour = int.parse(match.group(1)!);
+    final minute = match.group(2)!;
+    final displayHour = hour % 12 == 0 ? 12 : hour % 12;
+    final period = hour >= 12 ? 'PM' : 'AM';
+    return '${displayHour.toString().padLeft(2, '0')}:$minute $period';
   }
 
   Widget _buildInfoCard({

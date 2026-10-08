@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -152,6 +153,15 @@ func (h *AppointmentHandler) BookAppointment(c *gin.Context) {
 		utils.SendError(c, http.StatusInternalServerError, "Failed to book appointment: "+err.Error())
 		return
 	}
+
+	// Notify doctor for this room about the new appointment
+	utils.NotifyDoctorForRoom(
+		database.DB,
+		room,
+		"NEW_APPOINTMENT",
+		"New Appointment Booked",
+		fmt.Sprintf("%s booked appointment #%d for %s.", user.FullName, newQueueNumber, selectedDate),
+	)
 
 	// Construct Web View URL for QR scan redirection
 	scheme := "http"
@@ -383,6 +393,15 @@ func (h *AppointmentHandler) CancelAppointment(c *gin.Context) {
 		return
 	}
 
+	// Notify doctor about cancellation
+	utils.NotifyDoctorForRoom(
+		database.DB,
+		appt.Room,
+		"APPOINTMENT_CANCELLED",
+		"Appointment Cancelled",
+		fmt.Sprintf("Appointment #%d for %s on %s was cancelled by patient.", appt.QueueNumber, appt.PatientName, appt.AppointmentDate),
+	)
+
 	utils.SendSuccess(c, http.StatusOK, "Appointment cancelled successfully", nil)
 }
 
@@ -415,13 +434,8 @@ func (h *AppointmentHandler) ViewAppointment(c *gin.Context) {
 
 // CleanupExpiredAppointments deletes appointments that have passed (date < today)
 func CleanupExpiredAppointments() {
-	loc := time.FixedZone("IST", 5*3600+30*60)
-	today := time.Now().In(loc).Format("2006-01-02")
-
-	result := database.DB.Where("appointment_date < ?", today).Delete(&models.OPDAppointment{})
-	if result.RowsAffected > 0 {
-		fmt.Printf("[Cleanup] Deleted %d expired appointments (before %s)\n", result.RowsAffected, today)
-	}
+	// Auto-cleanup disabled to preserve appointment records for doctor queue review
+	log.Println("[Cleanup] Auto-cleanup of expired appointments is disabled")
 }
 
 // Helper function to render a beautiful HTML Ticket Page for QR scan
