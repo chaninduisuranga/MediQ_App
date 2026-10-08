@@ -63,7 +63,9 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
   @override
   void initState() {
     super.initState();
-    _selectedRoomKey = widget.initialRoomKey ?? 'GENERAL_OPD';
+    _selectedRoomKey =
+        widget.initialRoomKey ?? QueueService.selectedStaffRoomKey;
+    QueueService.setSelectedStaffRoomKey(_selectedRoomKey);
     _tabController = TabController(length: 2, vsync: this);
   }
 
@@ -77,6 +79,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
         setState(() {
           _selectedRoomKey = key;
         });
+        QueueService.setSelectedStaffRoomKey(key);
       }
     }
   }
@@ -127,7 +130,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
       return;
     }
 
-    final token = nextAppt['queue_number'] ?? 'N/A';
+    final token = (nextAppt['queue_number'] ?? 'N/A').toString();
     final patientName = nextAppt['patient_name'] ?? 'Patient';
     final roomDisplayName =
         AppointmentService.getRoomDisplayName(_selectedRoomKey);
@@ -204,9 +207,13 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
                     await QueueService.updateStaffPatientStatus(
                       currentId,
                       'COMPLETED',
+                      roomKey: _selectedRoomKey,
                     );
                   }
-                  await QueueService.callStaffPatient(nextId);
+                  await QueueService.callStaffPatient(
+                    nextId,
+                    roomKey: _selectedRoomKey,
+                  );
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -280,6 +287,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
                 await QueueService.updateStaffPatientStatus(
                   patientId,
                   'SKIPPED',
+                  roomKey: _selectedRoomKey,
                 );
                 if (mounted) {
                   messenger.showSnackBar(
@@ -338,6 +346,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
                 await QueueService.updateStaffPatientStatus(
                   patientId,
                   'RECALL',
+                  roomKey: _selectedRoomKey,
                 );
                 if (mounted) {
                   messenger.showSnackBar(
@@ -398,6 +407,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
                 await QueueService.updateStaffPatientStatus(
                   patientId,
                   'NO_SHOW',
+                  roomKey: _selectedRoomKey,
                 );
                 if (mounted) {
                   messenger.showSnackBar(
@@ -411,7 +421,8 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
                 if (mounted) {
                   messenger.showSnackBar(
                     SnackBar(
-                      content: Text('Could not mark patient as No Show: $error'),
+                      content:
+                          Text('Could not mark patient as No Show: $error'),
                       backgroundColor: AppTheme.errorRed,
                     ),
                   );
@@ -465,6 +476,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
                 await QueueService.markStaffPatientPriority(
                   patientId,
                   isPriority: !currentPriority,
+                  roomKey: _selectedRoomKey,
                 );
                 if (mounted) {
                   messenger.showSnackBar(
@@ -515,8 +527,11 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
               icon: const Icon(Icons.medical_services_rounded,
                   color: Color(0xFF059669)),
               tooltip: 'Doctor Allocation',
-              onPressed: () =>
-                  Navigator.pushNamed(context, AppRoutes.doctorAllocation),
+              onPressed: () => Navigator.pushNamed(
+                context,
+                AppRoutes.doctorAllocation,
+                arguments: {'roomKey': _selectedRoomKey},
+              ),
             ),
         ],
         bottom: TabBar(
@@ -535,7 +550,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
         ),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: QueueService.getStaffQueueStream(),
+        stream: QueueService.getStaffQueueStream(roomKey: _selectedRoomKey),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Center(
@@ -585,7 +600,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
               .toList();
 
           final currentToken = currentPatient.isNotEmpty
-              ? (currentPatient['queue_number'] ?? '--')
+              ? (currentPatient['queue_number'] ?? '--').toString()
               : '--';
           final avgWaitTime =
               waitingList.isNotEmpty ? (waitingList.length * 5) : 10;
@@ -636,6 +651,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
                                     setState(() {
                                       _selectedRoomKey = val;
                                     });
+                                    QueueService.setSelectedStaffRoomKey(val);
                                   }
                                 },
                               ),
@@ -683,7 +699,10 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
                               foregroundColor: AppTheme.primarySkyBlue,
                             ),
                             onPressed: () => Navigator.pushNamed(
-                                context, AppRoutes.doctorAllocation),
+                              context,
+                              AppRoutes.doctorAllocation,
+                              arguments: {'roomKey': _selectedRoomKey},
+                            ),
                             child: const Text('Manage &rarr;',
                                 style: TextStyle(
                                     fontWeight: FontWeight.bold, fontSize: 12)),
@@ -843,7 +862,8 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
                                         item['id']?.toString() ?? '') ??
                                     0;
                                 final token =
-                                    item['queue_number'] ?? '${index + 1}';
+                                    (item['queue_number'] ?? '${index + 1}')
+                                        .toString();
                                 final name = item['patient_name'] ?? 'Patient';
                                 final status =
                                     item['status'] as String? ?? 'PENDING';
@@ -1083,7 +1103,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
                 itemBuilder: (context, index) {
                   final item = skippedOrCompletedList[index];
                   final id = int.tryParse(item['id']?.toString() ?? '') ?? 0;
-                  final token = item['queue_number'] ?? 'N/A';
+                  final token = (item['queue_number'] ?? 'N/A').toString();
                   final name = item['patient_name'] ?? 'Patient';
                   final status = item['status'] as String? ?? 'COMPLETED';
                   final isSkipped = status == 'SKIPPED';
@@ -1182,7 +1202,9 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
   Widget _buildCurrentPatientCard(
       Map<String, dynamic> patient, Color roomColor) {
     final hasPatient = patient.isNotEmpty;
-    final token = hasPatient ? (patient['queue_number'] ?? 'N/A') : '--';
+    final token = hasPatient
+        ? (patient['queue_number'] ?? 'N/A').toString()
+        : '--';
     final name = hasPatient
         ? (patient['patient_name'] ?? 'Unknown')
         : 'No Active Patient';

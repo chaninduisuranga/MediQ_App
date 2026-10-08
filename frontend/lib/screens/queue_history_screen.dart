@@ -28,9 +28,12 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
   Future<void> _fetchHistory() async {
     setState(() => _isLoading = true);
     try {
+      final roomFilter = _selectedRoomFilter == 'ALL'
+          ? 'ALL'
+          : QueueService.canonicalStaffRoomKey(_selectedRoomFilter);
       final list = await QueueService.getQueueHistory(
         filterTime: _selectedFilterTime,
-        roomKey: _selectedRoomFilter,
+        roomKey: roomFilter,
       );
       if (mounted) {
         setState(() {
@@ -43,6 +46,50 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
         setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not load queue history: $error')),
+        );
+      }
+    }
+  }
+
+  Future<void> _confirmDeleteHistoryRecord(
+    int historyId,
+    String patientName,
+    String token,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete history record?'),
+        content: Text(
+          'Hide the activity record for $patientName (Token #$token) from '
+          'Staff Queue History? This will not change the appointment or '
+          'patient record.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    try {
+      await QueueService.deleteQueueHistoryRecord(historyId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Queue history record deleted.')),
+      );
+      await _fetchHistory();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not delete queue history record: $error')),
         );
       }
     }
@@ -195,9 +242,14 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
                         separatorBuilder: (_, __) => const SizedBox(height: 10),
                         itemBuilder: (context, index) {
                           final item = _historyList[index];
+                          final historyId =
+                              int.tryParse(item['id']?.toString() ?? '');
                           final status = item['status'] as String? ?? 'COMPLETED';
                           final statusColor = _getStatusColor(status);
                           final roomName = AppointmentService.getRoomDisplayName(item['room'] ?? '');
+                          final token = (item['token'] ?? 'N/A').toString();
+                          final patientName =
+                              (item['patient_name'] ?? 'Patient').toString();
 
                           return Container(
                             padding: const EdgeInsets.all(14),
@@ -224,7 +276,7 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
                                   child: Column(
                                     children: [
                                       Text(
-                                        item['token'] ?? 'N/A',
+                                        token,
                                         style: TextStyle(
                                           fontWeight: FontWeight.w900,
                                           fontSize: 16,
@@ -240,7 +292,7 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        item['patient_name'] ?? 'Patient',
+                                        patientName,
                                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.darkText),
                                       ),
                                       const SizedBox(height: 2),
@@ -266,6 +318,27 @@ class _QueueHistoryScreenState extends State<QueueHistoryScreen> {
                                     Text(
                                       item['date'] ?? '',
                                       style: const TextStyle(fontSize: 11, color: AppTheme.mutedText),
+                                    ),
+                                    IconButton(
+                                      tooltip: 'Delete history record',
+                                      visualDensity: VisualDensity.compact,
+                                      constraints: const BoxConstraints(
+                                        minWidth: 36,
+                                        minHeight: 36,
+                                      ),
+                                      padding: EdgeInsets.zero,
+                                      icon: const Icon(
+                                        Icons.delete_outline_rounded,
+                                        size: 18,
+                                      ),
+                                      onPressed: historyId == null ||
+                                              historyId <= 0
+                                          ? null
+                                          : () => _confirmDeleteHistoryRecord(
+                                                historyId,
+                                                patientName,
+                                                token,
+                                              ),
                                     ),
                                   ],
                                 ),

@@ -5,6 +5,41 @@ import 'auth_service.dart';
 
 class QueueService {
   static String get baseUrl => AuthService.baseUrl;
+  static String _selectedStaffRoomKey = 'GENERAL_OPD';
+
+  static String get selectedStaffRoomKey => _selectedStaffRoomKey;
+
+  static void setSelectedStaffRoomKey(String roomKey) {
+    canonicalStaffRoomKey(roomKey);
+    _selectedStaffRoomKey = roomKey.trim();
+  }
+
+  static String canonicalStaffRoomKey(String roomKey) {
+    final key = roomKey.trimRight();
+    switch (key) {
+      case 'GENERAL_OPD':
+      case 'OPD_CLINIC_ROOM':
+        return 'OPD_CLINIC_ROOM';
+      case 'DRESSING_ROOM':
+      case 'INJECTION_ROOM':
+      case 'ANIMAL_BITE_ROOM':
+      case 'BLEEDING_ROOM':
+      case 'DISPENSARY_ROOM':
+        return key;
+      default:
+        throw ArgumentError.value(roomKey, 'roomKey', 'Unsupported Staff room');
+    }
+  }
+
+  static Uri _staffRoomUri(String path, String roomKey,
+      {Map<String, String>? queryParameters}) {
+    return _staffUri(path).replace(
+      queryParameters: {
+        ...?queryParameters,
+        'room': canonicalStaffRoomKey(roomKey),
+      },
+    );
+  }
 
   static Map<String, String> _staffHeaders({bool hasBody = false}) {
     final token = AuthService.token;
@@ -47,9 +82,8 @@ class QueueService {
       decoded = jsonDecode(response.body);
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = decoded is Map
-          ? decoded['error'] ?? decoded['message']
-          : null;
+      final message =
+          decoded is Map ? decoded['error'] ?? decoded['message'] : null;
       throw Exception(
         message?.toString() ??
             'Staff API request failed (${response.statusCode}).',
@@ -158,18 +192,68 @@ class QueueService {
     );
   }
 
-  /// Returns the queue assigned to the authenticated Staff member.
-  static Future<List<Map<String, dynamic>>> getStaffQueue() async {
-    final response =
-        await _sendStaffRequest('GET', _staffUri('/staff/queue/list'));
+  /// Returns the queue for the selected, server-authorized Staff room.
+  static Future<List<Map<String, dynamic>>> getStaffQueue(
+      {String? roomKey}) async {
+    final selectedRoom = roomKey ?? _selectedStaffRoomKey;
+    final response = await _sendStaffRequest(
+      'GET',
+      _staffRoomUri('/staff/queue/list', selectedRoom),
+    );
     return _normalizeStaffQueue(_staffListFromResponse(response));
   }
 
-  static Future<List<Map<String, dynamic>>> searchStaffQueue(String query) async {
-    final uri = _staffUri('/staff/queue/search')
-        .replace(queryParameters: {'q': query});
+  static Future<List<Map<String, dynamic>>> searchStaffQueue(
+    String query, {
+    String? roomKey,
+  }) async {
+    final uri = _staffRoomUri(
+      '/staff/queue/search',
+      roomKey ?? _selectedStaffRoomKey,
+      queryParameters: {'q': query},
+    );
     final response = await _sendStaffRequest('GET', uri);
     return _normalizeStaffQueue(_staffListFromResponse(response));
+  }
+
+  /// Looks up an appointment by its Patient QR ticket ID within the assigned room.
+  static Future<Map<String, dynamic>> lookupStaffQrAppointment(
+    int appointmentId, {
+    String? roomKey,
+  }) async {
+    if (appointmentId <= 0) {
+      throw ArgumentError.value(
+        appointmentId,
+        'appointmentId',
+        'Appointment ID must be positive',
+      );
+    }
+    final response = await _sendStaffRequest(
+      'GET',
+      _staffRoomUri(
+        '/staff/queue/qr-lookup/$appointmentId',
+        roomKey ?? _selectedStaffRoomKey,
+      ),
+    );
+    final data = _staffResponseData(response);
+    if (data is! Map) {
+      throw const FormatException(
+          'Staff QR lookup response was not an object.');
+    }
+    final appointment = Map<String, dynamic>.from(data);
+    final room = appointment['room']?.toString();
+    if (room != null && room.isNotEmpty) {
+      appointment['room'] = canonicalStaffRoomKey(room);
+    }
+    switch (appointment['status']) {
+      case 'CONFIRMED':
+        appointment['status'] = 'CHECKED_IN';
+        break;
+      case 'SERVING':
+        appointment['status'] = 'IN_PROGRESS';
+        break;
+    }
+    return appointment;
   }
 
   static List<Map<String, dynamic>> _normalizeStaffQueue(
@@ -178,39 +262,75 @@ class QueueService {
     return queue.map((patient) {
       final normalized = Map<String, dynamic>.from(patient);
       normalized['priority'] ??= normalized['is_priority'] ?? false;
+      final room = normalized['room']?.toString();
+      if (room != null && room.isNotEmpty) {
+        normalized['room'] = canonicalStaffRoomKey(room);
+      }
+      switch (normalized['status']) {
+        case 'CONFIRMED':
+          normalized['status'] = 'CHECKED_IN';
+          break;
+        case 'SERVING':
+          normalized['status'] = 'IN_PROGRESS';
+          break;
+      }
       return normalized;
     }).toList();
   }
 
-  static Stream<List<Map<String, dynamic>>> getStaffQueueStream() async* {
+  static Stream<List<Map<String, dynamic>>> getStaffQueueStream(
+      {String? roomKey}) async* {
+    final selectedRoom = roomKey ?? _selectedStaffRoomKey;
     while (true) {
-      yield await getStaffQueue();
+      final queue = await getStaffQueue(roomKey: selectedRoom);
+      if (_selectedStaffRoomKey != selectedRoom) return;
+      yield queue;
       await Future.delayed(const Duration(seconds: 2));
     }
   }
 
-  static Future<void> checkInStaffPatient(int id) async {
+  static Future<void> checkInStaffPatient(int id, {String? roomKey}) async {
     await _sendStaffRequest(
       'POST',
-      _staffUri('/staff/queue/checkin/$id'),
+      _staffRoomUri(
+          '/staff/queue/checkin/$id', roomKey ?? _selectedStaffRoomKey),
     );
   }
 
-  static Future<void> callStaffPatient(int id) async {
-    await _sendStaffRequest('POST', _staffUri('/staff/queue/call/$id'));
+  /// Checks in a QR-resolved appointment with assigned-room authorization.
+  static Future<void> checkInStaffQrPatient(int id, {String? roomKey}) async {
+    if (id <= 0) {
+      throw ArgumentError.value(id, 'id', 'Appointment ID must be positive');
+    }
+    await _sendStaffRequest(
+      'POST',
+      _staffRoomUri(
+        '/staff/queue/qr-checkin/$id',
+        roomKey ?? _selectedStaffRoomKey,
+      ),
+    );
+  }
+
+  static Future<void> callStaffPatient(int id, {String? roomKey}) async {
+    await _sendStaffRequest(
+      'POST',
+      _staffRoomUri('/staff/queue/call/$id', roomKey ?? _selectedStaffRoomKey),
+    );
   }
 
   static Future<void> updateStaffPatientStatus(
     int id,
-    String status,
-  ) async {
+    String status, {
+    String? roomKey,
+  }) async {
     const allowedStatuses = {'COMPLETED', 'SKIPPED', 'NO_SHOW', 'RECALL'};
     if (!allowedStatuses.contains(status)) {
       throw ArgumentError.value(status, 'status', 'Unsupported Staff status');
     }
     await _sendStaffRequest(
       'PATCH',
-      _staffUri('/staff/queue/status/$id'),
+      _staffRoomUri(
+          '/staff/queue/status/$id', roomKey ?? _selectedStaffRoomKey),
       body: {'status': status},
     );
   }
@@ -218,27 +338,31 @@ class QueueService {
   static Future<void> markStaffPatientPriority(
     int id, {
     required bool isPriority,
+    String? roomKey,
   }) async {
     await _sendStaffRequest(
       'PATCH',
-      _staffUri('/staff/queue/priority/$id'),
+      _staffRoomUri(
+          '/staff/queue/priority/$id', roomKey ?? _selectedStaffRoomKey),
       body: {'is_priority': isPriority},
     );
   }
 
-  static Future<List<Map<String, dynamic>>> getStaffDoctors() async {
-    final response =
-        await _sendStaffRequest('GET', _staffUri('/staff/doctors'));
+  static Future<List<Map<String, dynamic>>> getStaffDoctors(
+      {String? roomKey}) async {
+    final response = await _sendStaffRequest(
+      'GET',
+      _staffRoomUri('/staff/doctors', roomKey ?? _selectedStaffRoomKey),
+    );
     return _staffListFromResponse(response);
   }
 
-  static Future<void> allocateStaffPatient(
-    int patientId,
-    dynamic doctorId,
-  ) async {
+  static Future<void> allocateStaffPatient(int patientId, dynamic doctorId,
+      {String? roomKey}) async {
     await _sendStaffRequest(
       'POST',
-      _staffUri('/staff/queue/allocate/$patientId'),
+      _staffRoomUri(
+          '/staff/queue/allocate/$patientId', roomKey ?? _selectedStaffRoomKey),
       body: {'doctor_id': doctorId},
     );
   }
@@ -451,11 +575,13 @@ class QueueService {
   /// Get queue list for a specific room sorted by priority and queue number
   static Future<List<Map<String, dynamic>>> getQueueByRoom(String room) async {
     try {
-      final res = await http.get(Uri.parse('$baseUrl/appointments/queue/$room'));
+      final res =
+          await http.get(Uri.parse('$baseUrl/appointments/queue/$room'));
       if (res.statusCode == 200) {
         final body = jsonDecode(res.body);
         if (body['data'] != null && body['data']['appointments'] != null) {
-          final list = List<Map<String, dynamic>>.from(body['data']['appointments']);
+          final list =
+              List<Map<String, dynamic>>.from(body['data']['appointments']);
           if (list.isNotEmpty) {
             _syncLocalWithRemote(room, list);
             return list;
@@ -473,8 +599,10 @@ class QueueService {
   static void _sortQueueList(List<Map<String, dynamic>> list) {
     list.sort((a, b) {
       // In progress comes first
-      if (a['status'] == 'IN_PROGRESS' && b['status'] != 'IN_PROGRESS') return -1;
-      if (b['status'] == 'IN_PROGRESS' && a['status'] != 'IN_PROGRESS') return 1;
+      if (a['status'] == 'IN_PROGRESS' && b['status'] != 'IN_PROGRESS')
+        return -1;
+      if (b['status'] == 'IN_PROGRESS' && a['status'] != 'IN_PROGRESS')
+        return 1;
 
       // Priority comes next among checked in / waiting
       final aPriority = (a['priority'] as bool?) ?? false;
@@ -489,7 +617,8 @@ class QueueService {
     });
   }
 
-  static void _syncLocalWithRemote(String room, List<Map<String, dynamic>> remoteList) {
+  static void _syncLocalWithRemote(
+      String room, List<Map<String, dynamic>> remoteList) {
     for (var remote in remoteList) {
       final idx = _mockQueue.indexWhere((m) => m['id'] == remote['id']);
       if (idx >= 0) {
@@ -507,7 +636,9 @@ class QueueService {
 
     final room = appt?['room'] as String? ?? 'GENERAL_OPD';
     final roomQueue = await getQueueByRoom(room);
-    final waitingBefore = roomQueue.where((a) => a['status'] == 'CHECKED_IN' && a['id'] != id).length;
+    final waitingBefore = roomQueue
+        .where((a) => a['status'] == 'CHECKED_IN' && a['id'] != id)
+        .length;
     final estimatedTime = (waitingBefore + 1) * 5; // ~5 mins per patient
 
     return {
@@ -567,7 +698,8 @@ class QueueService {
   }
 
   /// Skip patient with reason and optional notes
-  static Future<bool> skipPatient(int id, {required String reason, String? notes}) async {
+  static Future<bool> skipPatient(int id,
+      {required String reason, String? notes}) async {
     _updateLocalStatus(id, 'SKIPPED');
     final idx = _mockQueue.indexWhere((item) => item['id'] == id);
     if (idx >= 0) {
@@ -586,7 +718,8 @@ class QueueService {
   }
 
   /// Mark or unmark a patient as Priority with a priority category
-  static Future<bool> markPriority(int id, {required String category, required bool isPriority}) async {
+  static Future<bool> markPriority(int id,
+      {required String category, required bool isPriority}) async {
     final idx = _mockQueue.indexWhere((item) => item['id'] == id);
     if (idx >= 0) {
       _mockQueue[idx]['priority'] = isPriority;
@@ -597,15 +730,36 @@ class QueueService {
   }
 
   /// Gets real queue activity history for the authenticated Staff member.
-  static Future<List<Map<String, dynamic>>> getQueueHistory({String? filterTime, String? roomKey}) async {
+  static Future<List<Map<String, dynamic>>> getQueueHistory({
+    String? filterTime,
+    String? roomKey,
+  }) async {
+    final requestedRoom = roomKey ?? 'ALL';
+    final selectedRoom =
+        requestedRoom == 'ALL' ? 'ALL' : canonicalStaffRoomKey(requestedRoom);
     final uri = _staffUri('/staff/queue/history').replace(
       queryParameters: {
         'filter_time': filterTime ?? 'Today',
-        'room': roomKey ?? 'ALL',
+        'room': selectedRoom,
       },
     );
     final response = await _sendStaffRequest('GET', uri);
     return _staffListFromResponse(response, keys: const ['history', 'items']);
+  }
+
+  /// Soft-deletes one Staff queue activity history record by its history ID.
+  static Future<void> deleteQueueHistoryRecord(int historyId) async {
+    if (historyId <= 0) {
+      throw ArgumentError.value(
+        historyId,
+        'historyId',
+        'History ID must be positive',
+      );
+    }
+    await _sendStaffRequest(
+      'DELETE',
+      _staffUri('/staff/queue/history/$historyId'),
+    );
   }
 
   /// Real-time stream listener for appointment status changes by room
@@ -634,7 +788,8 @@ class QueueService {
       }
     } catch (_) {}
 
-    final localMatch = _mockQueue.firstWhere((item) => item['id'] == id, orElse: () => <String, dynamic>{});
+    final localMatch = _mockQueue.firstWhere((item) => item['id'] == id,
+        orElse: () => <String, dynamic>{});
     if (localMatch.isNotEmpty) {
       return localMatch;
     }
@@ -664,5 +819,4 @@ class QueueService {
       _mockQueue[idx]['status'] = status;
     }
   }
-
 }
