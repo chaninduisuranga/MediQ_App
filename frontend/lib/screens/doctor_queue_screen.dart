@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../core/services/doctor_service.dart';
+import '../core/services/queue_service.dart';
 import '../core/theme/theme.dart';
 import '../widgets/doctor_bottom_nav_bar.dart';
 
@@ -26,9 +27,15 @@ class _DoctorQueueScreenState extends State<DoctorQueueScreen> {
     });
   }
 
-  Future<void> _fetchQueue() async {
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchQueue({bool silent = false}) async {
     if (!mounted) return;
-    setState(() => _isLoading = true);
+    if (!silent) setState(() => _isLoading = true);
     final list = await DoctorService.getTodayAppointments();
     if (mounted) {
       setState(() {

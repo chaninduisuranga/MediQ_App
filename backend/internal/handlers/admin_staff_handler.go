@@ -149,6 +149,36 @@ func (h *AdminStaffHandler) UpdateStaff(c *gin.Context) {
 	utils.SendSuccess(c, http.StatusOK, "Staff updated successfully", staffSummary(item))
 }
 
+func (h *AdminStaffHandler) DeleteStaff(c *gin.Context) {
+	if database.DB == nil {
+		utils.SendError(c, http.StatusInternalServerError, "Database connection not initialized")
+		return
+	}
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil || id == 0 {
+		utils.SendError(c, http.StatusBadRequest, "Invalid staff profile ID")
+		return
+	}
+	if err := database.DB.Transaction(func(tx *gorm.DB) error {
+		var item models.AdminStaffAssignment
+		if err := tx.Preload("User").First(&item, id).Error; err != nil {
+			return err
+		}
+		if err := tx.Delete(&item).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&item.User).Error
+	}); err != nil {
+		if err == gorm.ErrRecordNotFound {
+			utils.SendError(c, http.StatusNotFound, "Staff profile not found")
+		} else {
+			utils.SendError(c, http.StatusInternalServerError, "Failed to delete staff: "+err.Error())
+		}
+		return
+	}
+	utils.SendSuccess(c, http.StatusOK, "Staff profile and linked login were deactivated", gin.H{"id": id})
+}
+
 func staffSummary(item models.AdminStaffAssignment) AdminStaffSummary {
 	return AdminStaffSummary{ID: item.ID, UserID: item.UserID, Name: item.User.FullName, Function: item.Function, AssignedRoom: item.AssignedRoom, Status: item.User.Status, IsAvailable: item.IsAvailable}
 }
