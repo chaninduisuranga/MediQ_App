@@ -46,6 +46,7 @@ func InitDB(databaseURL string) *gorm.DB {
 		&models.OPDAppointment{},
 		&models.QueueSession{},
 		&models.ChatMessage{},
+		&models.ChatFAQ{},
 		&models.Notification{},
 	); err != nil {
 		// Treat missing-constraint errors as non-fatal warnings
@@ -55,13 +56,12 @@ func InitDB(databaseURL string) *gorm.DB {
 			log.Printf("Failed to auto-migrate database schema: %v", err)
 		}
 	} else {
-		log.Println("Database schema auto-migrated successfully (Users, Doctors, StaffAssignments, MedicalRecords, OPDAppointments, QueueSessions, ChatMessages, Notifications)")
+		log.Println("Database schema auto-migrated successfully (Users, Doctors, StaffAssignments, MedicalRecords, OPDAppointments, QueueSessions, ChatMessages, ChatFAQs, Notifications)")
 	}
 
 	log.Println("Database connection established successfully")
 	DB = db
 	seedDefaultUsers(db)
-	seedDefaultChatFAQsOnStartup(db)
 
 	// Fix PostgreSQL sequence desynchronization for primary keys across all tables
 	db.Exec(`

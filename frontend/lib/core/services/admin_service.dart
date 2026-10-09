@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../constants/constants.dart';
 import '../models/admin_appointment_model.dart';
+import '../models/admin_analytics_model.dart';
 import '../models/admin_doctor_model.dart';
 import '../models/admin_queue_model.dart';
 import '../models/admin_staff_model.dart';
@@ -238,6 +239,9 @@ class AdminService {
         method: 'PATCH');
   }
 
+  static Future<Map<String, dynamic>> deleteDoctor(int id) =>
+      _deleteManagedPerson('/admin/doctors/$id');
+
   static Future<Map<String, dynamic>> getStaff({String search = ''}) async {
     return _getManagedPeople<AdminStaff>(
       path: '/admin/staff',
@@ -268,6 +272,31 @@ class AdminService {
               .map((item) =>
                   AdminQueueAlert.fromJson(item as Map<String, dynamic>))
               .toList(),
+        };
+      }
+      return {'success': false, 'message': _errorMessage(data)};
+    } catch (_) {
+      return {
+        'success': false,
+        'message': 'Cannot connect to MediQ backend server.',
+      };
+    }
+  }
+
+  static Future<Map<String, dynamic>> getAnalytics(
+      {String period = '30d'}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/analytics?period=$period'),
+        headers: _authHeaders,
+      );
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {
+          'success': true,
+          'analytics': AdminAnalytics.fromJson(
+            data['data'] as Map<String, dynamic>,
+          ),
         };
       }
       return {'success': false, 'message': _errorMessage(data)};
@@ -312,6 +341,9 @@ class AdminService {
         },
         method: 'PATCH');
   }
+
+  static Future<Map<String, dynamic>> deleteStaff(int id) =>
+      _deleteManagedPerson('/admin/staff/$id');
 
   static Future<Map<String, dynamic>> _getManagedPeople<T>({
     required String path,
@@ -361,6 +393,22 @@ class AdminService {
       return {'success': false, 'message': _errorMessage(data)};
     } catch (_) {
       return {'success': false, 'message': 'Unable to save this profile.'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> _deleteManagedPerson(String path) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl$path'),
+        headers: _authHeaders,
+      );
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200 && data['success'] == true) {
+        return {'success': true, 'message': data['message']};
+      }
+      return {'success': false, 'message': _errorMessage(data)};
+    } catch (_) {
+      return {'success': false, 'message': 'Unable to delete this profile.'};
     }
   }
 

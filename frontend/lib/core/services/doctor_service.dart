@@ -61,7 +61,7 @@ class DoctorService {
     try {
       final token = AuthService.token;
       final response = await http.get(
-        Uri.parse('$baseUrl/doctor/queue/today'),
+        Uri.parse('$baseUrl/doctor/appointments/today'),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
@@ -70,18 +70,20 @@ class DoctorService {
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
         if (body['success'] == true && body['data'] != null) {
-          final data = body['data'] as Map<String, dynamic>;
-          final queueList = data['queue'] as List? ?? [];
+          final queueList = body['data'] as List? ?? [];
           // Normalize field names to match UI expectations
           return queueList.map((item) {
             final m = Map<String, dynamic>.from(item as Map);
             // Map backend status to UI-expected status names
-            final rawStatus = (m['status'] as String? ?? 'PENDING').toUpperCase();
+            final rawStatus = (m['appointment_status'] as String? ??
+                    m['status'] as String? ??
+                    'PENDING')
+                .toUpperCase();
             m['appointment_status'] = rawStatus;
-            m['queue_status'] = _mapToQueueStatus(rawStatus);
-            // queue_number displayed as formatted token
-            m['queue_number'] = m['queue_token'] ?? '#${m['queue_number']}';
-            m['raw_number'] = m['queue_number'];
+            m['queue_status'] =
+                m['queue_status'] ?? _mapToQueueStatus(rawStatus);
+            m['queue_number'] ??= m['queue_token'] ?? '--';
+            m['raw_number'] ??= 0;
             // time fields
             m['appointment_time'] = m['appointment_time'] ?? '--';
             m['appointment_date'] = m['appointment_date'] ?? '';
@@ -96,6 +98,22 @@ class DoctorService {
       debugPrint('DoctorService.getTodayAppointments failed: $e');
     }
     return [];
+  }
+
+  static String _mapToQueueStatus(String status) {
+    switch (status.toUpperCase().replaceAll('-', '_').replaceAll(' ', '_')) {
+      case 'PENDING':
+      case 'CONFIRMED':
+      case 'WAITING':
+      case 'SCHEDULED':
+      case 'CALLED':
+        return 'CHECKED_IN';
+      case 'SERVING':
+      case 'IN_CONSULTATION':
+        return 'IN_PROGRESS';
+      default:
+        return status.toUpperCase();
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────

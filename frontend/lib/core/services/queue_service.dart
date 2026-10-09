@@ -211,9 +211,14 @@ class QueueService {
   }
 
   static Future<List<Map<String, dynamic>>> searchStaffQueue(
-      String query) async {
-    final uri =
-        _staffUri('/staff/queue/search').replace(queryParameters: {'q': query});
+    String query, {
+    String? roomKey,
+  }) async {
+    final uri = _staffRoomUri(
+      '/staff/queue/search',
+      roomKey ?? _selectedStaffRoomKey,
+      queryParameters: {'q': query},
+    );
     final response = await _sendStaffRequest('GET', uri);
     return _normalizeStaffQueue(_staffListFromResponse(response));
   }
@@ -568,26 +573,31 @@ class QueueService {
     String? roomKey,
   }) async {
     try {
-      final uri = Uri.parse('$baseUrl/appointments/queue/history')
-          .replace(queryParameters: {
-        if (filterTime != null) 'filter_time': filterTime,
-        if (roomKey != null) 'room': roomKey,
-      });
-      final response = await http.get(uri, headers: _headers);
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body) as Map<String, dynamic>;
-        final data = body['data'];
-        if (body['success'] == true && data is List) {
-          return List<Map<String, dynamic>>.from(data);
-        }
-      }
-      debugPrint(
-        'QueueService.getQueueHistory failed: HTTP ${response.statusCode}',
+      final selectedRoom = roomKey == null || roomKey == 'ALL'
+          ? roomKey ?? _selectedStaffRoomKey
+          : canonicalStaffRoomKey(roomKey);
+      final uri = _staffUri('/staff/queue/history').replace(
+        queryParameters: {
+          if (filterTime != null) 'filter_time': filterTime,
+          'room': selectedRoom,
+        },
       );
+      final response = await _sendStaffRequest('GET', uri);
+      return _staffListFromResponse(response, keys: const ['history', 'items']);
     } catch (error) {
       debugPrint('QueueService.getQueueHistory failed: $error');
     }
     return [];
+  }
+
+  static Future<void> deleteQueueHistoryRecord(int historyId) async {
+    if (historyId <= 0) {
+      throw ArgumentError.value(historyId, 'historyId', 'ID must be positive');
+    }
+    await _sendStaffRequest(
+      'DELETE',
+      _staffUri('/staff/queue/history/$historyId'),
+    );
   }
 
   /// Real-time stream listener for appointment status changes by room.

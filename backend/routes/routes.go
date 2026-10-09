@@ -121,17 +121,6 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			staff.POST("/queue/allocate/:id", staffQueueHandler.AllocateDoctor)
 		}
 
-		// Doctor routes
-		doctor := v1.Group("/doctor")
-		doctor.Use(middleware.AuthMiddleware(cfg))
-		doctor.Use(middleware.DoctorAuthorizationMiddleware())
-		{
-			doctorHandler := handlers.NewDoctorHandler()
-			doctor.GET("/queue/today", doctorHandler.GetTodayQueue)
-			doctor.GET("/queue/stats", doctorHandler.GetQueueStats)
-			doctor.PATCH("/queue/:id/status", doctorHandler.UpdateAppointmentStatus)
-		}
-
 		// Admin routes
 		admin := v1.Group("/admin")
 		admin.Use(middleware.AuthMiddleware(cfg))
@@ -152,14 +141,19 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 			admin.GET("/doctors", adminDoctorHandler.ListDoctors)
 			admin.POST("/doctors", adminDoctorHandler.CreateDoctor)
 			admin.PATCH("/doctors/:id", adminDoctorHandler.UpdateDoctor)
+			admin.DELETE("/doctors/:id", adminDoctorHandler.DeleteDoctor)
 
 			adminStaffHandler := handlers.NewAdminStaffHandler()
 			admin.GET("/staff", adminStaffHandler.ListStaff)
 			admin.POST("/staff", adminStaffHandler.CreateStaff)
 			admin.PATCH("/staff/:id", adminStaffHandler.UpdateStaff)
+			admin.DELETE("/staff/:id", adminStaffHandler.DeleteStaff)
 
 			adminQueueHandler := handlers.NewAdminQueueHandler()
 			admin.GET("/queues", adminQueueHandler.GetQueues)
+
+			adminAnalyticsHandler := handlers.NewAdminAnalyticsHandler()
+			admin.GET("/analytics", adminAnalyticsHandler.GetAnalytics)
 
 			// ── AI Chatbot FAQ management ──────────────────────────────────────────
 			chatFAQHandler := handlers.NewChatFAQHandler()

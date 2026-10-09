@@ -157,6 +157,36 @@ func (h *AdminDoctorHandler) UpdateDoctor(c *gin.Context) {
 	utils.SendSuccess(c, http.StatusOK, "Doctor updated successfully", h.summary(doctor))
 }
 
+func (h *AdminDoctorHandler) DeleteDoctor(c *gin.Context) {
+	if database.DB == nil {
+		utils.SendError(c, http.StatusInternalServerError, "Database connection not initialized")
+		return
+	}
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil || id == 0 {
+		utils.SendError(c, http.StatusBadRequest, "Invalid doctor ID")
+		return
+	}
+	if err := database.DB.Transaction(func(tx *gorm.DB) error {
+		var doctor models.Doctor
+		if err := tx.Preload("User").First(&doctor, id).Error; err != nil {
+			return err
+		}
+		if err := tx.Delete(&doctor).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&doctor.User).Error
+	}); err != nil {
+		if err == gorm.ErrRecordNotFound {
+			utils.SendError(c, http.StatusNotFound, "Doctor not found")
+		} else {
+			utils.SendError(c, http.StatusInternalServerError, "Failed to delete doctor: "+err.Error())
+		}
+		return
+	}
+	utils.SendSuccess(c, http.StatusOK, "Doctor profile and linked login were deactivated", gin.H{"id": id})
+}
+
 func (h *AdminDoctorHandler) summary(doctor models.Doctor) AdminDoctorSummary {
 	var queue int64
 	if database.DB != nil {
