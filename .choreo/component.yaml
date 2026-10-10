@@ -1,9 +1,11 @@
-schemaVersion: 1.1
+schemaVersion: 1.2
 endpoints:
   - name: mediq-backend-api
-    type: REST
-    networkVisibility: Public
-    target:
+    displayName: MediQ Backend API
+    service:
+      basePath: /api/v1
       port: 8080
-      path: /api/v1
+      type: REST
+    networkVisibilities:
+      - Public
     schemaFilePath: backend/swagger.yaml
