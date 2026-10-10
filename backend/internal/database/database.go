@@ -70,7 +70,7 @@ func InitDB(databaseURL string) *gorm.DB {
 		&models.OPDAppointment{},
 		&models.QueueSession{},
 		&models.ChatMessage{},
-		&models.ChatFAQ{},
+		&models.QueueActivityHistory{},
 	); err != nil {
 		// Treat missing-constraint errors as non-fatal warnings
 		if strings.Contains(err.Error(), "does not exist (SQLSTATE 42704)") {
@@ -79,12 +79,13 @@ func InitDB(databaseURL string) *gorm.DB {
 			log.Printf("Failed to auto-migrate database schema: %v", err)
 		}
 	} else {
-		log.Println("Database schema auto-migrated successfully (Users, Doctors, StaffAssignments, MedicalRecords, OPDAppointments, QueueSessions, ChatMessages, ChatFAQs)")
+		log.Println("Database schema auto-migrated successfully (Users, Doctors, StaffAssignments, MedicalRecords, OPDAppointments, QueueSessions, ChatMessages, StaffQueueActivityHistories)")
 	}
 
-	// Ensure ChatFAQ table is always created even if main AutoMigrate had a non-fatal error
-	if err := db.AutoMigrate(&models.ChatFAQ{}); err != nil {
-		log.Printf("Warning: ChatFAQ migration issue: %v", err)
+	if err := db.AutoMigrate(&models.StaffNotification{}); err != nil {
+		log.Printf("Failed to auto-migrate staff notifications table: %v", err)
+	} else {
+		log.Println("Staff notifications table auto-migrated successfully")
 	}
 
 	log.Println("Database connection established successfully")

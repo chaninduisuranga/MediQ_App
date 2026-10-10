@@ -653,16 +653,16 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF0FDF4),
+                        color: AppTheme.lightBg,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                             color:
-                                const Color(0xFF10B981).withValues(alpha: 0.3)),
+                                AppTheme.primarySkyBlue.withValues(alpha: 0.3)),
                       ),
                       child: Row(
                         children: [
                           const Icon(Icons.medical_services_rounded,
-                              color: Color(0xFF059669), size: 20),
+                              color: AppTheme.primarySkyBlue, size: 20),
                           const SizedBox(width: 10),
                           const Expanded(
                             child: Text(
@@ -670,7 +670,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
                               style: TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF065F46),
+                                color: AppTheme.darkText,
                               ),
                             ),
                           ),
@@ -680,7 +680,7 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
                                   horizontal: 10, vertical: 4),
                               minimumSize: Size.zero,
                               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              foregroundColor: const Color(0xFF059669),
+                              foregroundColor: AppTheme.primarySkyBlue,
                             ),
                             onPressed: () => Navigator.pushNamed(
                                 context, AppRoutes.doctorAllocation),
@@ -736,11 +736,11 @@ class _OpdQueueScreenState extends State<OpdQueueScreen>
                                   ? null
                                   : () => _handleCallNext(queueData),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.accentGreen,
+                                backgroundColor: AppTheme.primarySkyBlue,
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(14)),
-                                elevation: 3,
+                                    borderRadius: BorderRadius.circular(12)),
+                                elevation: 2,
                               ),
                               icon: _isCallingNext
                                   ? const SizedBox(
