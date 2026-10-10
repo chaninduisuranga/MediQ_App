@@ -9,7 +9,7 @@ class AdminBottomNavBar extends StatelessWidget {
   final int currentIndex;
 
   void _onTap(BuildContext context, int index) {
-    if (index == currentIndex || index == 1) return;
+    if (index == currentIndex) return;
 
     switch (index) {
       case 0:
@@ -17,6 +17,9 @@ class AdminBottomNavBar extends StatelessWidget {
         break;
       case 2:
         Navigator.pushReplacementNamed(context, '/profile');
+        break;
+      case 1:
+        Navigator.pushReplacementNamed(context, '/admin/analytics');
         break;
     }
   }

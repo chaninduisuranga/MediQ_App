@@ -23,6 +23,10 @@ class AuthService {
   static Map<String, dynamic>? get currentUser => _currentUser;
   static bool get isLoggedIn => _token != null;
 
+  static void updateUserLocal(Map<String, dynamic> user) {
+    _currentUser = user;
+  }
+
   static Future<void> loadSavedProfilePhoto() async {
     final nic = _currentUser?['nic'];
     if (nic != null) {

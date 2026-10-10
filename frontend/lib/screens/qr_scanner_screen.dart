@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../core/services/appointment_service.dart';
 import '../core/services/queue_service.dart';
 import '../core/theme/theme.dart';
@@ -13,12 +16,15 @@ class QrScannerScreen extends StatefulWidget {
   State<QrScannerScreen> createState() => _QrScannerScreenState();
 }
 
-class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProviderStateMixin {
+class _QrScannerScreenState extends State<QrScannerScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _scanAnimation;
   final TextEditingController _idController = TextEditingController();
   Map<String, dynamic>? _scannedPatientData;
+  int? _scannedAppointmentId;
   bool _isSearching = false;
+  bool _scanLocked = false;
 
   @override
   void initState() {
@@ -28,7 +34,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
 
-    _scanAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_animationController);
+    _scanAnimation =
+        Tween<double>(begin: 0.0, end: 1.0).animate(_animationController);
   }
 
   @override
@@ -42,10 +49,14 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
     setState(() {
       _isSearching = true;
       _scannedPatientData = null;
+      _scannedAppointmentId = null;
     });
 
     try {
-      final matches = await QueueService.searchStaffQueue(query);
+      final matches = await QueueService.searchStaffQueue(
+        query,
+        roomKey: QueueService.selectedStaffRoomKey,
+      );
       if (!mounted) return;
       setState(() {
         _isSearching = false;
@@ -56,7 +67,7 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text(
-              'No matching appointment found in your assigned room.',
+              'No matching appointment found in the selected room.',
             ),
             backgroundColor: AppTheme.errorRed,
           ),
@@ -83,18 +94,103 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
     }
   }
 
+  int? _appointmentIdFromQr(String rawValue) {
+    final uri = Uri.tryParse(rawValue.trim());
+    if (uri == null ||
+        (uri.scheme != 'http' && uri.scheme != 'https') ||
+        uri.host.isEmpty) {
+      return null;
+    }
+
+    final match = RegExp(
+      r'^/api/v1/appointments/view/([1-9]\d*)/?$',
+    ).firstMatch(uri.path) ??
+        RegExp(r'^/appointment/([1-9]\d*)/?$').firstMatch(uri.path);
+    final appointmentId = int.tryParse(match?.group(1) ?? '');
+    return appointmentId != null && appointmentId > 0 ? appointmentId : null;
+  }
+
+  void _onBarcodeCapture(BarcodeCapture capture) {
+    if (_scanLocked || _scannedPatientData != null || _isSearching) return;
+
+    String? rawValue;
+    for (final barcode in capture.barcodes) {
+      final value = barcode.rawValue?.trim();
+      if (value != null && value.isNotEmpty) {
+        rawValue = value;
+        break;
+      }
+    }
+    if (rawValue == null) return;
+
+    _scanLocked = true;
+    unawaited(_lookupQrAppointment(rawValue));
+  }
+
+  Future<void> _lookupQrAppointment(String rawValue) async {
+    final appointmentId = _appointmentIdFromQr(rawValue);
+    if (appointmentId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('This QR code is not a valid MediQ appointment ticket.'),
+            backgroundColor: AppTheme.errorRed,
+          ),
+        );
+        await Future<void>.delayed(const Duration(seconds: 2));
+        if (mounted) setState(() => _scanLocked = false);
+      }
+      return;
+    }
+
+    final roomKey = QueueService.selectedStaffRoomKey;
+    setState(() => _isSearching = true);
+    try {
+      final appointment = await QueueService.lookupStaffQrAppointment(
+        appointmentId,
+        roomKey: roomKey,
+      );
+      final returnedId = int.tryParse(appointment['id']?.toString() ?? '');
+      if (returnedId != appointmentId) {
+        throw const FormatException(
+          'The Staff lookup returned a different appointment ID.',
+        );
+      }
+      if (!mounted) return;
+      setState(() {
+        _isSearching = false;
+        _scannedPatientData = appointment;
+        _scannedAppointmentId = appointmentId;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isSearching = false;
+        _scanLocked = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not look up this appointment: $error'),
+          backgroundColor: AppTheme.errorRed,
+        ),
+      );
+    }
+  }
+
   void _showManualEntryDialog() {
     _idController.clear();
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: const Row(
             children: [
               Icon(Icons.edit_note_rounded, color: AppTheme.primarySkyBlue),
               SizedBox(width: 10),
-              Text('Manual ID Entry', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Manual ID Entry',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ],
           ),
           content: Column(
@@ -113,7 +209,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
                   hintText: 'e.g. G-018',
                   labelText: 'Token, NIC, or phone',
                   prefixIcon: const Icon(Icons.confirmation_number_outlined),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
               ),
             ],
@@ -121,7 +218,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: AppTheme.mutedText)),
+              child: const Text('Cancel',
+                  style: TextStyle(color: AppTheme.mutedText)),
             ),
             ElevatedButton(
               onPressed: () {
@@ -158,7 +256,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
         backgroundColor: Colors.transparent,
         title: const Text(
           'Scan Patient QR Ticket',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(
+              color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
         ),
         actions: [
           IconButton(
@@ -196,7 +295,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 12),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.65),
                       borderRadius: BorderRadius.circular(16),
@@ -239,7 +339,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
                     height: 260,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: AppTheme.primarySkyBlue, width: 3),
+                      border:
+                          Border.all(color: AppTheme.primarySkyBlue, width: 3),
                       boxShadow: [
                         BoxShadow(
                           color: AppTheme.primarySkyBlue.withValues(alpha: 0.3),
@@ -250,33 +351,67 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(22),
-                      child: AnimatedBuilder(
-                        animation: _scanAnimation,
-                        builder: (context, child) {
-                          return Stack(
-                            children: [
-                              Positioned(
-                                top: _scanAnimation.value * 240,
-                                left: 10,
-                                right: 10,
-                                child: Container(
-                                  height: 3,
-                                  decoration: BoxDecoration(
-                                    color: AppTheme.accentGreen,
-                                    borderRadius: BorderRadius.circular(2),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: AppTheme.accentGreen.withValues(alpha: 0.8),
-                                        blurRadius: 8,
-                                        spreadRadius: 2,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          MobileScanner(
+                            onDetect: _onBarcodeCapture,
+                            errorBuilder: (context, error, child) {
+                              final message = error.errorCode ==
+                                      MobileScannerErrorCode.permissionDenied
+                                  ? 'Camera permission denied. Allow camera access to scan tickets.'
+                                  : 'Camera unavailable: ${error.errorCode.message}';
+                              return ColoredBox(
+                                color: const Color(0xFF0F172A),
+                                child: Center(
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(18),
+                                    child: Text(
+                                      message,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 13,
                                       ),
-                                    ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          );
-                        },
+                              );
+                            },
+                          ),
+                          IgnorePointer(
+                            child: AnimatedBuilder(
+                              animation: _scanAnimation,
+                              builder: (context, child) {
+                                return Stack(
+                                  children: [
+                                    Positioned(
+                                      top: _scanAnimation.value * 240,
+                                      left: 10,
+                                      right: 10,
+                                      child: Container(
+                                        height: 3,
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.accentGreen,
+                                          borderRadius:
+                                              BorderRadius.circular(2),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: AppTheme.accentGreen
+                                                  .withValues(alpha: 0.8),
+                                              blurRadius: 8,
+                                              spreadRadius: 2,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -307,25 +442,36 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: AppTheme.accentGreen.withValues(alpha: 0.15),
+                                  color: AppTheme.accentGreen
+                                      .withValues(alpha: 0.15),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: const Row(
                                   children: [
-                                    Icon(Icons.check_circle_rounded, color: AppTheme.accentGreen, size: 16),
+                                    Icon(Icons.check_circle_rounded,
+                                        color: AppTheme.accentGreen, size: 16),
                                     SizedBox(width: 6),
                                     Text(
                                       'QR SCAN SUCCESSFUL',
-                                      style: TextStyle(color: AppTheme.accentGreen, fontSize: 11, fontWeight: FontWeight.bold),
+                                      style: TextStyle(
+                                          color: AppTheme.accentGreen,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold),
                                     ),
                                   ],
                                 ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.close_rounded, color: AppTheme.mutedText),
-                                onPressed: () => setState(() => _scannedPatientData = null),
+                                icon: const Icon(Icons.close_rounded,
+                                    color: AppTheme.mutedText),
+                                onPressed: () => setState(() {
+                                  _scannedPatientData = null;
+                                  _scannedAppointmentId = null;
+                                  _scanLocked = false;
+                                }),
                               ),
                             ],
                           ),
@@ -347,17 +493,32 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      _scannedPatientData!['patient_name'] ?? 'Unknown Patient',
-                                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppTheme.darkText),
+                                      _scannedPatientData!['patient_name'] ??
+                                          'Unknown Patient',
+                                      style: const TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppTheme.darkText),
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       'OPD: ${AppointmentService.getRoomDisplayName(_scannedPatientData!['room'] ?? '')}',
-                                      style: const TextStyle(fontSize: 13, color: AppTheme.mutedText, fontWeight: FontWeight.w500),
+                                      style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppTheme.mutedText,
+                                          fontWeight: FontWeight.w500),
+                                    ),
+                                    Text(
+                                      'Status: ${_scannedPatientData!['status'] ?? 'Unknown'}',
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppTheme.mutedText),
                                     ),
                                     Text(
                                       'Time: ${_scannedPatientData!['appointment_time'] ?? 'Today'}',
-                                      style: const TextStyle(fontSize: 12, color: AppTheme.mutedText),
+                                      style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppTheme.mutedText),
                                     ),
                                   ],
                                 ),
@@ -377,14 +538,24 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
                                 ),
                               ),
                               onPressed: () {
-                              Navigator.pushNamed(
-                                context,
-                                '/check-in',
-                                  arguments: {
-                                    'searchQuery':
-                                        _scannedPatientData!['queue_number']
-                                            .toString(),
-                                  },
+                                final qrAppointmentId =
+                                    _scannedAppointmentId;
+                                Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.checkIn,
+                                  arguments: qrAppointmentId == null
+                                      ? {
+                                          'searchQuery':
+                                              _scannedPatientData![
+                                                      'queue_number']
+                                                  .toString(),
+                                        }
+                                      : {
+                                          'qrAppointmentId':
+                                              qrAppointmentId,
+                                          'qrRoomKey':
+                                              QueueService.selectedStaffRoomKey,
+                                        },
                                 );
                               },
                               icon: const Icon(Icons.how_to_reg_rounded),
@@ -409,15 +580,21 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
                       child: OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.white,
-                          side: const BorderSide(color: AppTheme.primarySkyBlue, width: 1.5),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          side: const BorderSide(
+                              color: AppTheme.primarySkyBlue, width: 1.5),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
                           backgroundColor: Colors.white.withValues(alpha: 0.08),
                         ),
                         onPressed: _showManualEntryDialog,
-                        icon: const Icon(Icons.edit, color: AppTheme.primarySkyBlue),
+                        icon: const Icon(Icons.edit,
+                            color: AppTheme.primarySkyBlue),
                         label: const Text(
                           'Enter Appointment ID Manually',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
+                          style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white),
                         ),
                       ),
                     ),
@@ -434,7 +611,8 @@ class _QrScannerScreenState extends State<QrScannerScreen> with SingleTickerProv
               child: Container(
                 color: Colors.black54,
                 child: const Center(
-                  child: CircularProgressIndicator(color: AppTheme.primarySkyBlue),
+                  child:
+                      CircularProgressIndicator(color: AppTheme.primarySkyBlue),
                 ),
               ),
             ),

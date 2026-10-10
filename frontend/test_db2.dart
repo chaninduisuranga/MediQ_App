@@ -1,20 +1,43 @@
+import 'dart:io';
 import 'package:postgres/postgres.dart';
 
 void main() async {
+  const envKeys = [
+    'SUPABASE_DB_HOST',
+    'SUPABASE_DB_NAME',
+    'SUPABASE_DB_USER',
+    'SUPABASE_DB_PASSWORD',
+  ];
+  final missing = envKeys
+      .where((key) => (Platform.environment[key] ?? '').isEmpty)
+      .toList();
+  if (missing.isNotEmpty) {
+    stderr.writeln(
+        'Set these environment variables to run this script: ${missing.join(', ')}');
+    exitCode = 1;
+    return;
+  }
+  final port = int.tryParse(Platform.environment['SUPABASE_DB_PORT'] ?? '5432');
+  if (port == null) {
+    stderr.writeln('SUPABASE_DB_PORT must be a valid port number.');
+    exitCode = 1;
+    return;
+  }
+
   final conn = await Connection.open(
     Endpoint(
-      host: 'aws-0-ap-south-1.pooler.supabase.com',
-      database: 'postgres',
-      username: 'postgres.dvanmlqqgvbltdvwamuk',
-      password: '3141531415supabase',
-      port: 5432,
+      host: Platform.environment['SUPABASE_DB_HOST']!,
+      database: Platform.environment['SUPABASE_DB_NAME']!,
+      username: Platform.environment['SUPABASE_DB_USER']!,
+      password: Platform.environment['SUPABASE_DB_PASSWORD']!,
+      port: port,
     ),
     settings: const ConnectionSettings(sslMode: SslMode.require),
   );
-  
+
   final res = await conn.execute("SELECT id, nic FROM users");
   for (final row in res) {
-    print(row);
+    stdout.writeln(row);
   }
   await conn.close();
 }

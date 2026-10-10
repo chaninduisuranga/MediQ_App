@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/models/admin_queue_model.dart';
 import '../core/services/admin_service.dart';
 import '../core/theme/theme.dart';
+import '../core/utils/duration_format.dart';
 import '../widgets/admin_bottom_nav_bar.dart';
 
 class AdminQueueManagementScreen extends StatefulWidget {
@@ -218,7 +219,8 @@ class _AdminQueueManagementScreenState
                   _metric('Waiting', '${queue.waiting}', Colors.orange),
                   _metric('Serving', '${queue.serving}', AppTheme.primaryBlue),
                   _metric('Completed', '${queue.completed}', Colors.green),
-                  _metric('Avg wait', '${queue.averageWaitMinutes}m', color),
+                  _metric('Avg wait',
+                      formatWaitDuration(queue.averageWaitMinutes), color),
                 ],
               ),
             ),
@@ -273,7 +275,7 @@ class _AdminQueueManagementScreenState
                   const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           Text(
-            'Waiting: ${alert.waiting} patients  •  Average wait: ${alert.averageWaitMinutes} min',
+            'Waiting: ${alert.waiting} patients  •  Average wait: ${formatWaitDuration(alert.averageWaitMinutes)}',
             style: const TextStyle(color: AppTheme.darkText),
           ),
           const SizedBox(height: 8),

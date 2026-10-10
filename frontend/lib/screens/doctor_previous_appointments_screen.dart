@@ -39,8 +39,12 @@ class _DoctorPreviousAppointmentsScreenState
   List<Map<String, dynamic>> get _filtered {
     if (_activeFilter == 'ALL') return _appointments;
     return _appointments
-        .where((a) =>
-            (a['consultation_status'] ?? '').toString().toUpperCase() ==
+        .where((a) => (a['consultation_status'] ??
+                    a['appointment_status'] ??
+                    a['status'] ??
+                    '')
+                .toString()
+                .toUpperCase() ==
             _activeFilter)
         .toList();
   }
@@ -121,8 +125,11 @@ class _DoctorPreviousAppointmentsScreenState
   }
 
   Widget _buildCard(Map<String, dynamic> appt) {
-    final status =
-        (appt['consultation_status'] ?? 'COMPLETED').toString();
+    final status = (appt['consultation_status'] ??
+            appt['appointment_status'] ??
+            appt['status'] ??
+            'COMPLETED')
+        .toString();
     final statusColor = DoctorService.getStatusColor(status);
     final statusLabel = DoctorService.getStatusLabel(status);
 
