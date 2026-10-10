@@ -1,0 +1,2443 @@
+openapi: 3.0.0
+info:
+  title: MediQ OPD Queue & Appointment API
+  description: |
+    API documentation for MediQ OPD Appointment Booking & Queue Management System.
+    
+    ## Authentication
+    Most endpoints require a Bearer JWT token. Obtain a token via `POST /auth/login`.
+    
+    ## Roles
+    - **PATIENT** – Book & manage own appointments, chat, medical records
+    - **STAFF** – Manage OPD queues and check-ins
+    - **DOCTOR** – View and update today's patient queue
+    - **ADMIN** – Full system management (users, doctors, staff, appointments, queues, FAQs)
+  version: 1.0.0
+  contact:
+    name: MediQ Support
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local Development Server
+
+tags:
+  - name: Health
+    description: System health check
+  - name: Auth
+    description: Authentication & user profile
+  - name: Appointments
+    description: OPD appointment booking & queue viewing
+  - name: Medical Records
+    description: Patient medical records management
+  - name: Chat
+    description: AI chatbot conversations
+  - name: Staff
+    description: Staff queue management operations
+  - name: Doctor
+    description: Doctor queue management operations
+  - name: Admin – Dashboard
+    description: Admin dashboard statistics
+  - name: Admin – Users
+    description: Admin user management
+  - name: Admin – Appointments
+    description: Admin appointment management
+  - name: Admin – Doctors
+    description: Admin doctor profile management
+  - name: Admin – Staff
+    description: Admin staff profile management
+  - name: Admin – Queues
+    description: Admin queue monitoring
+  - name: Admin – Chat FAQs
+    description: Admin AI chatbot FAQ management
+
+paths:
+  # ─── HEALTH ────────────────────────────────────────────────────────────────
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      operationId: healthCheck
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  # ─── AUTH ──────────────────────────────────────────────────────────────────
+  /auth/signup:
+    post:
+      tags: [Auth]
+      summary: Register a new patient account
+      operationId: authSignup
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+      responses:
+        '201':
+          description: Account created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: NIC or email already registered
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with NIC and password
+      operationId: authLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Invalid NIC or password
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current authenticated user profile
+      operationId: authGetMe
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /auth/profile:
+    put:
+      tags: [Auth]
+      summary: Update current user profile
+      operationId: authUpdateProfile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    delete:
+      tags: [Auth]
+      summary: Delete current user account
+      operationId: authDeleteAccount
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Account deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  # ─── APPOINTMENTS ──────────────────────────────────────────────────────────
+  /appointments/rooms:
+    get:
+      tags: [Appointments]
+      summary: Get available OPD rooms
+      operationId: appointmentGetRooms
+      responses:
+        '200':
+          description: Available rooms list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoomsResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /appointments/queue/{room}:
+    get:
+      tags: [Appointments]
+      summary: Get live queue status for a specific OPD room
+      operationId: appointmentGetQueueStatus
+      parameters:
+        - name: room
+          in: path
+          required: true
+          description: OPD room key
+          schema:
+            $ref: '#/components/schemas/OPDRoom'
+      responses:
+        '200':
+          description: Live queue status for the room
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QueueStatusResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /appointments/view/{id}:
+    get:
+      tags: [Appointments]
+      summary: View appointment details by ID (public, used by QR scan)
+      operationId: appointmentView
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: uint
+            minimum: 1
+      responses:
+        '200':
+          description: Appointment details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentDetailResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /appointments/book:
+    post:
+      tags: [Appointments]
+      summary: Book a new OPD appointment (patient)
+      operationId: appointmentBook
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BookAppointmentRequest'
+      responses:
+        '201':
+          description: Appointment booked successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentDetailResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: Conflicting appointment already exists
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /appointments/my:
+    get:
+      tags: [Appointments]
+      summary: Get current user's upcoming appointments
+      operationId: appointmentGetMy
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of upcoming appointments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /admin/analytics:
+    get:
+      summary: Get compact queue and appointment analytics
+      description: >-
+        Returns daily or weekly appointment outcomes and per-service queue metrics.
+        Average wait uses scheduled time to service start when available. Peak waiting
+        is the largest persisted pending/confirmed count for a service on one day.
+        A congestion incident is a service-day with more than 20 waiting appointments.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [7d, 30d, 90d]
+            default: 30d
+      responses:
+        '200':
+          description: Analytics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAnalyticsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /admin/doctors:
+    get:
+      tags: [Appointments]
+      summary: Get current patient's appointment history
+      operationId: appointmentGetHistory
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Appointment history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /appointments/{id}/cancel:
+    put:
+      tags: [Appointments]
+      summary: Cancel an appointment
+      operationId: appointmentCancel
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: uint
+            minimum: 1
+      responses:
+        '200':
+          description: Appointment cancelled successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete a doctor profile and deactivate its linked login
+      description: Soft-deletes the doctor profile and linked user account. Historical appointment records are retained.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Doctor profile and linked login were deactivated
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /admin/staff:
+    get:
+      tags: [Medical Records]
+      summary: Get authenticated patient's medical records
+      operationId: medicalRecordsGet
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Patient medical records
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicalRecordListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /medical-records/upload:
+    post:
+      tags: [Medical Records]
+      summary: Upload a prescription or document (multipart)
+      operationId: medicalRecordsUpload
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: Document file (PDF, image)
+                title:
+                  type: string
+                  description: Record title / description
+      responses:
+        '201':
+          description: File uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicalRecordResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /medical-records/doctor:
+    post:
+      tags: [Medical Records]
+      summary: Add a doctor-created medical record entry
+      operationId: medicalRecordsAddDoctor
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DoctorRecordRequest'
+      responses:
+        '201':
+          description: Record added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MedicalRecordResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /medical-records/{id}:
+    delete:
+      tags: [Medical Records]
+      summary: Delete a medical record
+      operationId: medicalRecordsDelete
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: uint
+            minimum: 1
+      responses:
+        '200':
+          description: Record deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  # ─── CHAT ──────────────────────────────────────────────────────────────────
+  /chat/history:
+    get:
+      tags: [Chat]
+      summary: Get AI chatbot conversation history
+      operationId: chatGetHistory
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Chat history retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatHistoryResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    delete:
+      tags: [Chat]
+      summary: Clear AI chatbot conversation history
+      operationId: chatClearHistory
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Chat history cleared
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /chat/message:
+    post:
+      tags: [Chat]
+      summary: Send a message to the AI chatbot
+      operationId: chatSendMessage
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatMessageRequest'
+      responses:
+        '200':
+          description: AI response received
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatMessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  # ─── STAFF ─────────────────────────────────────────────────────────────────
+  /staff/profile:
+    get:
+      tags: [Staff]
+      summary: Get staff profile and assigned room
+      operationId: staffGetProfile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Staff profile retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffProfileResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /staff/queue/list:
+    get:
+      tags: [Staff]
+      summary: Get today's queue list for staff's assigned room
+      operationId: staffGetQueueList
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Queue list retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffQueueListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /staff/queue/search:
+    get:
+      tags: [Staff]
+      summary: Search queue entries by patient name, NIC, or queue number
+      operationId: staffSearchQueue
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffQueueListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /staff/queue/history:
+    get:
+      tags: [Staff]
+      summary: Get queue activity history for staff's room
+      operationId: staffGetQueueHistory
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Queue history retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffQueueListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /staff/queue/checkin/{id}:
+    post:
+      tags: [Staff]
+      summary: Check in a patient (mark as arrived)
+      operationId: staffCheckIn
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Appointment ID
+          schema:
+            type: integer
+            format: uint
+            minimum: 1
+      responses:
+        '200':
+          description: Patient checked in successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /staff/queue/call/{id}:
+    post:
+      tags: [Staff]
+      summary: Call next patient or a specific patient to the room
+      operationId: staffCallNext
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Appointment ID
+          schema:
+            type: integer
+            format: uint
+            minimum: 1
+      responses:
+        '200':
+          description: Patient called successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /staff/queue/status/{id}:
+    patch:
+      tags: [Staff]
+      summary: Update appointment status (SERVING, COMPLETED, NO_SHOW, etc.)
+      operationId: staffUpdateStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Appointment ID
+          schema:
+            type: integer
+            format: uint
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/AppointmentStatus'
+      responses:
+        '200':
+          description: Status updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /staff/queue/priority/{id}:
+    patch:
+      tags: [Staff]
+      summary: Toggle priority flag for a queued patient
+      operationId: staffTogglePriority
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Appointment ID
+          schema:
+            type: integer
+            format: uint
+            minimum: 1
+      responses:
+        '200':
+          description: Priority toggled successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /staff/doctors:
+    get:
+      tags: [Staff]
+      summary: Get list of available doctors for the staff's assigned room
+      operationId: staffGetDoctors
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Doctors retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffDoctorsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /staff/queue/allocate/{id}:
+    post:
+      tags: [Staff]
+      summary: Allocate a doctor to a queued patient
+      operationId: staffAllocateDoctor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Appointment ID
+          schema:
+            type: integer
+            format: uint
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [doctor_id]
+              properties:
+                doctor_id:
+                  type: integer
+                  format: uint
+      responses:
+        '200':
+          description: Doctor allocated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  # ─── DOCTOR ────────────────────────────────────────────────────────────────
+  /doctor/queue/today:
+    get:
+      tags: [Doctor]
+      summary: Get today's patient queue for the logged-in doctor
+      operationId: doctorGetTodayQueue
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Today's queue retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoctorQueueResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /doctor/queue/stats:
+    get:
+      tags: [Doctor]
+      summary: Get queue statistics for the logged-in doctor
+      operationId: doctorGetQueueStats
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Queue statistics retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DoctorQueueStatsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /doctor/queue/{id}/status:
+    patch:
+      tags: [Doctor]
+      summary: Update appointment status from doctor's view
+      operationId: doctorUpdateAppointmentStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Appointment ID
+          schema:
+            type: integer
+            format: uint
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  $ref: '#/components/schemas/AppointmentStatus'
+      responses:
+        '200':
+          description: Status updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  # ─── ADMIN – DASHBOARD ─────────────────────────────────────────────────────
+  /admin/dashboard:
+    get:
+      tags: [Admin – Dashboard]
+      summary: Get admin dashboard statistics
+      operationId: adminGetDashboard
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard stats retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDashboardResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  # ─── ADMIN – USERS ─────────────────────────────────────────────────────────
+  /admin/users:
+    get:
+      tags: [Admin – Users]
+      summary: List and search managed users (DOCTOR, STAFF, ADMIN)
+      operationId: adminListUsers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          required: false
+          description: Search by name, NIC, phone, or user ID
+          schema:
+            type: string
+        - name: role
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [DOCTOR, STAFF, ADMIN]
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Users retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /admin/users/{id}:
+    patch:
+      tags: [Admin – Users]
+      summary: Update a user's role or account status
+      operationId: adminUpdateUser
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: uint
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUpdateUserRequest'
+      responses:
+        '200':
+          description: User updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  # ─── ADMIN – APPOINTMENTS ──────────────────────────────────────────────────
+  /admin/appointments:
+    get:
+      tags: [Admin – Appointments]
+      summary: List and search all appointments
+      operationId: adminListAppointments
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          required: false
+          description: Search by patient name, NIC, phone, or appointment ID
+          schema:
+            type: string
+        - name: date
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: service
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/OPDRoom'
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/AppointmentStatus'
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        '200':
+          description: Appointments retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAppointmentListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /admin/appointments/{id}:
+    patch:
+      tags: [Admin – Appointments]
+      summary: Cancel, change status, or reschedule an appointment
+      operationId: adminUpdateAppointment
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: uint
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminUpdateAppointmentRequest'
+      responses:
+        '200':
+          description: Appointment updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAppointmentItemResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  # ─── ADMIN – DOCTORS ───────────────────────────────────────────────────────
+  /admin/doctors:
+    get:
+      tags: [Admin – Doctors]
+      summary: List managed doctors
+      operationId: adminListDoctors
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          required: false
+          description: Search by doctor name, specialization, or SLMC number
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Doctors retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminDoctor'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    post:
+      tags: [Admin – Doctors]
+      summary: Add a doctor profile to an existing doctor user
+      operationId: adminCreateDoctor
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminDoctorRequest'
+      responses:
+        '201':
+          description: Doctor added successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /admin/doctors/{id}:
+    patch:
+      tags: [Admin – Doctors]
+      summary: Edit, assign, activate, or deactivate a doctor
+      operationId: adminUpdateDoctor
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminDoctorRequest'
+      responses:
+        '200':
+          description: Doctor updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  # ─── ADMIN – STAFF ─────────────────────────────────────────────────────────
+  /admin/staff:
+    get:
+      tags: [Admin – Staff]
+      summary: List managed staff
+      operationId: adminListStaff
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Staff retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminStaff'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    post:
+      tags: [Admin – Staff]
+      summary: Add a staff profile to an existing staff user
+      operationId: adminCreateStaff
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminStaffRequest'
+      responses:
+        '201':
+          description: Staff added successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /admin/staff/{id}:
+    patch:
+      tags: [Admin – Staff]
+      summary: Edit, assign, activate, or deactivate a staff profile
+      operationId: adminUpdateStaff
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminStaffRequest'
+      responses:
+        '200':
+          description: Staff updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  # ─── ADMIN – QUEUES ────────────────────────────────────────────────────────
+  /admin/queues:
+    get:
+      tags: [Admin – Queues]
+      summary: Monitor all OPD queues and detect congestion
+      operationId: adminGetQueues
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date
+          in: query
+          required: false
+          description: Queue date (YYYY-MM-DD). Defaults to today (Sri Lanka time).
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Queue metrics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminQueueResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  # ─── ADMIN – CHAT FAQs ─────────────────────────────────────────────────────
+  /admin/chat-faqs:
+    get:
+      tags: [Admin – Chat FAQs]
+      summary: List all AI chatbot FAQs
+      operationId: adminListChatFAQs
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: FAQs retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatFAQListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    post:
+      tags: [Admin – Chat FAQs]
+      summary: Create a new FAQ entry
+      operationId: adminCreateChatFAQ
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatFAQRequest'
+      responses:
+        '201':
+          description: FAQ created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatFAQResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /admin/chat-faqs/{id}:
+    patch:
+      tags: [Admin – Chat FAQs]
+      summary: Update an existing FAQ entry
+      operationId: adminUpdateChatFAQ
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: uint
+            minimum: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatFAQRequest'
+      responses:
+        '200':
+          description: FAQ updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatFAQResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    delete:
+      tags: [Admin – Chat FAQs]
+      summary: Delete an FAQ entry
+      operationId: adminDeleteChatFAQ
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: uint
+            minimum: 1
+      responses:
+        '200':
+          description: FAQ deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /admin/chat-faqs/seed:
+    post:
+      tags: [Admin – Chat FAQs]
+      summary: Seed default FAQ entries
+      operationId: adminSeedChatFAQs
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Default FAQs seeded successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+# ─── COMPONENTS ──────────────────────────────────────────────────────────────
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # ── Enums ──────────────────────────────────────────────────────────────
+    OPDRoom:
+      type: string
+      enum:
+        - OPD_CLINIC_ROOM
+        - DRESSING_ROOM
+        - INJECTION_ROOM
+        - BLEEDING_ROOM
+        - ANIMAL_BITE_ROOM
+        - DISPENSARY_ROOM
+
+    AppointmentStatus:
+      type: string
+      enum:
+        - PENDING
+        - CONFIRMED
+        - SERVING
+        - COMPLETED
+        - CANCELLED
+        - SKIPPED
+        - NO_SHOW
+
+    UserRole:
+      type: string
+      enum: [PATIENT, DOCTOR, STAFF, ADMIN]
+
+    UserStatus:
+      type: string
+      enum: [ACTIVE, INACTIVE, SUSPENDED]
+
+    StaffFunction:
+      type: string
+      enum: [REGISTRATION, NURSE, QUEUE_MANAGEMENT]
+
+    # ── User / Auth ─────────────────────────────────────────────────────────
+    SignupRequest:
+      type: object
+      required: [full_name, nic, password]
+      properties:
+        full_name:
+          type: string
+        nic:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        password:
+          type: string
+          format: password
+          minLength: 6
+        gender:
+          type: string
+        date_of_birth:
+          type: string
+          format: date
+        address:
+          type: string
+        district:
+          type: string
+
+    LoginRequest:
+      type: object
+      required: [nic, password]
+      properties:
+        nic:
+          type: string
+        password:
+          type: string
+          format: password
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            token:
+              type: string
+            user:
+              $ref: '#/components/schemas/UserProfile'
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: uint
+        full_name:
+          type: string
+        nic:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        gender:
+          type: string
+        date_of_birth:
+          type: string
+        civil_status:
+          type: string
+        address:
+          type: string
+        district:
+          type: string
+        emergency_contact_name:
+          type: string
+        emergency_contact_phone:
+          type: string
+        blood_group:
+          type: string
+        allergies:
+          type: string
+        medical_conditions:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    UserProfileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/UserProfile'
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        full_name:
+          type: string
+        phone:
+          type: string
+        gender:
+          type: string
+        date_of_birth:
+          type: string
+          format: date
+        civil_status:
+          type: string
+        address:
+          type: string
+        district:
+          type: string
+        emergency_contact_name:
+          type: string
+        emergency_contact_phone:
+          type: string
+        blood_group:
+          type: string
+        allergies:
+          type: string
+        medical_conditions:
+          type: string
+
+    # ── Appointments ────────────────────────────────────────────────────────
+    BookAppointmentRequest:
+      type: object
+      required: [room, appointment_date]
+      properties:
+        room:
+          $ref: '#/components/schemas/OPDRoom'
+        appointment_date:
+          type: string
+          format: date
+          description: Appointment date in YYYY-MM-DD format
+        notes:
+          type: string
+
+    AppointmentItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: uint
+        patient_id:
+          type: integer
+          format: uint
+        patient_name:
+          type: string
+        patient_nic:
+          type: string
+        patient_phone:
+          type: string
+        room:
+          $ref: '#/components/schemas/OPDRoom'
+        queue_number:
+          type: integer
+        appointment_date:
+          type: string
+          format: date
+        appointment_time:
+          type: string
+          example: '08:00'
+        status:
+          $ref: '#/components/schemas/AppointmentStatus'
+        is_priority:
+          type: boolean
+        notes:
+          type: string
+        qr_code_data:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    AppointmentDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/AppointmentItem'
+
+    AppointmentListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppointmentItem'
+
+    RoomsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              key:
+                $ref: '#/components/schemas/OPDRoom'
+              display_name:
+                type: string
+
+    QueueStatusResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            room:
+              $ref: '#/components/schemas/OPDRoom'
+            room_display_name:
+              type: string
+            waiting:
+              type: integer
+            serving:
+              type: integer
+            completed:
+              type: integer
+            current_number:
+              type: integer
+            average_wait_minutes:
+              type: integer
+
+    # ── Medical Records ─────────────────────────────────────────────────────
+    MedicalRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: uint
+        patient_id:
+          type: integer
+          format: uint
+        title:
+          type: string
+        record_type:
+          type: string
+          enum: [PRESCRIPTION, LAB_RESULT, SCAN, DOCTOR_NOTE, OTHER]
+        file_url:
+          type: string
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    MedicalRecordResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/MedicalRecord'
+
+    MedicalRecordListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MedicalRecord'
+
+    DoctorRecordRequest:
+      type: object
+      required: [patient_nic, title, notes]
+      properties:
+        patient_nic:
+          type: string
+        title:
+          type: string
+        notes:
+          type: string
+        record_type:
+          type: string
+          enum: [PRESCRIPTION, LAB_RESULT, SCAN, DOCTOR_NOTE, OTHER]
+
+    # ── Chat ────────────────────────────────────────────────────────────────
+    ChatMessageRequest:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    ChatMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: uint
+        user_id:
+          type: integer
+          format: uint
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminStaffRequest'
+      responses:
+        '200':
+          description: Staff updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete a staff profile and deactivate its linked login
+      description: Soft-deletes the staff profile and linked user account. Historical queue records are retained.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Staff profile and linked login were deactivated
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    AdminUser:
+      type: object
+      required: [id, full_name, nic, phone, role, status, created_at]
+      properties:
+        id:
+          type: integer
+          format: uint
+        full_name:
+          type: string
+        nic:
+          type: string
+        phone:
+          type: string
+        role:
+          $ref: '#/components/schemas/UserRole'
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        created_at:
+          type: string
+          format: date-time
+
+    AdminUserListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            users:
+              type: array
+              items:
+                $ref: '#/components/schemas/AdminUser'
+            page:
+              type: integer
+            limit:
+              type: integer
+            total:
+              type: integer
+              format: int64
+            total_pages:
+              type: integer
+
+    AdminUpdateUserRequest:
+      type: object
+      minProperties: 1
+      properties:
+        role:
+          $ref: '#/components/schemas/UserRole'
+        status:
+          $ref: '#/components/schemas/UserStatus'
+
+    AdminUserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/AdminUser'
+
+    # ── Admin – Appointments ────────────────────────────────────────────────
+    AdminAppointment:
+      type: object
+      required: [id, appointment_date, appointment_time, patient_name, room, queue_number, status]
+      properties:
+        id:
+          type: integer
+          format: uint
+        appointment_date:
+          type: string
+          format: date
+        appointment_time:
+          type: string
+          example: '08:00'
+        patient_name:
+          type: string
+        patient_nic:
+          type: string
+        patient_phone:
+          type: string
+        room:
+          $ref: '#/components/schemas/OPDRoom'
+        room_display_name:
+          type: string
+        queue_number:
+          type: integer
+        status:
+          $ref: '#/components/schemas/AppointmentStatus'
+        notes:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+    AdminAppointmentListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            appointments:
+              type: array
+              items:
+                $ref: '#/components/schemas/AdminAppointment'
+            page:
+              type: integer
+            limit:
+              type: integer
+            total:
+              type: integer
+              format: int64
+            total_pages:
+              type: integer
+
+    AdminUpdateAppointmentRequest:
+      type: object
+      minProperties: 1
+      properties:
+        appointment_date:
+          type: string
+          format: date
+        appointment_time:
+          type: string
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+        room:
+          $ref: '#/components/schemas/OPDRoom'
+        status:
+          type: string
+          enum: [PENDING, CONFIRMED, SERVING, COMPLETED, CANCELLED]
+    AdminAppointmentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/AdminAppointment'
+    AdminQueue:
+      type: object
+      required: [key, name, waiting, serving, completed, average_wait_minutes, congestion_status, recommended_action]
+      properties:
+        key:
+          type: string
+          enum: [OPD_CLINIC_ROOM, DRESSING_ROOM, INJECTION_ROOM, ANIMAL_BITE_ROOM, BLEEDING_ROOM, DISPENSARY_ROOM]
+        name:
+          type: string
+        waiting:
+          type: integer
+        serving:
+          type: integer
+        completed:
+          type: integer
+        average_wait_minutes:
+          type: integer
+        congestion_status:
+          type: string
+          enum: [NORMAL, WARNING, CRITICAL]
+        recommended_action:
+          type: string
+    AdminQueueAlert:
+      type: object
+      required: [queue_key, queue_name, waiting, average_wait_minutes, status, recommended_action]
+      properties:
+        queue_key:
+          type: string
+        queue_name:
+          type: string
+        waiting:
+          type: integer
+        average_wait_minutes:
+          type: integer
+        status:
+          type: string
+          enum: [WARNING, CRITICAL]
+        recommended_action:
+          type: string
+    AdminQueueResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            date:
+              type: string
+              format: date
+            queues:
+              type: array
+              minItems: 6
+              maxItems: 6
+              items:
+                $ref: '#/components/schemas/AdminQueue'
+            alerts:
+              type: array
+              items:
+                $ref: '#/components/schemas/AdminQueueAlert'
+    AdminAnalyticsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            period:
+              type: string
+              enum: [7d, 30d, 90d]
+            start_date:
+              type: string
+              format: date
+            end_date:
+              type: string
+              format: date
+            appointments:
+              type: object
+              properties:
+                bookings:
+                  type: integer
+                completed:
+                  type: integer
+                cancelled:
+                  type: integer
+                missed:
+                  type: integer
+            queue_services:
+              type: array
+              items:
+                type: object
+                properties:
+                  key:
+                    type: string
+                  name:
+                    type: string
+                  average_wait_minutes:
+                    type: integer
+                  wait_samples:
+                    type: integer
+                  peak_waiting:
+                    type: integer
+                  congestion_incidents:
+                    type: integer
+            trend:
+              type: array
+              items:
+                type: object
+                properties:
+                  label:
+                    type: string
+                  start_date:
+                    type: string
+                    format: date
+                  bookings:
+                    type: integer
+                  completed:
+                    type: integer
+                  cancelled:
+                    type: integer
+                  missed:
+                    type: integer
+    AdminDoctor:
+      type: object
+      required: [id, user_id, name, specialization, slmc_number, clinic_name, room, status, is_available, current_queue]
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        name:
+          type: string
+        specialization:
+          type: string
+        slmc_number:
+          type: string
+        clinic_name:
+          type: string
+        room:
+          $ref: '#/components/schemas/OPDRoom'
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        is_available:
+          type: boolean
+        current_queue:
+          type: integer
+          format: int64
+
+    AdminDoctorRequest:
+      type: object
+      required: [user_id, specialization, slmc_number, clinic_name]
+      properties:
+        user_id:
+          type: integer
+        specialization:
+          type: string
+        slmc_number:
+          type: string
+        clinic_name:
+          type: string
+        room:
+          $ref: '#/components/schemas/OPDRoom'
+        is_available:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/UserStatus'
+
+    # ── Admin – Staff ───────────────────────────────────────────────────────
+    AdminStaff:
+      type: object
+      required: [id, user_id, name, function, assigned_room, status, is_available]
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+        name:
+          type: string
+        function:
+          $ref: '#/components/schemas/StaffFunction'
+        assigned_room:
+          $ref: '#/components/schemas/OPDRoom'
+        status:
+          $ref: '#/components/schemas/UserStatus'
+        is_available:
+          type: boolean
+
+    AdminStaffRequest:
+      type: object
+      required: [user_id, function]
+      properties:
+        user_id:
+          type: integer
+        function:
+          $ref: '#/components/schemas/StaffFunction'
+        assigned_room:
+          $ref: '#/components/schemas/OPDRoom'
+        is_available:
+          type: boolean
+        status:
+          $ref: '#/components/schemas/UserStatus'
+
+    # ── Admin – Queue ───────────────────────────────────────────────────────
+    AdminQueue:
+      type: object
+      required: [key, name, waiting, serving, completed, average_wait_minutes, congestion_status, recommended_action]
+      properties:
+        key:
+          $ref: '#/components/schemas/OPDRoom'
+        name:
+          type: string
+        waiting:
+          type: integer
+        serving:
+          type: integer
+        completed:
+          type: integer
+        average_wait_minutes:
+          type: integer
+        congestion_status:
+          type: string
+          enum: [NORMAL, WARNING, CRITICAL]
+        recommended_action:
+          type: string
+
+    AdminQueueAlert:
+      type: object
+      required: [queue_key, queue_name, waiting, average_wait_minutes, status, recommended_action]
+      properties:
+        queue_key:
+          type: string
+        queue_name:
+          type: string
+        waiting:
+          type: integer
+        average_wait_minutes:
+          type: integer
+        status:
+          type: string
+          enum: [WARNING, CRITICAL]
+        recommended_action:
+          type: string
+
+    AdminQueueResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            date:
+              type: string
+              format: date
+            queues:
+              type: array
+              minItems: 6
+              maxItems: 6
+              items:
+                $ref: '#/components/schemas/AdminQueue'
+            alerts:
+              type: array
+              items:
+                $ref: '#/components/schemas/AdminQueueAlert'
+
+    # ── Admin – Dashboard ───────────────────────────────────────────────────
+    AdminDashboardResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            total_appointments_today:
+              type: integer
+            total_patients:
+              type: integer
+            total_doctors:
+              type: integer
+            total_staff:
+              type: integer
+            queue_summary:
+              type: array
+              items:
+                $ref: '#/components/schemas/AdminQueue'
+
+    # ── Chat FAQs ───────────────────────────────────────────────────────────
+    ChatFAQ:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: uint
+        question:
+          type: string
+        answer:
+          type: string
+        category:
+          type: string
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    ChatFAQRequest:
+      type: object
+      required: [question, answer]
+      properties:
+        question:
+          type: string
+        answer:
+          type: string
+        category:
+          type: string
+        is_active:
+          type: boolean
+
+    ChatFAQResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/ChatFAQ'
+
+    ChatFAQListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatFAQ'
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+    Unauthorized:
+      description: Missing or invalid authentication token
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: Unauthorized
+    Forbidden:
+      description: User does not have the required role
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+                example: Forbidden
+    NotFound:
+      description: Requested resource was not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                example: false
+              message:
+                type: string
