@@ -293,8 +293,40 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/ServerError'
-
-  /appointments/history:
+  /admin/analytics:
+    get:
+      summary: Get compact queue and appointment analytics
+      description: >-
+        Returns daily or weekly appointment outcomes and per-service queue metrics.
+        Average wait uses scheduled time to service start when available. Peak waiting
+        is the largest persisted pending/confirmed count for a service on one day.
+        A congestion incident is a service-day with more than 20 waiting appointments.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: period
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [7d, 30d, 90d]
+            default: 30d
+      responses:
+        '200':
+          description: Analytics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAnalyticsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /admin/doctors:
     get:
       tags: [Appointments]
       summary: Get current patient's appointment history
@@ -339,11 +371,30 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete a doctor profile and deactivate its linked login
+      description: Soft-deletes the doctor profile and linked user account. Historical appointment records are retained.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Doctor profile and linked login were deactivated
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/ServerError'
-
-  # ─── MEDICAL RECORDS ───────────────────────────────────────────────────────
-  /medical-records:
+  /admin/staff:
     get:
       tags: [Medical Records]
       summary: Get authenticated patient's medical records
@@ -1793,116 +1844,50 @@ components:
           type: string
           enum: [user, assistant]
         content:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-
-    ChatHistoryResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/ChatMessage'
-
-    ChatMessageResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-        data:
-          type: object
-          properties:
-            reply:
-              type: string
-
-    # ── Staff ───────────────────────────────────────────────────────────────
-    StaffProfileResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-        data:
-          type: object
-          properties:
-            id:
-              type: integer
-            user_id:
-              type: integer
-            name:
-              type: string
-            function:
-              $ref: '#/components/schemas/StaffFunction'
-            assigned_room:
-              $ref: '#/components/schemas/OPDRoom'
-            status:
-              $ref: '#/components/schemas/UserStatus'
-            is_available:
-              type: boolean
-
-    StaffQueueListResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/AppointmentItem'
-
-    StaffDoctorsResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-        data:
-          type: array
-          items:
-            type: object
-            properties:
-              id:
-                type: integer
-              name:
-                type: string
-              specialization:
-                type: string
-              is_available:
-                type: boolean
-
-    # ── Doctor ──────────────────────────────────────────────────────────────
-    DoctorQueueResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-        data:
-          type: array
-          items:
-            $ref: '#/components/schemas/AppointmentItem'
-
-    DoctorQueueStatsResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-        data:
-          type: object
-          properties:
-            total:
-              type: integer
-            waiting:
-              type: integer
-            serving:
-              type: integer
-            completed:
-              type: integer
-            average_wait_minutes:
-              type: integer
-
-    # ── Admin – Users ───────────────────────────────────────────────────────
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminStaffRequest'
+      responses:
+        '200':
+          description: Staff updated successfully
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete a staff profile and deactivate its linked login
+      description: Soft-deletes the staff profile and linked user account. Historical queue records are retained.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        '200':
+          description: Staff profile and linked login were deactivated
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
     AdminUser:
       type: object
       required: [id, full_name, nic, phone, role, status, created_at]
@@ -2038,9 +2023,9 @@ components:
         room:
           $ref: '#/components/schemas/OPDRoom'
         status:
-          $ref: '#/components/schemas/AppointmentStatus'
-
-    AdminAppointmentItemResponse:
+          type: string
+          enum: [PENDING, CONFIRMED, SERVING, COMPLETED, CANCELLED]
+    AdminAppointmentResponse:
       type: object
       properties:
         success:
@@ -2049,8 +2034,133 @@ components:
           type: string
         data:
           $ref: '#/components/schemas/AdminAppointment'
-
-    # ── Admin – Doctors ─────────────────────────────────────────────────────
+    AdminQueue:
+      type: object
+      required: [key, name, waiting, serving, completed, average_wait_minutes, congestion_status, recommended_action]
+      properties:
+        key:
+          type: string
+          enum: [OPD_CLINIC_ROOM, DRESSING_ROOM, INJECTION_ROOM, ANIMAL_BITE_ROOM, BLEEDING_ROOM, DISPENSARY_ROOM]
+        name:
+          type: string
+        waiting:
+          type: integer
+        serving:
+          type: integer
+        completed:
+          type: integer
+        average_wait_minutes:
+          type: integer
+        congestion_status:
+          type: string
+          enum: [NORMAL, WARNING, CRITICAL]
+        recommended_action:
+          type: string
+    AdminQueueAlert:
+      type: object
+      required: [queue_key, queue_name, waiting, average_wait_minutes, status, recommended_action]
+      properties:
+        queue_key:
+          type: string
+        queue_name:
+          type: string
+        waiting:
+          type: integer
+        average_wait_minutes:
+          type: integer
+        status:
+          type: string
+          enum: [WARNING, CRITICAL]
+        recommended_action:
+          type: string
+    AdminQueueResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            date:
+              type: string
+              format: date
+            queues:
+              type: array
+              minItems: 6
+              maxItems: 6
+              items:
+                $ref: '#/components/schemas/AdminQueue'
+            alerts:
+              type: array
+              items:
+                $ref: '#/components/schemas/AdminQueueAlert'
+    AdminAnalyticsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            period:
+              type: string
+              enum: [7d, 30d, 90d]
+            start_date:
+              type: string
+              format: date
+            end_date:
+              type: string
+              format: date
+            appointments:
+              type: object
+              properties:
+                bookings:
+                  type: integer
+                completed:
+                  type: integer
+                cancelled:
+                  type: integer
+                missed:
+                  type: integer
+            queue_services:
+              type: array
+              items:
+                type: object
+                properties:
+                  key:
+                    type: string
+                  name:
+                    type: string
+                  average_wait_minutes:
+                    type: integer
+                  wait_samples:
+                    type: integer
+                  peak_waiting:
+                    type: integer
+                  congestion_incidents:
+                    type: integer
+            trend:
+              type: array
+              items:
+                type: object
+                properties:
+                  label:
+                    type: string
+                  start_date:
+                    type: string
+                    format: date
+                  bookings:
+                    type: integer
+                  completed:
+                    type: integer
+                  cancelled:
+                    type: integer
+                  missed:
+                    type: integer
     AdminDoctor:
       type: object
       required: [id, user_id, name, specialization, slmc_number, clinic_name, room, status, is_available, current_queue]

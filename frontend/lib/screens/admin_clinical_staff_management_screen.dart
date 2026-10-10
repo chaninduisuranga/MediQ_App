@@ -140,6 +140,44 @@ class _AdminClinicalStaffManagementScreenState
     _showResult(response);
   }
 
+  Future<void> _deleteDoctor(AdminDoctor doctor) async {
+    final confirmed = await _confirmDelete(doctor.name);
+    if (!confirmed) return;
+    _showResult(await AdminService.deleteDoctor(doctor.id));
+  }
+
+  Future<void> _deleteStaff(AdminStaff staff) async {
+    final confirmed = await _confirmDelete(staff.name);
+    if (!confirmed) return;
+    _showResult(await AdminService.deleteStaff(staff.id));
+  }
+
+  Future<bool> _confirmDelete(String name) async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Delete profile?'),
+            content: Text(
+              'Delete $name from clinical staff management? Their linked account will be deactivated, while historical records are retained.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Keep'),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppTheme.errorRed,
+                ),
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+  }
+
   void _showResult(Map<String, dynamic> result) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
@@ -314,6 +352,7 @@ class _AdminClinicalStaffManagementScreenState
         status: doctor.status,
         availability: doctor.isAvailable,
         onEdit: () => _openDoctorForm(doctor),
+        onDelete: () => _deleteDoctor(doctor),
       );
 
   Widget _staffCard(AdminStaff staff) => _profileCard(
@@ -325,6 +364,7 @@ class _AdminClinicalStaffManagementScreenState
         status: staff.status,
         availability: staff.isAvailable,
         onEdit: () => _openStaffForm(staff),
+        onDelete: () => _deleteStaff(staff),
       );
 
   Widget _profileCard({
@@ -334,6 +374,7 @@ class _AdminClinicalStaffManagementScreenState
     required String status,
     required bool availability,
     required VoidCallback onEdit,
+    required VoidCallback onDelete,
   }) {
     final statusColor = status == 'ACTIVE' ? Colors.green : Colors.red;
     return Card(
@@ -369,10 +410,21 @@ class _AdminClinicalStaffManagementScreenState
           ),
         ),
         isThreeLine: true,
-        trailing: IconButton(
-          onPressed: onEdit,
-          icon: const Icon(Icons.edit_rounded),
-          tooltip: 'Edit',
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              onPressed: onEdit,
+              icon: const Icon(Icons.edit_rounded),
+              tooltip: 'Edit',
+            ),
+            IconButton(
+              onPressed: onDelete,
+              icon: const Icon(Icons.delete_outline_rounded),
+              color: AppTheme.errorRed,
+              tooltip: 'Delete',
+            ),
+          ],
         ),
       ),
     );

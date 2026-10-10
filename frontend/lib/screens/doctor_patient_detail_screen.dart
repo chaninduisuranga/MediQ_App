@@ -4,15 +4,57 @@ import '../core/theme/theme.dart';
 
 /// Doctor-specific Patient Detail screen.
 /// Receives the appointment [Map] via [ModalRoute.settings.arguments].
-class DoctorPatientDetailScreen extends StatelessWidget {
+class DoctorPatientDetailScreen extends StatefulWidget {
   const DoctorPatientDetailScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final appt =
-        (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?)
-            ?? {};
+  State<DoctorPatientDetailScreen> createState() =>
+      _DoctorPatientDetailScreenState();
+}
 
+class _DoctorPatientDetailScreenState extends State<DoctorPatientDetailScreen> {
+  List<Map<String, dynamic>> _history = [];
+  bool _isLoadingHistory = true;
+  bool _isInit = false;
+
+  Map<String, dynamic> get _appt =>
+      (ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?) ??
+      {};
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_isInit) {
+      _isInit = true;
+      _fetchPatientHistory();
+    }
+  }
+
+  Future<void> _fetchPatientHistory() async {
+    final rawPatientId = _appt['patient_id']?.toString() ?? '';
+    // Extract integer from PAT-123 or raw ID
+    int patientId = 0;
+    final digits = RegExp(r'\d+').firstMatch(rawPatientId)?.group(0);
+    if (digits != null) {
+      patientId = int.tryParse(digits) ?? 0;
+    }
+
+    if (patientId > 0) {
+      final list = await DoctorService.getPatientHistory(patientId);
+      if (mounted) {
+        setState(() {
+          _history = list;
+          _isLoadingHistory = false;
+        });
+      }
+    } else {
+      if (mounted) setState(() => _isLoadingHistory = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appt = _appt;
     final status = (appt['appointment_status'] ?? 'SCHEDULED').toString();
     final statusColor = DoctorService.getStatusColor(status);
     final statusLabel = DoctorService.getStatusLabel(status);
@@ -134,26 +176,52 @@ class DoctorPatientDetailScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // ── Previous Consultations (mock) ──
+            // ── Previous Consultations (Real DB Data) ──
             _buildCard(
               title: 'Previous Consultations',
               titleIcon: Icons.history_rounded,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildPreviousConsultationItem(
-                    date: '2026-09-07',
-                    notes: 'Follow-up for hypertension. BP: 140/90. Medication adjusted.',
-                    status: 'COMPLETED',
-                  ),
-                  const Divider(height: 20),
-                  _buildPreviousConsultationItem(
-                    date: '2026-08-20',
-                    notes: 'Routine checkup. All vitals normal. No issues reported.',
-                    status: 'COMPLETED',
-                  ),
-                ],
-              ),
+              child: _isLoadingHistory
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Center(
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: AppTheme.doctorPrimaryColor),
+                        ),
+                      ),
+                    )
+                  : _history.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            'No previous consultation history recorded.',
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: AppTheme.mutedText,
+                                fontStyle: FontStyle.italic),
+                          ),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: _history.asMap().entries.map((entry) {
+                            final i = entry.key;
+                            final item = entry.value;
+                            return Column(
+                              children: [
+                                if (i > 0) const Divider(height: 20),
+                                _buildPreviousConsultationItem(
+                                  date: item['appointment_date'] ?? '--',
+                                  notes: (item['notes'] ?? '').toString().isNotEmpty
+                                      ? item['notes']
+                                      : 'Consultation completed.',
+                                  status: item['appointment_status'] ?? 'COMPLETED',
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ),
             ),
 
             const SizedBox(height: 24),

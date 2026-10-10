@@ -12,19 +12,12 @@ import (
 func DoctorAuthorizationMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role, exists := c.Get("role")
-		if !exists || !isDoctorRole(role) {
+		if !exists || role != string(models.RoleDoctor) {
 			utils.SendError(c, http.StatusForbidden, "Doctor access required")
 			c.Abort()
 			return
 		}
+
 		c.Next()
 	}
-}
-
-func isDoctorRole(role interface{}) bool {
-	roleValue, ok := role.(string)
-	if !ok {
-		return false
-	}
-	return roleValue == string(models.RoleDoctor) || roleValue == string(models.RoleAdmin)
 }

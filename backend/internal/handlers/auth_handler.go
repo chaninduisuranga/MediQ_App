@@ -276,6 +276,53 @@ func (h *AuthHandler) DeleteAccount(c *gin.Context) {
 	utils.SendSuccess(c, http.StatusOK, "Account deleted successfully", nil)
 }
 
+type ChangePasswordRequest struct {
+	CurrentPassword string `json:"current_password" binding:"required"`
+	NewPassword     string `json:"new_password" binding:"required,min=6"`
+}
+
+// ChangePassword updates logged in user's password securely
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	userID, exists := c.Get("userID")
+	if !exists {
+		utils.SendError(c, http.StatusUnauthorized, "Unauthorized")
+		return
+	}
+
+	var req ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		utils.SendError(c, http.StatusBadRequest, "Invalid request parameters: "+err.Error())
+		return
+	}
+
+	var user models.User
+	if err := database.DB.First(&user, userID).Error; err != nil {
+		utils.SendError(c, http.StatusNotFound, "User profile not found")
+		return
+	}
+
+	// Verify current password
+	if !utils.CheckPasswordHash(req.CurrentPassword, user.Password) {
+		utils.SendError(c, http.StatusBadRequest, "Current password is incorrect")
+		return
+	}
+
+	// Hash new password
+	hashedPassword, err := utils.HashPassword(req.NewPassword)
+	if err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "Failed to process new password")
+		return
+	}
+
+	user.Password = hashedPassword
+	if err := database.DB.Save(&user).Error; err != nil {
+		utils.SendError(c, http.StatusInternalServerError, "Failed to update password: "+err.Error())
+		return
+	}
+
+	utils.SendSuccess(c, http.StatusOK, "Password changed successfully", nil)
+}
+
 type GoogleLoginRequest struct {
 	Email    string `json:"email" binding:"required"`
 	FullName string `json:"full_name"`

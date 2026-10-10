@@ -1,211 +1,57 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:postgres/postgres.dart';
 import 'auth_service.dart';
 
 /// Service for all Doctor-specific API calls.
-/// Follows the same pattern as [QueueService] and [AppointmentService]:
-/// tries the backend first; falls back to local mock data on failure.
+/// Doctor data is loaded from the authenticated backend.
 class DoctorService {
   static String get baseUrl => AuthService.baseUrl;
 
-  // ─────────────────────────────────────────────────────────────────────
-  // Mock Data (fallback when backend is unavailable)
-  // ─────────────────────────────────────────────────────────────────────
+  static bool isAppointmentInConsultation(Map<String, dynamic> appointment) {
+    const consultationStatuses = {
+      'IN_CONSULTATION',
+      'IN_PROGRESS',
+      'SERVING',
+      'CONSULTING',
+      'ONGOING',
+      'ACTIVE',
+    };
+    return appointment['active'] == true ||
+        appointment['is_active'] == true ||
+        appointment['isActive'] == true ||
+        _appointmentStatuses(appointment).any(consultationStatuses.contains);
+  }
 
-  static final List<Map<String, dynamic>> _mockTodayAppointments = [
-    {
-      'id': 1001,
-      'queue_number': 'G-001',
-      'raw_number': 1,
-      'patient_name': 'Saman Kumara',
-      'patient_id': 'PAT-2201',
-      'patient_nic': '851234567V',
-      'patient_phone': '0771234567',
-      'patient_age': 40,
-      'patient_gender': 'Male',
-      'appointment_time': '09:00 AM',
-      'appointment_date': '2026-09-14',
-      'room': 'GENERAL_OPD',
-      'appointment_status': 'COMPLETED',
-      'queue_status': 'COMPLETED',
-      'notes': 'Routine annual checkup',
-      'blood_group': 'B+',
-      'allergies': 'None',
-      'medical_conditions': 'Hypertension',
-    },
-    {
-      'id': 1002,
-      'queue_number': 'G-002',
-      'raw_number': 2,
-      'patient_name': 'Nimal Perera',
-      'patient_id': 'PAT-3350',
-      'patient_nic': '901234567V',
-      'patient_phone': '0719876543',
-      'patient_age': 35,
-      'patient_gender': 'Male',
-      'appointment_time': '09:15 AM',
-      'appointment_date': '2026-09-14',
-      'room': 'GENERAL_OPD',
-      'appointment_status': 'IN_CONSULTATION',
-      'queue_status': 'IN_PROGRESS',
-      'notes': 'Fever and cold symptoms',
-      'blood_group': 'O+',
-      'allergies': 'Penicillin',
-      'medical_conditions': 'None',
-    },
-    {
-      'id': 1003,
-      'queue_number': 'G-003',
-      'raw_number': 3,
-      'patient_name': 'Kasun Silva',
-      'patient_id': 'PAT-4411',
-      'patient_nic': '923456789V',
-      'patient_phone': '0754443322',
-      'patient_age': 28,
-      'patient_gender': 'Male',
-      'appointment_time': '09:30 AM',
-      'appointment_date': '2026-09-14',
-      'room': 'GENERAL_OPD',
-      'appointment_status': 'WAITING',
-      'queue_status': 'CHECKED_IN',
-      'notes': 'Persistent headache for 3 days',
-      'blood_group': 'A+',
-      'allergies': 'None',
-      'medical_conditions': 'None',
-    },
-    {
-      'id': 1004,
-      'queue_number': 'G-004',
-      'raw_number': 4,
-      'patient_name': 'Anu Perera',
-      'patient_id': 'PAT-5520',
-      'patient_nic': '685432109V',
-      'patient_phone': '0721112233',
-      'patient_age': 63,
-      'patient_gender': 'Female',
-      'appointment_time': '09:45 AM',
-      'appointment_date': '2026-09-14',
-      'room': 'GENERAL_OPD',
-      'appointment_status': 'WAITING',
-      'queue_status': 'CHECKED_IN',
-      'notes': 'Elderly patient — high BP follow-up',
-      'blood_group': 'AB-',
-      'allergies': 'Aspirin',
-      'medical_conditions': 'Hypertension, Diabetes',
-    },
-    {
-      'id': 1005,
-      'queue_number': 'G-005',
-      'raw_number': 5,
-      'patient_name': 'Kamal Fernando',
-      'patient_id': 'PAT-6630',
-      'patient_nic': '951112233V',
-      'patient_phone': '0783332211',
-      'patient_age': 31,
-      'patient_gender': 'Male',
-      'appointment_time': '10:00 AM',
-      'appointment_date': '2026-09-14',
-      'room': 'GENERAL_OPD',
-      'appointment_status': 'SCHEDULED',
-      'queue_status': 'PENDING',
-      'notes': 'Stomach ache and nausea',
-      'blood_group': 'O-',
-      'allergies': 'None',
-      'medical_conditions': 'None',
-    },
-  ];
+  static bool isAppointmentWaiting(Map<String, dynamic> appointment) {
+    if (isAppointmentInConsultation(appointment)) return false;
 
-  static final List<Map<String, dynamic>> _mockPreviousAppointments = [
-    {
-      'id': 901,
-      'queue_number': 'G-044',
-      'patient_name': 'Dilini Wickramasinghe',
-      'patient_id': 'PAT-1180',
-      'patient_nic': '945554433V',
-      'appointment_time': '10:00 AM',
-      'appointment_date': '2026-09-13',
-      'consultation_status': 'COMPLETED',
-      'notes': 'Cold and flu — prescribed paracetamol',
-    },
-    {
-      'id': 902,
-      'queue_number': 'G-045',
-      'patient_name': 'Ruwan Gunawardena',
-      'patient_id': 'PAT-2290',
-      'patient_nic': '883332211V',
-      'appointment_time': '11:00 AM',
-      'appointment_date': '2026-09-13',
-      'consultation_status': 'COMPLETED',
-      'notes': 'BP monitoring — medication adjusted',
-    },
-    {
-      'id': 903,
-      'queue_number': 'G-011',
-      'patient_name': 'Priyantha Ranasinghe',
-      'patient_id': 'PAT-3310',
-      'patient_nic': '741112233V',
-      'appointment_time': '09:00 AM',
-      'appointment_date': '2026-09-12',
-      'consultation_status': 'NO_SHOW',
-      'notes': 'Patient did not attend',
-    },
-  ];
+    const waitingStatuses = {
+      'WAITING',
+      'CHECKED_IN',
+      'PENDING',
+      'CONFIRMED',
+      'SCHEDULED',
+      'CALLED',
+    };
+    return _appointmentStatuses(appointment).any(waitingStatuses.contains);
+  }
 
-  static final List<Map<String, dynamic>> _mockNotifications = [
-    {
-      'id': 1,
-      'type': 'NEW_APPOINTMENT',
-      'title': 'New Appointment Booked',
-      'message':
-          'Patient Kamal Fernando has booked an appointment for today 10:00 AM (Queue G-005).',
-      'timestamp': '2026-09-14T08:45:00',
-      'is_read': false,
-      'icon': 'calendar',
-    },
-    {
-      'id': 2,
-      'type': 'APPOINTMENT_CANCELLED',
-      'title': 'Appointment Cancelled',
-      'message':
-          'Patient Sunil Jayasinghe has cancelled their 11:30 AM appointment.',
-      'timestamp': '2026-09-14T08:20:00',
-      'is_read': false,
-      'icon': 'cancel',
-    },
-    {
-      'id': 3,
-      'type': 'QUEUE_UPDATE',
-      'title': 'Queue Update',
-      'message':
-          'Patient Anu Perera (G-004) has checked in and is now waiting.',
-      'timestamp': '2026-09-14T09:30:00',
-      'is_read': true,
-      'icon': 'queue',
-    },
-    {
-      'id': 4,
-      'type': 'ADMIN_ANNOUNCEMENT',
-      'title': 'Admin Announcement',
-      'message':
-          'OPD session extended by 1 hour today. Please accommodate all waiting patients.',
-      'timestamp': '2026-09-14T07:00:00',
-      'is_read': true,
-      'icon': 'announcement',
-    },
-  ];
-
-  static final Map<String, dynamic> _mockAvailability = {
-    'is_available': true,
-    'working_days': ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
-    'working_hours_start': '08:00 AM',
-    'working_hours_end': '04:00 PM',
-    'clinic': 'General OPD — Room 03',
-    'session_type': 'Morning Session',
-    'max_patients_per_day': 40,
-    'current_session_date': '2026-09-14',
-  };
+  static Iterable<String> _appointmentStatuses(
+      Map<String, dynamic> appointment) {
+    return [
+      appointment['appointment_status'],
+      appointment['consultation_status'],
+      appointment['queue_status'],
+      appointment['status'],
+    ].whereType<Object>().map(
+          (status) => status
+              .toString()
+              .trim()
+              .toUpperCase()
+              .replaceAll(RegExp(r'[\s-]+'), '_'),
+        );
+  }
 
   // ─────────────────────────────────────────────────────────────────────
   // Today's Appointments
@@ -215,7 +61,7 @@ class DoctorService {
     try {
       final token = AuthService.token;
       final response = await http.get(
-        Uri.parse('$baseUrl/doctor/queue/today'),
+        Uri.parse('$baseUrl/doctor/appointments/today'),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
@@ -224,18 +70,20 @@ class DoctorService {
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
         if (body['success'] == true && body['data'] != null) {
-          final data = body['data'] as Map<String, dynamic>;
-          final queueList = data['queue'] as List? ?? [];
+          final queueList = body['data'] as List? ?? [];
           // Normalize field names to match UI expectations
           return queueList.map((item) {
             final m = Map<String, dynamic>.from(item as Map);
             // Map backend status to UI-expected status names
-            final rawStatus = (m['status'] as String? ?? 'PENDING').toUpperCase();
+            final rawStatus = (m['appointment_status'] as String? ??
+                    m['status'] as String? ??
+                    'PENDING')
+                .toUpperCase();
             m['appointment_status'] = rawStatus;
-            m['queue_status'] = _mapToQueueStatus(rawStatus);
-            // queue_number displayed as formatted token
-            m['queue_number'] = m['queue_token'] ?? '#${m['queue_number']}';
-            m['raw_number'] = m['queue_number'];
+            m['queue_status'] =
+                m['queue_status'] ?? _mapToQueueStatus(rawStatus);
+            m['queue_number'] ??= m['queue_token'] ?? '--';
+            m['raw_number'] ??= 0;
             // time fields
             m['appointment_time'] = m['appointment_time'] ?? '--';
             m['appointment_date'] = m['appointment_date'] ?? '';
@@ -243,10 +91,29 @@ class DoctorService {
           }).toList();
         }
       }
+      debugPrint(
+        'DoctorService.getTodayAppointments failed: HTTP ${response.statusCode}',
+      );
     } catch (e) {
-      debugPrint('DoctorService.getTodayAppointments error: $e');
+      debugPrint('DoctorService.getTodayAppointments failed: $e');
     }
-    return List<Map<String, dynamic>>.from(_mockTodayAppointments);
+    return [];
+  }
+
+  static String _mapToQueueStatus(String status) {
+    switch (status.toUpperCase().replaceAll('-', '_').replaceAll(' ', '_')) {
+      case 'PENDING':
+      case 'CONFIRMED':
+      case 'WAITING':
+      case 'SCHEDULED':
+      case 'CALLED':
+        return 'CHECKED_IN';
+      case 'SERVING':
+      case 'IN_CONSULTATION':
+        return 'IN_PROGRESS';
+      default:
+        return status.toUpperCase();
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -260,94 +127,68 @@ class DoctorService {
     try {
       final token = AuthService.token;
       final response = await http.get(
-        Uri.parse('$baseUrl/doctor/appointments/history'),
+        Uri.parse('$baseUrl/doctor/appointments/history').replace(
+          queryParameters: {
+            if (filterStatus != null && filterStatus.isNotEmpty)
+              'status': filterStatus,
+            if (filterDate != null && filterDate.isNotEmpty) 'date': filterDate,
+          },
+        ),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
         },
       );
+      debugPrint("API Raw Response: ${response.body}");
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
         if (body['success'] == true && body['data'] != null) {
           return List<Map<String, dynamic>>.from(body['data'] as List);
         }
       }
+      debugPrint(
+        'DoctorService.getPreviousAppointments failed: HTTP ${response.statusCode}',
+      );
     } catch (e) {
-      debugPrint('DoctorService.getPreviousAppointments fallback: $e');
+      debugPrint('DoctorService.getPreviousAppointments failed: $e');
     }
-    var list = List<Map<String, dynamic>>.from(_mockPreviousAppointments);
-    if (filterStatus != null &&
-        filterStatus.isNotEmpty &&
-        filterStatus != 'ALL') {
-      list =
-          list.where((a) => a['consultation_status'] == filterStatus).toList();
-    }
-    return list;
+    return [];
   }
 
   // ─────────────────────────────────────────────────────────────────────
   // Update Appointment / Queue Status
   // ─────────────────────────────────────────────────────────────────────
 
-  static Future<bool> updateAppointmentStatus(int id, String status) async {
+  static Future<bool> updateAppointmentStatus(
+    int id,
+    String status, {
+    String? notes,
+  }) async {
     try {
       final token = AuthService.token;
-      // Map UI status to backend status
-      final backendStatus = _mapToBackendStatus(status);
-      final response = await http.patch(
-        Uri.parse('$baseUrl/doctor/queue/$id/status'),
+      final body = <String, dynamic>{'status': status};
+      final trimmedNotes = notes?.trim();
+      if (trimmedNotes != null && trimmedNotes.isNotEmpty) {
+        body['notes'] = trimmedNotes;
+      }
+
+      final response = await http.put(
+        Uri.parse('$baseUrl/doctor/appointments/$id/status'),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({'status': backendStatus}),
+        body: jsonEncode(body),
       );
       if (response.statusCode == 200) return true;
+      debugPrint(
+        'DoctorService.updateAppointmentStatus failed: '
+        'HTTP ${response.statusCode}, response: ${response.body}',
+      );
     } catch (e) {
-      debugPrint('DoctorService.updateAppointmentStatus error: $e');
+      debugPrint('DoctorService.updateAppointmentStatus failed: $e');
     }
-    // Update local mock data as fallback
-    final idx = _mockTodayAppointments.indexWhere((a) => a['id'] == id);
-    if (idx >= 0) {
-      _mockTodayAppointments[idx]['appointment_status'] = status;
-      _mockTodayAppointments[idx]['queue_status'] = _mapToQueueStatus(status);
-    }
-    return true;
-  }
-
-  static String _mapToBackendStatus(String uiStatus) {
-    switch (uiStatus.toUpperCase()) {
-      case 'IN_CONSULTATION':
-      case 'IN_PROGRESS':
-        return 'SERVING';
-      case 'COMPLETED':
-        return 'COMPLETED';
-      case 'NO_SHOW':
-        return 'NO_SHOW';
-      case 'CANCELLED':
-        return 'CANCELLED';
-      case 'WAITING':
-      case 'CHECKED_IN':
-      case 'PENDING':
-        return 'PENDING';
-      default:
-        return uiStatus.toUpperCase();
-    }
-  }
-
-  static String _mapToQueueStatus(String appointmentStatus) {
-    switch (appointmentStatus) {
-      case 'IN_CONSULTATION':
-        return 'IN_PROGRESS';
-      case 'COMPLETED':
-        return 'COMPLETED';
-      case 'NO_SHOW':
-        return 'NO_SHOW';
-      case 'CANCELLED':
-        return 'CANCELLED';
-      default:
-        return 'CHECKED_IN';
-    }
+    return false;
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -370,29 +211,166 @@ class DoctorService {
           return Map<String, dynamic>.from(body['data'] as Map);
         }
       }
+      debugPrint(
+        'DoctorService.getAvailability failed: HTTP ${response.statusCode}',
+      );
     } catch (e) {
-      debugPrint('DoctorService.getAvailability fallback: $e');
+      debugPrint('DoctorService.getAvailability failed: $e');
     }
-    return Map<String, dynamic>.from(_mockAvailability);
+    return {};
   }
 
-  static Future<bool> updateAvailability(bool isAvailable) async {
+  static Future<bool> updateAvailability({
+    required bool isAvailable,
+    List<String>? workingDays,
+    String? sessionType,
+    String? workingHoursStart,
+    String? workingHoursEnd,
+    int? maxPatientsPerDay,
+    String? clinic,
+  }) async {
     try {
       final token = AuthService.token;
+      final payload = <String, dynamic>{
+        'is_available': isAvailable,
+        if (workingDays != null) 'working_days': workingDays,
+        if (sessionType != null) 'session_type': sessionType,
+        if (workingHoursStart != null) 'working_hours_start': workingHoursStart,
+        if (workingHoursEnd != null) 'working_hours_end': workingHoursEnd,
+        if (maxPatientsPerDay != null)
+          'max_patients_per_day': maxPatientsPerDay,
+        if (clinic != null) 'clinic': clinic,
+      };
+
       final response = await http.put(
         Uri.parse('$baseUrl/doctor/availability'),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({'is_available': isAvailable}),
+        body: jsonEncode(payload),
       );
       if (response.statusCode == 200) return true;
+      debugPrint(
+        'DoctorService.updateAvailability failed: HTTP ${response.statusCode}, body: ${response.body}',
+      );
     } catch (e) {
-      debugPrint('DoctorService.updateAvailability fallback: $e');
+      debugPrint('DoctorService.updateAvailability failed: $e');
     }
-    _mockAvailability['is_available'] = isAvailable;
-    return true;
+    return false;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Profile & Security
+  // ─────────────────────────────────────────────────────────────────────
+
+  static Future<Map<String, dynamic>> getProfile() async {
+    try {
+      final token = AuthService.token;
+      final response = await http.get(
+        Uri.parse('$baseUrl/doctor/profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['success'] == true && body['data'] != null) {
+          return Map<String, dynamic>.from(body['data'] as Map);
+        }
+      }
+    } catch (e) {
+      debugPrint('DoctorService.getProfile failed: $e');
+    }
+    return {};
+  }
+
+  static Future<Map<String, dynamic>> updateProfile({
+    required String email,
+    required String phone,
+    required String department,
+    required String room,
+  }) async {
+    try {
+      final token = AuthService.token;
+      final response = await http.put(
+        Uri.parse('$baseUrl/doctor/profile'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'email': email,
+          'phone': phone,
+          'department': department,
+          'room': room,
+        }),
+      );
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200 && body['success'] == true) {
+        return {'success': true, 'data': body['data']};
+      }
+      return {
+        'success': false,
+        'message': body['error'] ?? 'Failed to update profile'
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final token = AuthService.token;
+      final response = await http.post(
+        Uri.parse('$baseUrl/doctor/change-password'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'current_password': currentPassword,
+          'new_password': newPassword,
+        }),
+      );
+      final body = jsonDecode(response.body) as Map<String, dynamic>;
+      if (response.statusCode == 200 && body['success'] == true) {
+        return {'success': true, 'message': 'Password changed successfully'};
+      }
+      return {
+        'success': false,
+        'message': body['error'] ?? 'Failed to change password'
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> getPatientHistory(
+      int patientId) async {
+    try {
+      final token = AuthService.token;
+      final response = await http.get(
+        Uri.parse('$baseUrl/doctor/patients/$patientId/history'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
+      );
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['success'] == true && body['data'] != null) {
+          return List<Map<String, dynamic>>.from(body['data'] as List);
+        }
+      }
+    } catch (e) {
+      debugPrint('DoctorService.getPatientHistory failed: $e');
+    }
+    return [];
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -415,26 +393,33 @@ class DoctorService {
           return List<Map<String, dynamic>>.from(body['data'] as List);
         }
       }
+      debugPrint(
+        'DoctorService.getNotifications failed: HTTP ${response.statusCode}',
+      );
     } catch (e) {
-      debugPrint('DoctorService.getNotifications fallback: $e');
+      debugPrint('DoctorService.getNotifications failed: $e');
     }
-    return List<Map<String, dynamic>>.from(_mockNotifications);
+    return [];
   }
 
   static Future<bool> markNotificationRead(int id) async {
-    final idx = _mockNotifications.indexWhere((n) => n['id'] == id);
-    if (idx >= 0) _mockNotifications[idx]['is_read'] = true;
     try {
       final token = AuthService.token;
-      await http.put(
+      final response = await http.put(
         Uri.parse('$baseUrl/doctor/notifications/$id/read'),
         headers: {
           'Content-Type': 'application/json',
           if (token != null) 'Authorization': 'Bearer $token',
         },
       );
-    } catch (_) {}
-    return true;
+      if (response.statusCode == 200) return true;
+      debugPrint(
+        'DoctorService.markNotificationRead failed: HTTP ${response.statusCode}',
+      );
+    } catch (e) {
+      debugPrint('DoctorService.markNotificationRead failed: $e');
+    }
+    return false;
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -443,31 +428,20 @@ class DoctorService {
 
   static Future<Map<String, dynamic>> getDashboardStats() async {
     final appointments = await getTodayAppointments();
-    final waiting = appointments
-        .where((a) =>
-            a['queue_status'] == 'CHECKED_IN' ||
-            a['appointment_status'] == 'WAITING')
-        .length;
-    final inConsultation = appointments
-        .where((a) =>
-            a['appointment_status'] == 'IN_CONSULTATION' ||
-            a['queue_status'] == 'IN_PROGRESS')
-        .length;
+    final waiting = appointments.where(isAppointmentWaiting).length;
+    final inConsultation =
+        appointments.where(isAppointmentInConsultation).length;
     final completed = appointments
         .where((a) => a['appointment_status'] == 'COMPLETED')
         .length;
 
     final currentPatient = appointments.firstWhere(
-      (a) =>
-          a['appointment_status'] == 'IN_CONSULTATION' ||
-          a['queue_status'] == 'IN_PROGRESS',
+      isAppointmentInConsultation,
       orElse: () => <String, dynamic>{},
     );
 
     final nextPatient = appointments.firstWhere(
-      (a) =>
-          a['queue_status'] == 'CHECKED_IN' ||
-          a['appointment_status'] == 'WAITING',
+      isAppointmentWaiting,
       orElse: () => <String, dynamic>{},
     );
 
@@ -488,8 +462,8 @@ class DoctorService {
           nextPatient.isNotEmpty ? nextPatient['patient_name'] ?? '--' : '--',
       'next_queue_number':
           nextPatient.isNotEmpty ? nextPatient['queue_number'] ?? '--' : '--',
-      'is_available': availability['is_available'] ?? true,
-      'clinic': availability['clinic'] ?? 'General OPD',
+      'is_available': availability['is_available'] ?? false,
+      'clinic': availability['clinic'] ?? 'Not configured',
     };
   }
 
@@ -553,24 +527,12 @@ class DoctorService {
   }
 
   // ─────────────────────────────────────────────────────────────────────
-  // Consultation Details (real DB fetch for Doctor Consultation Screen)
+  // Consultation Details
   // ─────────────────────────────────────────────────────────────────────
 
-  /// Fetches the real appointment details (time, date, notes) from
-  /// [opd_appointments] and the patient's medical profile (blood_group,
-  /// allergies, medical_conditions, address) from [users] for the given
-  /// [appointmentId].
-  ///
-  /// Returns a map with keys:
-  ///   'time', 'date', 'notes',
-  ///   'blood_group', 'allergies', 'medical_conditions', 'address'
-  ///
-  /// Any NULL / empty DB value is replaced with 'Not provided'.
   static Future<Map<String, String>> getConsultationDetails(
       int appointmentId) async {
     const notProvided = 'Not provided';
-
-    // Defaults — shown if anything fails
     final defaults = <String, String>{
       'time': notProvided,
       'date': notProvided,
@@ -583,122 +545,37 @@ class DoctorService {
 
     if (appointmentId <= 0) return defaults;
 
-    Connection? conn;
     try {
-      conn = await Connection.open(
-        Endpoint(
-          host: 'aws-0-ap-south-1.pooler.supabase.com',
-          database: 'postgres',
-          username: 'postgres.dvanmlqqgvbltdvwamuk',
-          password: '3141531415supabase',
-          port: 5432,
+      final token = AuthService.token;
+      final response = await http.get(
+        Uri.parse(
+          '$baseUrl/doctor/appointments/$appointmentId/consultation-details',
         ),
-        settings: const ConnectionSettings(sslMode: SslMode.require),
+        headers: {
+          'Content-Type': 'application/json',
+          if (token != null) 'Authorization': 'Bearer $token',
+        },
       );
-
-      // ── Step 1: fetch appointment row ──────────────────────────────
-      final apptRes = await conn.execute(
-        Sql.named(
-          'SELECT "time", date, notes, patient_id '
-          'FROM opd_appointments '
-          'WHERE id = @id '
-          'LIMIT 1',
-        ),
-        parameters: {'id': appointmentId},
-      );
-
-      int? patientId;
-      String time = notProvided;
-      String date = notProvided;
-      String notes = notProvided;
-
-      if (apptRes.isNotEmpty) {
-        final row = apptRes.first;
-
-        final rawTime = row[0];
-        final rawDate = row[1];
-        final rawNotes = row[2];
-        patientId = row[3] as int?;
-
-        time = (rawTime != null && rawTime.toString().trim().isNotEmpty)
-            ? rawTime.toString().trim()
-            : notProvided;
-        date = (rawDate != null && rawDate.toString().trim().isNotEmpty)
-            ? rawDate.toString().trim()
-            : notProvided;
-        notes = (rawNotes != null && rawNotes.toString().trim().isNotEmpty)
-            ? rawNotes.toString().trim()
-            : notProvided;
-      }
-
-      // ── Step 2: fetch patient row ──────────────────────────────────
-      String bloodGroup = notProvided;
-      String allergies = notProvided;
-      String medicalConditions = notProvided;
-      String address = notProvided;
-
-      if (patientId != null) {
-        // Try with medical_conditions column first; fall back if it
-        // doesn't exist in this DB schema.
-        late Result userRes;
-        bool hasMedicalConditions = true;
-        try {
-          userRes = await conn.execute(
-            Sql.named(
-              'SELECT blood_group, allergies, medical_conditions, address '
-              'FROM users '
-              'WHERE id = @id '
-              'LIMIT 1',
-            ),
-            parameters: {'id': patientId},
-          );
-        } catch (_) {
-          hasMedicalConditions = false;
-          userRes = await conn.execute(
-            Sql.named(
-              'SELECT blood_group, allergies, address '
-              'FROM users '
-              'WHERE id = @id '
-              'LIMIT 1',
-            ),
-            parameters: {'id': patientId},
-          );
-        }
-
-        if (userRes.isNotEmpty) {
-          final uRow = userRes.first;
-          bloodGroup = _val(uRow[0]);
-          allergies = _val(uRow[1]);
-          if (hasMedicalConditions) {
-            medicalConditions = _val(uRow[2]);
-            address = _val(uRow[3]);
-          } else {
-            address = _val(uRow[2]);
-          }
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        final data = body['data'];
+        if (body['success'] == true && data is Map) {
+          return data
+              .map(
+                (key, value) => MapEntry(
+                  key.toString(),
+                  value?.toString() ?? notProvided,
+                ),
+              )
+              .cast<String, String>();
         }
       }
-
-      return {
-        'time': time,
-        'date': date,
-        'notes': notes,
-        'blood_group': bloodGroup,
-        'allergies': allergies,
-        'medical_conditions': medicalConditions,
-        'address': address,
-      };
+      debugPrint(
+        'DoctorService.getConsultationDetails failed: HTTP ${response.statusCode}',
+      );
     } catch (e) {
-      debugPrint('DoctorService.getConsultationDetails error: $e');
-      return defaults;
-    } finally {
-      await conn?.close();
+      debugPrint('DoctorService.getConsultationDetails failed: $e');
     }
-  }
-
-  /// Returns the string value or 'Not provided' for null/empty.
-  static String _val(dynamic raw) {
-    if (raw == null) return 'Not provided';
-    final s = raw.toString().trim();
-    return s.isEmpty ? 'Not provided' : s;
+    return defaults;
   }
 }
