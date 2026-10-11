@@ -11,6 +11,7 @@ import (
 	"mediq-backend/internal/database"
 	"mediq-backend/internal/models"
 	"mediq-backend/internal/utils"
+	"mediq-backend/internal/websocket"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -167,6 +168,9 @@ func (h *DoctorHandler) UpdateAppointmentStatus(c *gin.Context) {
 		utils.SendError(c, http.StatusInternalServerError, "Failed to update appointment status: "+err.Error())
 		return
 	}
+
+	// Broadcast real-time WebSocket event
+	websocket.BroadcastEvent("QUEUE_UPDATED", string(appointment.Room), appointment)
 
 	utils.SendSuccess(c, http.StatusOK, "Appointment status updated successfully", map[string]string{"status": clientAppointmentStatus(status)})
 }

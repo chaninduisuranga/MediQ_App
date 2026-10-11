@@ -16,9 +16,10 @@ func main() {
 	// Initialize Database Connection
 	database.InitDB(cfg.DatabaseURL)
 
-	// Cleanup expired appointments (appointment_date < today) on startup
+	// Cleanup expired appointments (appointment_date < today) and init chat FAQs on startup
 	if database.DB != nil {
 		handlers.CleanupExpiredAppointments()
+		handlers.InitChatFAQs()
 	}
 
 	// Setup Router

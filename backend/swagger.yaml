@@ -69,6 +69,21 @@ paths:
                     type: string
                     example: ok
 
+  /ws:
+    get:
+      tags: [Health]
+      summary: Real-time WebSocket Endpoint
+      description: |
+        Establishes a real-time WebSocket connection to receive instant notifications when:
+        - A new appointment is booked (`APPOINTMENT_BOOKED`)
+        - Queue status is updated (`QUEUE_UPDATED`)
+        - A patient is called / checked-in (`PATIENT_CHECKED_IN`, `PATIENT_CALLED`)
+        - Appointment status changes (`APPOINTMENT_CANCELLED`, `STATUS_CHANGED`)
+      operationId: webSocketConnect
+      responses:
+        '101':
+          description: Switching Protocols to WebSocket
+
   # ─── AUTH ──────────────────────────────────────────────────────────────────
   /auth/signup:
     post:

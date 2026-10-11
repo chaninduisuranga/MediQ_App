@@ -4,6 +4,7 @@ import (
 	"mediq-backend/internal/config"
 	"mediq-backend/internal/handlers"
 	"mediq-backend/internal/middleware"
+	"mediq-backend/internal/websocket"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,6 +27,7 @@ func SetupRouter(cfg *config.Config) *gin.Engine {
 	v1 := r.Group("/api/v1")
 	{
 		v1.GET("/health", handlers.HealthCheck)
+		v1.GET("/ws", websocket.ServeWS)
 
 		// Auth routes
 		auth := v1.Group("/auth")

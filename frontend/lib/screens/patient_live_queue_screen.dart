@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../core/services/appointment_service.dart';
 import '../core/services/auth_service.dart';
+import '../core/services/websocket_service.dart';
 import '../core/theme/theme.dart';
 import '../widgets/app_bottom_nav_bar.dart';
 
@@ -21,6 +22,7 @@ class PatientLiveQueueScreen extends StatefulWidget {
 
 class _PatientLiveQueueScreenState extends State<PatientLiveQueueScreen> {
   Timer? _timer;
+  StreamSubscription? _wsSubscription;
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -53,11 +55,22 @@ class _PatientLiveQueueScreenState extends State<PatientLiveQueueScreen> {
     }
     _initializeData();
     _startLiveSyncTimer();
+    _subscribeToWebSocketEvents();
+  }
+
+  void _subscribeToWebSocketEvents() {
+    _wsSubscription = WebSocketService().listenToEvents((event) {
+      debugPrint('[PatientLiveQueue] Real-time WS Event: ${event['event']}');
+      if (mounted) {
+        _fetchLiveQueue(showLoading: false);
+      }
+    });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _wsSubscription?.cancel();
     super.dispose();
   }
 

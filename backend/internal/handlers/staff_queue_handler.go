@@ -11,6 +11,7 @@ import (
 	"mediq-backend/internal/database"
 	"mediq-backend/internal/models"
 	"mediq-backend/internal/utils"
+	"mediq-backend/internal/websocket"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -623,6 +624,7 @@ func (h *StaffQueueHandler) saveStaffQueueAction(c *gin.Context, appointment *mo
 		return err
 	}
 
+	websocket.BroadcastEvent("QUEUE_UPDATED", string(appointment.Room), appointment)
 	h.maybeCreateHighQueueNotification(c, appointment.Room)
 	return nil
 }

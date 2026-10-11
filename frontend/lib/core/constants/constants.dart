@@ -10,4 +10,12 @@ class AppConstants {
     }
     return 'http://127.0.0.1:8085/api/v1';
   }
+
+  static String get wsBaseUrl {
+    final httpUrl = apiBaseUrl;
+    if (httpUrl.startsWith('https://')) {
+      return httpUrl.replaceFirst('https://', 'wss://') + '/ws';
+    }
+    return httpUrl.replaceFirst('http://', 'ws://') + '/ws';
+  }
 }

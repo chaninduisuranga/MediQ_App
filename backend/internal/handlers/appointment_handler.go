@@ -11,6 +11,7 @@ import (
 	"mediq-backend/internal/database"
 	"mediq-backend/internal/models"
 	"mediq-backend/internal/utils"
+	"mediq-backend/internal/websocket"
 
 	"github.com/gin-gonic/gin"
 )
@@ -183,6 +184,9 @@ func (h *AppointmentHandler) BookAppointment(c *gin.Context) {
 		models.OPDAppointment
 		RoomDisplayName string `json:"room_display_name"`
 	}
+
+	// Broadcast real-time WebSocket event for live queue update
+	websocket.BroadcastEvent("APPOINTMENT_BOOKED", string(room), appointment)
 
 	utils.SendSuccess(c, http.StatusCreated, fmt.Sprintf("Appointment booked for %s! Your queue number is %d", selectedDate, newQueueNumber), BookResponse{
 		OPDAppointment:  appointment,
@@ -401,6 +405,9 @@ func (h *AppointmentHandler) CancelAppointment(c *gin.Context) {
 		"Appointment Cancelled",
 		fmt.Sprintf("Appointment #%d for %s on %s was cancelled by patient.", appt.QueueNumber, appt.PatientName, appt.AppointmentDate),
 	)
+
+	// Broadcast real-time WebSocket event
+	websocket.BroadcastEvent("APPOINTMENT_CANCELLED", string(appt.Room), appt)
 
 	utils.SendSuccess(c, http.StatusOK, "Appointment cancelled successfully", nil)
 }
